@@ -1,0 +1,36 @@
+name: Release
+
+# Push a tag like v0.1.0 to publish harper-de.wasm, harper-de.wasm.sha256 and plugin-index.json.
+on:
+  push:
+    tags: ["v*"]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: extractions/setup-just@v2
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - uses: Swatinem/rust-cache@v2
+      - name: Install wasm-opt
+        run: sudo apt-get update && sudo apt-get install -y binaryen
+      - name: Build, load-test and package
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          just test-plugin
+          just release-files "$version"
+        env:
+          HARPER_DE_WASM: target/wasm32-unknown-unknown/release/harper_german.wasm
+      - name: Publish
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/harper-de.wasm
+            dist/harper-de.wasm.sha256
+            dist/plugin-index.json

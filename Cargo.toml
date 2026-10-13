@@ -1,0 +1,43 @@
+[package]
+name = "harper-german"
+version = "0.1.0"
+edition = "2024"
+description = "German language plugin for Harper, built as a WebAssembly module."
+license = "Apache-2.0"
+repository = "https://github.com/Dronakurl/harper-german"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+# Pinned to a revision of the `claude/language-plugin-architecture-h8bw6z` branch of
+# Dronakurl/harper, which holds the plugin API and the harper-core hooks this crate needs.
+# To work on both at once, see "Local harper checkout" in README.md.
+harper-core = { git = "https://github.com/Dronakurl/harper", rev = "0e7e14cbaa7a1524f7ab347ecc78e5ecc6894bc0", default-features = false, features = ["concurrent", "morphology"] }
+harper-plugin-api = { git = "https://github.com/Dronakurl/harper", rev = "0e7e14cbaa7a1524f7ab347ecc78e5ecc6894bc0", features = ["core"] }
+bitflags = { version = "2.11.0", features = ["serde"] }
+hashbrown = { version = "0.16.1", features = ["serde"] }
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.150"
+strum = "0.28.0"
+strum_macros = "0.28.0"
+itertools = "0.15.0"
+fst = "0.4.7"
+lru = "0.18.0"
+smallvec = { version = "1.15.1", features = ["serde"] }
+# Needed on wasm32-unknown-unknown, where there is no operating system to ask for randomness.
+getrandom02 = { package = "getrandom", version = "0.2", features = ["custom"] }
+getrandom03 = { package = "getrandom", version = "0.3" }
+
+[dev-dependencies]
+harper-plugin-host = { git = "https://github.com/Dronakurl/harper", rev = "0e7e14cbaa7a1524f7ab347ecc78e5ecc6894bc0" }
+
+[profile.release]
+opt-level = 3
+panic = "abort"
+lto = "fat"
+codegen-units = 1
+
+[profile.test]
+opt-level = 3

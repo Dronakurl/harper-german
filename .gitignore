@@ -1,3 +1,4 @@
 /target
 *.pack
 *.wasm
+/dist

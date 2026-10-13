@@ -3,11 +3,41 @@
 Deutsche Sprachunterstützung für [Harper](https://github.com/Automattic/harper) als
 **nachinstallierbares Sprachpaket** (WebAssembly-Plugin).
 
-> **Status: Planung.** Dieses Repo enthält noch keinen Code. Der deutsche Code liegt
-> derzeit auf dem Branch
-> [`feature/german-language-support`](https://github.com/Dronakurl/harper/tree/feature/german-language-support)
-> in `dronakurl/harper` (Ordner `harper-core/src/language/german/`) und wird gemäß
-> [PLAN.md](PLAN.md) hierher übernommen.
+> **Status: erster Umzug fertig.** Der deutsche Code ist hierher übernommen, läuft als
+> `harper-de.wasm` und liefert über `harper-plugin-host` dieselben Lints wie nativ (siehe
+> [`tests/plugin_host.rs`](tests/plugin_host.rs)). Offen: Release, Kommentare im Quellcode,
+> automatische Spracherkennung, Browser. Siehe [PLAN.md](PLAN.md).
+
+## Bauen und ausprobieren
+
+```bash
+cargo install just            # einmalig
+just test                     # deutsche Tests, nativ
+just test-plugin              # Modul bauen, laden, damit prüfen (braucht das Ziel wasm32-unknown-unknown)
+```
+
+Mit `harper-ls` oder `harper-cli` aus [`dronakurl/harper`](https://github.com/Dronakurl/harper/tree/claude/language-plugin-architecture-h8bw6z):
+
+```bash
+harper-cli plugin install target/wasm32-unknown-unknown/release/harper_german.wasm   # nennt sie harper-de.wasm
+harper-cli lint --language de "Die Katze schlaeft."
+# harper-ls: Einstellung  "harper-ls": { "language": "de" }
+```
+
+Das Modul ist etwa 45 MB groß (gepackt ca. 16 MB): fast alles davon ist das deutsche Wörterbuch.
+Das erste Prüfen nach dem Laden dauert rund eine halbe Sekunde, danach wenige Millisekunden.
+
+## Lokal zusammen mit Harper entwickeln
+
+`Cargo.toml` hängt an einer festen Revision von `dronakurl/harper`. Um beides gleichzeitig zu ändern,
+Harper daneben auschecken und in `.cargo/config.toml` (nicht einchecken) ergänzen:
+
+```toml
+[patch."https://github.com/Dronakurl/harper"]
+harper-core = { path = "../harper/harper-core" }
+harper-plugin-api = { path = "../harper/harper-plugin-api" }
+harper-plugin-host = { path = "../harper/harper-plugin-host" }
+```
 
 ## Idee in einem Satz
 

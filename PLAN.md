@@ -1,3 +1,16 @@
+> **Stand:** Der Umzug (Abschnitt 2) ist gemacht. Abweichungen vom ursprünglichen Plan:
+> - **Morphologie** steckt nicht in einer Seitentabelle, sondern in `harper_core::morphology`
+>   hinter dem Cargo-Feature `morphology` (standardmäßig aus, Englisch bleibt unverändert). Eine
+>   Seitentabelle hätte bedeutet, die Affix-Expansion von `harper-core` zu kopieren.
+> - **`detect`** (Spracherkennung) ist noch nicht portiert: Der alte Detektor braucht das englische
+>   Wörterbuch, das ins Modul zu legen wäre. Kommt in Phase 6.
+> - **Zeitbudget** des Kompositum-Prüfers: im Modul gibt es keine Uhr (`src/clock.rs`), das Budget
+>   läuft dort nie ab.
+> - **Pack** wird mit `just bake-pack` erzeugt und per `include_bytes!` ins Modul gelegt; es gibt keine
+>   Umgebungsvariable `HARPER_GERMAN_PACK` mehr.
+> - Die Abhängigkeit zeigt auf eine feste Revision statt auf einen Tag, weil Tags in `dronakurl/harper`
+>   derzeit nicht gesetzt werden können.
+
 # Plan für dieses Repo: Deutsch als Harper-Plugin
 
 Ergänzt den Gesamtplan
