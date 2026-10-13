@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Fetch the best known German proper names from Wikidata items and write `wikidata_names.tsv`.
 
-    fetch_wikidata_names.py [--out harper-core/src/language/german/wikidata_names.tsv]
+    fetch_wikidata_names.py [--out data/wikidata_names.tsv]
 
 Wikidata items are CC0, so the result may be committed with its source named.
 The queries run against the public Wikidata Query Service and ask for the German

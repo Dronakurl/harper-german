@@ -11,7 +11,7 @@ This injects the mistakes German writers actually make into that same clean
 prose, at known offsets, and reports what fraction of them Harper flags. Each
 class is a real error, not a random perturbation:
 
-    harper-core/src/language/german/scripts/german_recall_check.py .archive/german-language/corpus
+    scripts/german_recall_check.py .archive/german-language/corpus
 
 With `--forms` it also measures the other kind of miss: plausible typos of the
 words the corpus actually uses — a doubled letter, a dropped one from a pair, two
@@ -19,10 +19,11 @@ letters swapped, `ss`/`ß` — kept only when hunspell rejects them, so every on
 a real mistake. What Harper accepts there is a spell-check false negative.
 
 Recall alone is not the goal — a rule that flags everything would score 100% —
-so read it next to `just language-lint-sources german`, which is the precision
+so read it next to ``just check` and the batteries`, which is the precision
 side of the same coin.
 """
 
+import os
 import argparse
 import json
 import re
@@ -31,7 +32,14 @@ import sys
 import tempfile
 from pathlib import Path
 
-CLI = Path("target/release/harper-cli")
+# harper-cli comes from a checkout of Dronakurl/harper (HARPER_CLI); the German module is the one
+# `just build-wasm` made, unless HARPER_DE_WASM names another.
+PLUGIN_ARGS = [
+    "--plugin",
+    os.environ.get("HARPER_DE_WASM", "target/wasm32-unknown-unknown/release/harper_german.wasm"),
+]
+
+CLI = Path(os.environ.get("HARPER_CLI", "../harper/target/release/harper-cli"))
 
 # Fixed phrases whose nominalization *must* be capitalized, as whole phrases
 # rather than a preposition crossed with a word list: `des Allgemeinen` and `im
@@ -113,7 +121,7 @@ def lints_by_file(paths: list[Path]) -> dict:
     if not paths:
         return {}
     result = subprocess.run(
-        [str(CLI), "lint", "--dialect", "de", "--quiet", "--format", "json"]
+        [str(CLI), "lint", *PLUGIN_ARGS, "--quiet", "--format", "json"]
         + [str(p) for p in paths],
         capture_output=True,
         text=True,
@@ -177,7 +185,7 @@ def report_typos(files: list[Path], forms_path: Path) -> None:
         target = Path(tmp) / "typos.md"
         target.write_text("\n\n".join(sorted(typos)), encoding="utf-8")
         result = subprocess.run(
-            [str(CLI), "lint", "--dialect", "de", "--quiet", "--format", "json", str(target)],
+            [str(CLI), "lint", *PLUGIN_ARGS, "--quiet", "--format", "json", str(target)],
             capture_output=True,
             text=True,
         )

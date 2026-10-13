@@ -7,9 +7,9 @@ detection and false alarms are scored together — a class scored without its
 correct sentences is not scored.
 
     docker start lt-bench
-    cargo build --release --bin harper-cli --features de
-    python3 harper-core/src/language/german/scripts/german_battery.py \
-        harper-core/src/language/german/tests/batteries/grammar.tsv
+    just build-wasm   # and build harper-cli in the harper checkout: cargo build --release -p harper-cli
+    python3 scripts/german_battery.py \
+        src/tests/batteries/grammar.tsv
 
 Three things this gets right that a quick rewrite does not:
 
@@ -25,6 +25,7 @@ Three things this gets right that a quick rewrite does not:
   The same holds on the LanguageTool side: its comma rules are `typographical`.
 """
 
+import os
 import argparse
 import collections
 import json
@@ -32,11 +33,20 @@ import pathlib
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
+import urllib.error
 import urllib.parse
 import urllib.request
 
-HARPER = "./target/release/harper-cli"
+# harper-cli comes from a checkout of Dronakurl/harper (HARPER_CLI); the German module is the one
+# `just build-wasm` made, unless HARPER_DE_WASM names another.
+PLUGIN_ARGS = [
+    "--plugin",
+    os.environ.get("HARPER_DE_WASM", "target/wasm32-unknown-unknown/release/harper_german.wasm"),
+]
+
+HARPER = os.environ.get("HARPER_CLI", "../harper/target/release/harper-cli")
 LANGUAGETOOL = "http://localhost:8010/v2/check"
 
 IGNORE_HARPER = {"Spaces", "CommaFixes"}
@@ -49,7 +59,7 @@ def harper_hits(rows, work):
         (work / f"{index:03d}.md").write_text(text + "\n")
 
     result = subprocess.run(
-        [HARPER, "lint", "--dialect", "de", "--format", "compact"]
+        [HARPER, "lint", *PLUGIN_ARGS, "--format", "compact"]
         + sorted(str(path) for path in work.glob("*.md")),
         capture_output=True,
         text=True,
@@ -63,15 +73,27 @@ def harper_hits(rows, work):
     return hits
 
 
+_languagetool_down = False
+
+
 def languagetool_hits(text):
     """Which rules LanguageTool reports on one sentence."""
+    global _languagetool_down
+    if _languagetool_down:
+        return []
     data = urllib.parse.urlencode({"language": "de-DE", "text": text}).encode()
-    with urllib.request.urlopen(LANGUAGETOOL, data) as response:
-        return [
-            match["rule"]["id"]
-            for match in json.load(response)["matches"]
-            if match["rule"]["issueType"] not in IGNORE_LANGUAGETOOL
-        ]
+    try:
+        with urllib.request.urlopen(LANGUAGETOOL, data) as response:
+            return [
+                match["rule"]["id"]
+                for match in json.load(response)["matches"]
+                if match["rule"]["issueType"] not in IGNORE_LANGUAGETOOL
+            ]
+    except urllib.error.URLError:
+        # Harper's own numbers do not need it; only the comparison does.
+        print(f"LanguageTool is not running at {LANGUAGETOOL}; showing Harper only.", file=sys.stderr)
+        _languagetool_down = True
+        return []
 
 
 def main():

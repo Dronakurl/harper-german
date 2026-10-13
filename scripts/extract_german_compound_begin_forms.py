@@ -35,7 +35,7 @@ HEADER = """\
 # Forms that stand in front of a compound boundary, lower case: a noun and the
 # linking element it takes (arbeit -> arbeits, kind -> kinder), or a verb stem (mess). Derived from the
 # German noun lemmas of the Wikidata lexemes (CC0) by
-# harper-core/src/language/german/scripts/extract_german_compound_begin_forms.py.
+# scripts/extract_german_compound_begin_forms.py.
 # Do not edit by hand.
 """
 

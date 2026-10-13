@@ -19,7 +19,7 @@ text is limited to one title per request — ask for twenty and the response
 carries an extract for the first and nothing for the rest, which reads like a
 run of missing articles rather than a mistake in the query.
 
-    harper-core/src/language/german/scripts/fetch_german_bulk.py \\
+    scripts/fetch_german_bulk.py \\
         .archive/german-language/corpus-bulk --articles 4000
 
 Re-running skips what is already there, so it can be stopped and resumed.

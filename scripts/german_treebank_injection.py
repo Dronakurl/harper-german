@@ -34,7 +34,15 @@ The treebanks are at https://github.com/UniversalDependencies (UD_German-HDT,
 -PUD, -GSD). Measured on 1500 variants per class at the sixth round's end:
 verb_number 0.6 %, inf_part 0.9 % — the two gaps the seventh round worked on.
 """
+import os
 import collections, json, os, random, subprocess, sys, tempfile, bisect
+
+# harper-cli comes from a checkout of Dronakurl/harper (HARPER_CLI); the German module is the one
+# `just build-wasm` made, unless HARPER_DE_WASM names another.
+PLUGIN_ARGS = [
+    "--plugin",
+    os.environ.get("HARPER_DE_WASM", "target/wasm32-unknown-unknown/release/harper_german.wasm"),
+]
 
 random.seed(7)
 
@@ -225,7 +233,7 @@ def lint(texts):
     for t in texts:
         offs.append(len(buf)); buf += t + '\n\n'
     p = d + '/x.md'; open(p, 'w', encoding='utf8').write(buf)
-    out = subprocess.run([sys.argv[1], 'lint', '--dialect', 'de', '--format', 'json', p], capture_output=True, text=True).stdout
+    out = subprocess.run([sys.argv[1], 'lint', *PLUGIN_ARGS, '--format', 'json', p], capture_output=True, text=True).stdout
     per = collections.defaultdict(list)
     for l in (json.loads(out)[0]['lints'] if out.strip() else []):
         s = l['span']['char_start']; i = bisect.bisect_right(offs, s) - 1
