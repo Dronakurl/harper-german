@@ -3,6 +3,7 @@
 pub mod clock;
 pub mod dialects;
 pub mod grammar;
+pub mod language_detection;
 pub mod lexing;
 pub mod linting;
 pub mod module;

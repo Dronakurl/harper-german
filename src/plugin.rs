@@ -155,6 +155,10 @@ impl LanguagePlugin for German {
             .collect()
     }
 
+    fn detect(text: &str) -> Option<f32> {
+        crate::language_detection::german_confidence(text)
+    }
+
     fn set_user_words(&mut self, words: Vec<String>) {
         let mut user = MutableDictionary::new();
         user.extend_words(words.iter().map(|w| {

@@ -176,3 +176,22 @@ fn wasm_matches_native() {
     eprintln!("{total} lints agree");
     assert!(total > 0, "the sample texts should produce some lints");
 }
+
+#[test]
+fn recognizes_german_without_building_the_dictionary() {
+    let Some(plugin) = load() else { return };
+
+    let t = Instant::now();
+    let german = plugin
+        .detect(
+            "Der Hund ist im Garten. Die Katze schläft auf dem Sofa. Das Auto ist sehr schnell.",
+        )
+        .unwrap();
+    eprintln!("detect: {:?}", t.elapsed());
+    assert!(german.is_some_and(|c| c >= 0.5), "{german:?}");
+
+    let english = plugin
+        .detect("The dog plays in the garden. The cat sleeps on the sofa. The car is very fast.")
+        .unwrap();
+    assert_eq!(english, None);
+}
