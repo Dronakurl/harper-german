@@ -2466,7 +2466,7 @@ dependencies = [
 [[package]]
 name = "harper-brill"
 version = "2.12.0"
-source = "git+https://github.com/Dronakurl/harper?rev=621b96a5d22cb016f40146d01b9f63ea59c76a3f#621b96a5d22cb016f40146d01b9f63ea59c76a3f"
+source = "git+https://github.com/Dronakurl/harper?rev=a8247bec65231d467ad934cd13663e3cbbba9793#a8247bec65231d467ad934cd13663e3cbbba9793"
 dependencies = [
  "harper-pos-utils",
  "serde_json",
@@ -2475,7 +2475,7 @@ dependencies = [
 [[package]]
 name = "harper-core"
 version = "2.12.0"
-source = "git+https://github.com/Dronakurl/harper?rev=621b96a5d22cb016f40146d01b9f63ea59c76a3f#621b96a5d22cb016f40146d01b9f63ea59c76a3f"
+source = "git+https://github.com/Dronakurl/harper?rev=a8247bec65231d467ad934cd13663e3cbbba9793#a8247bec65231d467ad934cd13663e3cbbba9793"
 dependencies = [
  "ammonia",
  "bitflags",
@@ -2532,7 +2532,7 @@ dependencies = [
 [[package]]
 name = "harper-plugin-api"
 version = "2.12.0"
-source = "git+https://github.com/Dronakurl/harper?rev=621b96a5d22cb016f40146d01b9f63ea59c76a3f#621b96a5d22cb016f40146d01b9f63ea59c76a3f"
+source = "git+https://github.com/Dronakurl/harper?rev=a8247bec65231d467ad934cd13663e3cbbba9793#a8247bec65231d467ad934cd13663e3cbbba9793"
 dependencies = [
  "harper-core",
  "serde",
@@ -2542,7 +2542,7 @@ dependencies = [
 [[package]]
 name = "harper-plugin-host"
 version = "2.12.0"
-source = "git+https://github.com/Dronakurl/harper?rev=621b96a5d22cb016f40146d01b9f63ea59c76a3f#621b96a5d22cb016f40146d01b9f63ea59c76a3f"
+source = "git+https://github.com/Dronakurl/harper?rev=a8247bec65231d467ad934cd13663e3cbbba9793#a8247bec65231d467ad934cd13663e3cbbba9793"
 dependencies = [
  "dirs",
  "harper-core",
@@ -2556,7 +2556,7 @@ dependencies = [
 [[package]]
 name = "harper-pos-utils"
 version = "2.12.0"
-source = "git+https://github.com/Dronakurl/harper?rev=621b96a5d22cb016f40146d01b9f63ea59c76a3f#621b96a5d22cb016f40146d01b9f63ea59c76a3f"
+source = "git+https://github.com/Dronakurl/harper?rev=a8247bec65231d467ad934cd13663e3cbbba9793#a8247bec65231d467ad934cd13663e3cbbba9793"
 dependencies = [
  "burn",
  "burn-ndarray",

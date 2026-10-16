@@ -159,6 +159,13 @@ impl LanguagePlugin for German {
         crate::language_detection::german_confidence(text)
     }
 
+    fn detect_with(text: &str, english_ratio: Option<f32>) -> Option<f32> {
+        match english_ratio {
+            Some(ratio) => crate::language_detection::german_confidence_given_english(text, ratio),
+            None => Self::detect(text),
+        }
+    }
+
     fn set_user_words(&mut self, words: Vec<String>) {
         let mut user = MutableDictionary::new();
         user.extend_words(words.iter().map(|w| {

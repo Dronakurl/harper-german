@@ -41,52 +41,89 @@ pub fn german_confidence(text: &str) -> Option<f32> {
     german_confidence_of_tokens(&PlainGerman.parse(&chars), &chars)
 }
 
-fn german_confidence_of_tokens(tokens: &[Token], source: &[char]) -> Option<f32> {
-    let mut total = 0usize;
-    let mut special = 0usize;
-    let mut german = 0usize;
-    let mut english = 0usize;
+/// [`german_confidence`] when the host says how much of `text` is English: `english_ratio` is the
+/// share of its words in Harper's English dictionary. These are the thresholds of the detector
+/// this was moved from, which had that dictionary at hand.
+pub fn german_confidence_given_english(text: &str, english_ratio: f32) -> Option<f32> {
+    let chars: Vec<char> = text.chars().collect();
+    let counts = Counts::of(&PlainGerman.parse(&chars), &chars)?;
 
-    for token in tokens {
-        if !matches!(token.kind, TokenKind::Word(_)) {
-            continue;
-        }
-        total += 1;
-        let word: String = token
-            .get_ch(source)
-            .iter()
-            .collect::<String>()
-            .to_lowercase();
-        // ß is German only; ä, ö and ü also occur in other languages, but together they count.
-        if word.contains(['ä', 'ö', 'ü', 'ß']) {
-            special += 1;
-        }
-        if GERMAN_WORDS.contains(&word.as_str()) {
-            german += 1;
-        }
-        if ENGLISH_WORDS.contains(&word.as_str()) {
-            english += 1;
-        }
-    }
-
-    // Too little to judge reliably.
-    if total < 5 {
-        return None;
-    }
-
-    let ratio = |n: usize| n as f32 / total as f32;
-
-    if ratio(special) >= 0.01 {
+    if counts.ratio(counts.special) >= 0.01 {
         return Some(0.95);
     }
     // English is clearly dominant.
-    if ratio(english) >= 0.25 {
+    if english_ratio >= 0.65 {
         return None;
     }
-    if ratio(german) >= 0.20 {
+    if counts.ratio(counts.german) >= 0.20 {
         return Some(0.85);
     }
-    if ratio(english) < 0.10 && ratio(german) >= 0.08 {
+    if english_ratio < 0.4 && counts.ratio(counts.german) >= 0.08 {
+        return Some(0.6);
+    }
+    None
+}
+
+/// What the confidence is computed from.
+struct Counts {
+    total: usize,
+    special: usize,
+    german: usize,
+    english: usize,
+}
+
+impl Counts {
+    /// `None` when there are too few words to judge reliably.
+    fn of(tokens: &[Token], source: &[char]) -> Option<Self> {
+        let mut counts = Self {
+            total: 0,
+            special: 0,
+            german: 0,
+            english: 0,
+        };
+        for token in tokens {
+            if !matches!(token.kind, TokenKind::Word(_)) {
+                continue;
+            }
+            counts.total += 1;
+            let word: String = token
+                .get_ch(source)
+                .iter()
+                .collect::<String>()
+                .to_lowercase();
+            // ß is German only; ä, ö and ü also occur in other languages, but together they count.
+            if word.contains(['ä', 'ö', 'ü', 'ß']) {
+                counts.special += 1;
+            }
+            if GERMAN_WORDS.contains(&word.as_str()) {
+                counts.german += 1;
+            }
+            if ENGLISH_WORDS.contains(&word.as_str()) {
+                counts.english += 1;
+            }
+        }
+        (counts.total >= 5).then_some(counts)
+    }
+
+    fn ratio(&self, n: usize) -> f32 {
+        n as f32 / self.total as f32
+    }
+}
+
+fn german_confidence_of_tokens(tokens: &[Token], source: &[char]) -> Option<f32> {
+    let counts = Counts::of(tokens, source)?;
+
+    if counts.ratio(counts.special) >= 0.01 {
+        return Some(0.95);
+    }
+    // English is clearly dominant.
+    if counts.ratio(counts.english) >= 0.25 {
+        return None;
+    }
+    if counts.ratio(counts.german) >= 0.20 {
+        return Some(0.85);
+    }
+    if counts.ratio(counts.english) < 0.10 && counts.ratio(counts.german) >= 0.08 {
         return Some(0.6);
     }
     None
@@ -165,5 +202,18 @@ mod tests {
             let text = std::fs::read_to_string(format!("test_sources/{name}")).unwrap();
             assert!(is_german(&text), "{name}");
         }
+    }
+
+    /// An English sentence about German grammar, with a few German words in it. The English
+    /// dictionary knows most of its words, so it is not German.
+    #[test]
+    fn english_about_german_is_english_when_the_host_says_so() {
+        use super::german_confidence_given_english;
+        let text = "sentence — die + masculine/neuter noun as a plural subject, a dative in \
+                    subject position, die before an umlaut-plural singular";
+        assert_eq!(german_confidence_given_english(text, 0.8), None);
+        assert!(
+            german_confidence_given_english("Der Hund ist im Garten und spielt.", 0.1).is_some()
+        );
     }
 }
