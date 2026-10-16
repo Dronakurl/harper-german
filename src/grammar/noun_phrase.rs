@@ -420,6 +420,21 @@ pub(crate) fn is_base_form_adjective(token: &Token, document: &Document) -> bool
         || lower.ends_with("em"))
 }
 
+/// Is this a quantifier that is followed by a predicate as often as by a noun?
+///
+/// *Ich mache alles falsch*, *Die Antworten sind alle falsch*, *Beide gut*:
+/// the quantifier is a pronoun here, and the bare adjective behind it is the
+/// predicate. A nominalization after it would carry an ending (*alles Gute*,
+/// *alle Guten*), which the base-form test has already ruled out. Only these
+/// three: *das*, *ein* and the like take a noun behind them in the same slot
+/// (*das Gut*), so a bare adjective there stays a candidate.
+fn is_quantifier_before_predicate(token: &Token, document: &Document) -> bool {
+    matches!(
+        lowercase_of(token, document).as_str(),
+        "alles" | "alle" | "beide"
+    )
+}
+
 /// Can this token sit *inside* a noun phrase — as an attributive adjective,
 /// as the head noun, or as an unknown word standing in for one?
 ///
@@ -866,7 +881,8 @@ fn chunk(tokens: &[&Token], document: &Document) -> Vec<Phrase> {
         let predicative = end == i + 2
             && tokens[end - 1].kind.is_adjective()
             && is_base_form_adjective(tokens[end - 1], document)
-            && !supplies_determiner(tokens[i], document);
+            && (!supplies_determiner(tokens[i], document)
+                || is_quantifier_before_predicate(tokens[i], document));
 
         // An ordinal ends the *sentence* as far as the segmenter is
         // concerned, so "das sowjetische 170. | Regiment" arrives here cut in
@@ -1150,6 +1166,22 @@ mod tests {
                 .iter()
                 .all(|h| h != "unbewohnt")
         );
+    }
+
+    #[test]
+    fn an_adjective_behind_a_quantifier_is_a_predicate() {
+        for text in [
+            "Ich mache wieder alles falsch.",
+            "Die Antworten sind alle falsch.",
+            "Die Lösungen sind beide falsch.",
+        ] {
+            assert!(
+                heads(text).iter().all(|h| h != "falsch"),
+                "falsch is no head in {text:?}"
+            );
+        }
+        // With an ending it is the nominalization it always was.
+        assert_eq!(heads("Wir wünschen alles gute."), vec!["gute"]);
     }
 
     #[test]

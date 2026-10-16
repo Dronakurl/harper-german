@@ -1,0 +1,30 @@
+# A modal verb takes the infinitive: "Es könnte sein", not "Es könnte ist".
+#
+# Only the subjunctive II forms, and only in front of "ist": that is where the
+# mistake is made (the finite "ist" typed for the infinitive "sein"), and where
+# the pair cannot be a correct sentence. A relative clause with the modal as its
+# last word ("was er könnte ist ...") is cut by a comma, and Weir rules do not
+# reach across one.
+#
+# The other persons ("kann ist", "will ist") and the plural ("könnten sind") are
+# left alone: "wer kann ist besser dran" is a missing comma, not a missing
+# "sein", and the rule would answer it with the wrong advice.
+expr modal [könnte, müsste, dürfte, sollte]
+
+expr main <(@modal ist), ist>
+
+let message "Nach einem Modalverb steht der Infinitiv: »sein«, nicht »ist«."
+let description "Ersetzt »ist« hinter »könnte«, »müsste«, »dürfte« und »sollte« durch den Infinitiv »sein«."
+let kind "Grammar"
+let becomes "sein"
+let strategy "MatchCase"
+
+test "Es könnte ist, dass ich nicht gut bin." "Es könnte sein, dass ich nicht gut bin."
+test "Das müsste ist richtig." "Das müsste sein richtig."
+test "Er dürfte ist müde." "Er dürfte sein müde."
+test "Das sollte ist anders werden." "Das sollte sein anders werden."
+
+allows "Es könnte sein, dass ich nicht gut bin."
+allows "Das ist, was er könnte, ist aber nicht tut."
+allows "Es ist gut."
+allows "Das Haus müsste renoviert sein."

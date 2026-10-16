@@ -2340,3 +2340,22 @@ number here is worse than no number. Record *how to measure* instead —
 - **Metadata format**: Harper-specific annotations system
 
 For more details, see the main [Language Support README](../README.md).
+## Single cases from harper issues #16–#20 (October 2026)
+
+* **`alles falsch`, `alle falsch`, `beide falsch`** (#19): the chunker took the
+  quantifier for an article and crowned the bare adjective as head. A
+  nominalization behind them carries an ending (*alles Gute*, *alle Guten*), so a
+  base-form adjective there is a predicate. Fixed in `grammar/noun_phrase.rs`
+  with the existing "predicative" exception, for these three words only.
+* **`Es könnte ist`** (#18): `weir_rules/de/ModalIst.weir`, subjunctive II modals
+  in front of *ist* only. *kann ist* / *könnten sind* are left out on purpose
+  (missing comma, not missing *sein*).
+* **`Wurst Wurst`** (#20), **not changed**: two capitalized copies are skipped
+  for *Bora Bora* and *Duran Duran*, and the dictionary has no proper-name marker
+  (`is_proper` is never set), so *Wurst* and *Bora* look identical. A name list
+  or a "known as a plain noun" test would trade this miss for false alarms.
+* **`Skistiefelnd`** (#16), **not changed**: accepted as *Ski* + *stiefelnd*,
+  where *stiefelnd* is the `c` affix applied to the verb *stiefeln*. This is the
+  over-permissive splitter described above; rejecting derived present
+  participles as compound heads would also reject *fleischfressend* and the like
+  that are not listed, and there is no corpus here to measure the cost.
