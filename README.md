@@ -16,16 +16,21 @@ just test                     # deutsche Tests, nativ
 just test-plugin              # Modul bauen, laden, damit prüfen (braucht das Ziel wasm32-unknown-unknown)
 ```
 
-Das Plugin ist **eine einzige Datei**. In Harper installieren (dort zuerst `just install`, Harper prüft dann nur Englisch).
-Wie man Sprach-Plugins in Harper allgemein installiert, auch für Obsidian und die Browser-Erweiterung, steht in
-[Other Languages](https://github.com/Dronakurl/harper/blob/claude/language-plugin-architecture-h8bw6z/packages/web/src/routes/docs/integrations/language-plugins/+page.md):
+## In Harper installieren
+
+Das Plugin ist **eine einzige Datei**, `harper-de.wasm`. Jedes [Release](https://github.com/Dronakurl/harper-german/releases)
+enthält sie, mit Prüfsumme. Im Harper-Checkout:
 
 ```bash
-just build-wasm                                                                      # hier
-harper-cli plugin install target/wasm32-unknown-unknown/release/harper_german.wasm   # nennt sie harper-de.wasm
+just install                                   # harper-ls und harper-cli, nur Englisch
+just language-install Dronakurl/harper-german  # lädt harper-de.wasm aus dem neuesten Release und installiert sie
 harper-cli lint --language de notizen.md
 # harper-ls erkennt Deutsch von selbst ("language": "auto"); nur Deutsch: "harper-ls": { "language": "de" }
 ```
+
+Selbst gebaut: `just build-wasm`, dann `harper-cli plugin install target/wasm32-unknown-unknown/release/harper_german.wasm`.
+Obsidian, Browser-Erweiterung und `harper.js` nehmen dieselbe Datei; wie, steht in Harpers Anleitung
+[Other Languages](https://github.com/Dronakurl/harper/blob/claude/language-plugin-architecture-h8bw6z/packages/web/src/routes/docs/integrations/language-plugins/+page.md).
 
 Das Modul ist etwa 45 MB groß (gepackt ca. 16 MB): fast alles davon ist das deutsche Wörterbuch.
 Das erste Prüfen nach dem Laden dauert rund eine halbe Sekunde, danach wenige Millisekunden.
