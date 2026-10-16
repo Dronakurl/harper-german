@@ -210,7 +210,9 @@ mod tests {
     #[test]
     fn answers_to_its_names_and_dialects() {
         let info = German::info();
-        for name in ["de", "Deutsch", "german", "Swiss", "Schweiz", "de-AT", "Germany"] {
+        for name in [
+            "de", "Deutsch", "german", "Swiss", "Schweiz", "de-AT", "Germany",
+        ] {
             assert!(info.answers_to(name), "{name}");
         }
         assert!(!info.answers_to("English"));
