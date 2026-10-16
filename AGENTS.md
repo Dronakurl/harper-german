@@ -2,7 +2,7 @@
 
 German for [Harper](https://github.com/Dronakurl/harper), built as a WebAssembly **plugin**: one
 file, `harper-de.wasm`, that `harper-ls`, `harper-cli` and (later) `harper.js` load at run time.
-Read `README.md` and `PLAN.md` first. The plugin interface is described in
+Read `README.md` first, then the plan in https://github.com/Dronakurl/harper-german/issues/1. The plugin interface is described in
 Issue https://github.com/Dronakurl/harper/issues/14.
 
 ## Layout

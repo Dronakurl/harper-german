@@ -6,7 +6,7 @@ Deutsche Sprachunterstützung für [Harper](https://github.com/Automattic/harper
 > **Status: erster Umzug fertig.** Der deutsche Code ist hierher übernommen, läuft als
 > `harper-de.wasm` und liefert über `harper-plugin-host` dieselben Lints wie nativ (siehe
 > [`tests/plugin_host.rs`](tests/plugin_host.rs)). Offen: Release, Kommentare im Quellcode,
-> automatische Spracherkennung, Browser. Siehe [PLAN.md](PLAN.md).
+> automatische Spracherkennung, Browser. Siehe [Plan und Status](https://github.com/Dronakurl/harper-german/issues/1).
 
 ## Bauen und ausprobieren
 
@@ -54,7 +54,7 @@ Website, Obsidian, harper-ls (VS Code, Neovim, Zed, …), Harper Desktop und har
 | Dokument | Inhalt |
 |---|---|
 | [Plan und Status (Issue #14)](https://github.com/Dronakurl/harper/issues/14) in `dronakurl/harper` | Gesamtarchitektur, Plugin-Schnittstelle (ABI v1), Änderungen an Harper selbst |
-| [PLAN.md](PLAN.md) (hier) | Was in diesem Repo zu tun ist: Aufbau, Umzug des deutschen Codes, Build und Release |
+| [Plan und Status (Issue #1)](https://github.com/Dronakurl/harper-german/issues/1) | Was in diesem Repo zu tun ist: Aufbau, Umzug des deutschen Codes, Build und Release |
 
 ## Lizenz
 

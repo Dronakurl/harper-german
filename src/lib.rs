@@ -1,4 +1,4 @@
-//! German for Harper, built as a WebAssembly plugin (see `PLAN.md`).
+//! German for Harper, built as a WebAssembly plugin (see https://github.com/Dronakurl/harper-german/issues/1).
 
 pub mod clock;
 pub mod dialects;
