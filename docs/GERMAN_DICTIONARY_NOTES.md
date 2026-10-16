@@ -2354,8 +2354,15 @@ For more details, see the main [Language Support README](../README.md).
   for *Bora Bora* and *Duran Duran*, and the dictionary has no proper-name marker
   (`is_proper` is never set), so *Wurst* and *Bora* look identical. A name list
   or a "known as a plain noun" test would trade this miss for false alarms.
-* **`Skistiefelnd`** (#16), **not changed**: accepted as *Ski* + *stiefelnd*,
-  where *stiefelnd* is the `c` affix applied to the verb *stiefeln*. This is the
-  over-permissive splitter described above; rejecting derived present
-  participles as compound heads would also reject *fleischfressend* and the like
-  that are not listed, and there is no corpus here to measure the cost.
+* **`Skistiefelnd`** (#16): the lower-case spelling is still accepted as *Ski* +
+  *stiefelnd* (*stiefelnd* is the `c` affix on the verb *stiefeln*); rejecting
+  derived present participles as compound heads would also reject unlisted real
+  words like *fleischfressend*, and there is no corpus here to measure the cost.
+  Capitalized in the middle of a sentence it is reported by
+  `GermanCompoundAdjectiveCapitalization`: the compound has the bare synthesized
+  adjective metadata, ends in a present participle with a known verb, and a
+  finite verb or adverb stands in front. **Do not widen it to "any synthesized
+  adjective"**: the splitter hands that metadata to nouns whose first element
+  looks like an adjective too (*Kurzgeschichten*, *Weißwein*,
+  *Sicherungskonzept*, *Neubauwohnungen*), and the first version reported all of
+  them.
