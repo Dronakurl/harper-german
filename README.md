@@ -16,12 +16,15 @@ just test                     # deutsche Tests, nativ
 just test-plugin              # Modul bauen, laden, damit prüfen (braucht das Ziel wasm32-unknown-unknown)
 ```
 
-Mit `harper-ls` oder `harper-cli` aus [`dronakurl/harper`](https://github.com/Dronakurl/harper/tree/claude/language-plugin-architecture-h8bw6z):
+Das Plugin ist **eine einzige Datei**. In Harper installieren (dort zuerst `just install`, Harper prüft dann nur Englisch).
+Wie man Sprach-Plugins in Harper allgemein installiert, auch für Obsidian und die Browser-Erweiterung, steht in
+[Other Languages](https://github.com/Dronakurl/harper/blob/claude/language-plugin-architecture-h8bw6z/packages/web/src/routes/docs/integrations/language-plugins/+page.md):
 
 ```bash
+just build-wasm                                                                      # hier
 harper-cli plugin install target/wasm32-unknown-unknown/release/harper_german.wasm   # nennt sie harper-de.wasm
-harper-cli lint --language de "Die Katze schlaeft."
-# harper-ls: Einstellung  "harper-ls": { "language": "de" }
+harper-cli lint --language de notizen.md
+# harper-ls erkennt Deutsch von selbst ("language": "auto"); nur Deutsch: "harper-ls": { "language": "de" }
 ```
 
 Das Modul ist etwa 45 MB groß (gepackt ca. 16 MB): fast alles davon ist das deutsche Wörterbuch.
