@@ -14,7 +14,7 @@
 # Plan für dieses Repo: Deutsch als Harper-Plugin
 
 Ergänzt den Gesamtplan
-[`LANGUAGE_PLUGINS_PLAN.md`](https://github.com/Dronakurl/harper/blob/claude/language-plugin-architecture-h8bw6z/LANGUAGE_PLUGINS_PLAN.md)
+[Plan und Status (Issue #14)](https://github.com/Dronakurl/harper/issues/14)
 (im Folgenden „Gesamtplan“). Dort stehen die Plugin-Schnittstelle (§5) und die
 Phasen (§8). Hier steht nur, was **in diesem Repo** passiert.
 

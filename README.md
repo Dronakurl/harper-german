@@ -53,7 +53,7 @@ Website, Obsidian, harper-ls (VS Code, Neovim, Zed, …), Harper Desktop und har
 
 | Dokument | Inhalt |
 |---|---|
-| [`LANGUAGE_PLUGINS_PLAN.md`](https://github.com/Dronakurl/harper/blob/claude/language-plugin-architecture-h8bw6z/LANGUAGE_PLUGINS_PLAN.md) in `dronakurl/harper` | Gesamtarchitektur, Plugin-Schnittstelle (ABI v1), Änderungen an Harper selbst |
+| [Plan und Status (Issue #14)](https://github.com/Dronakurl/harper/issues/14) in `dronakurl/harper` | Gesamtarchitektur, Plugin-Schnittstelle (ABI v1), Änderungen an Harper selbst |
 | [PLAN.md](PLAN.md) (hier) | Was in diesem Repo zu tun ist: Aufbau, Umzug des deutschen Codes, Build und Release |
 
 ## Lizenz
