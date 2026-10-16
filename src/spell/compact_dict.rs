@@ -661,14 +661,16 @@ impl From<MutableDictionary> for CompactDictionary {
 
 #[cfg(test)]
 mod tests {
-    use super::super::german_dict::{german_word_list, mutable_german_dictionary};
+    use super::super::german_dict::{
+        german_attribute_list, german_word_list, mutable_german_dictionary,
+    };
     use super::*;
     use harper_core::spell::FstDictionary;
 
     /// The word list expanded into a single map, which is what the dictionary
     /// was built from before it was built a block at a time.
     fn one_shot_expansion() -> WordMap {
-        let attr_list = AttributeList::parse(include_str!("../../data/annotations.json")).unwrap();
+        let attr_list = german_attribute_list();
         let mut map = WordMap::default();
         attr_list.expand_annotated_words(german_word_list(), &mut map);
         map

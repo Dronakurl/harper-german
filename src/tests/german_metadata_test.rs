@@ -1,8 +1,8 @@
 // Tests for the morphology metadata the German dictionary carries.
 
 mod tests {
+    use crate::morphology::{Gender, MorphologyExt, Number};
     use crate::spell::curated_german_dictionary;
-    use harper_core::morphology::{Gender, MorphologyExt, Number};
 
     /// Metadata access for case information
     #[test]

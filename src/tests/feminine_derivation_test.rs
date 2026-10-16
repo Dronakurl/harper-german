@@ -73,7 +73,7 @@ mod tests {
     /// does.
     #[test]
     fn the_derivation_is_feminine() {
-        use harper_core::morphology::{Gender, MorphologyExt};
+        use crate::morphology::{Gender, MorphologyExt};
 
         let dict = curated_german_dictionary();
 
@@ -97,7 +97,7 @@ mod tests {
     /// everything that produces it. `näherin/~~NhY` is one such entry.
     #[test]
     fn the_plural_is_marked_plural() {
-        use harper_core::morphology::{MorphologyExt, Number};
+        use crate::morphology::{MorphologyExt, Number};
 
         let dict = curated_german_dictionary();
 

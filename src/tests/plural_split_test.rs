@@ -13,8 +13,8 @@
 
 #[cfg(test)]
 mod tests {
+    use crate::morphology::{MorphologyExt, Number};
     use crate::spell::curated_german_dictionary;
-    use harper_core::morphology::{MorphologyExt, Number};
     use harper_core::spell::Dictionary;
 
     /// The plurals German actually forms are still there.

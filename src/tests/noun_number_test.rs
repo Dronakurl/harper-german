@@ -19,8 +19,8 @@
 
 #[cfg(test)]
 mod tests {
+    use crate::morphology::{MorphologyExt, NumberSet};
     use crate::spell::curated_german_dictionary;
-    use harper_core::morphology::{MorphologyExt, NumberSet};
     use harper_core::spell::Dictionary;
 
     fn number(word: &str) -> NumberSet {

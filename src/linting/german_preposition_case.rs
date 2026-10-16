@@ -4,10 +4,10 @@ use std::sync::Arc;
 
 use crate::spell::compact_dict::CompactDictionary;
 
+use crate::morphology::{Agreement, Case, CaseSet, MorphologyExt};
 use harper_core::{
     Document, Token, TokenKind, TokenStringExt,
     linting::{Lint, LintKind, Linter, Suggestion},
-    morphology::{Agreement, Case, CaseSet, MorphologyExt},
     spell::Dictionary,
 };
 
@@ -305,7 +305,7 @@ impl Linter for GermanPrepositionCase {
                 // writer to the wrong word.
                 let dative_plural_determiner = all_readings.iter().any(|reading| {
                     reading.case == Case::Dative
-                        && reading.number() == harper_core::morphology::Number::Plural
+                        && reading.number() == crate::morphology::Number::Plural
                 });
                 if government.cases.contains(CaseSet::from(Case::Dative))
                     && dative_plural_determiner

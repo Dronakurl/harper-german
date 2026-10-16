@@ -11,8 +11,8 @@
 
 #[cfg(test)]
 mod tests {
+    use crate::morphology::{MorphologyExt, NumberSet, PersonSet};
     use crate::spell::curated_german_dictionary;
-    use harper_core::morphology::{MorphologyExt, NumberSet, PersonSet};
     use harper_core::spell::Dictionary;
 
     fn verb(word: &str) -> (PersonSet, NumberSet) {

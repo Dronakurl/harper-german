@@ -32,8 +32,9 @@ use std::sync::{Arc, LazyLock, Mutex};
 use std::time::Duration;
 
 use super::compact_dict::CompactDictionary;
+use crate::morphology::{Agreement, Morphology, MorphologyExt, bits};
 use harper_core::CharString;
-use harper_core::morphology::{Agreement, Morphology, MorphologyExt};
+use harper_core::LanguageBits;
 use harper_core::spell::Dictionary;
 use harper_core::spell::rune::word_list::AnnotatedWord;
 use harper_core::{AdjectiveData, DictWordMetadata, NounData};
@@ -1149,10 +1150,14 @@ impl CompoundChecker {
         let agreement = self.head_noun_agreement(word);
         Some(DictWordMetadata {
             noun: Some(NounData::default()),
-            morphology: (!agreement.is_unknown()).then(|| Morphology {
-                noun: Some(agreement),
-                ..Default::default()
-            }),
+            language_bits: if agreement.is_unknown() {
+                LanguageBits::default()
+            } else {
+                bits::encode(&Morphology {
+                    noun: Some(agreement),
+                    ..Default::default()
+                })
+            },
             ..Default::default()
         })
     }

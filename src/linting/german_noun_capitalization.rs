@@ -1,5 +1,6 @@
 use crate::grammar::noun_phrase;
 use crate::grammar::verbs::plain_stem_present;
+use crate::morphology::{GenderSet, MorphologyExt, NumberSet};
 use crate::{
     linting::{german_foreign_stretch, german_relative_clause_comma::GermanRelativeClauseComma},
     spell::lexical_classes::{FOREIGN_TERMS, NUMERALS, UNIT_ABBREVIATIONS},
@@ -7,7 +8,6 @@ use crate::{
 use harper_core::{
     Document, Punctuation, Token, TokenKind, TokenStringExt,
     linting::{Lint, LintKind, Linter, Suggestion},
-    morphology::{GenderSet, MorphologyExt, NumberSet},
     spell::Dictionary,
 };
 

@@ -81,13 +81,18 @@ word list or version, it expands as before and gets the same dictionary.
 
 ## Morphology
 
-Inflectional features live in `morphology.rs`, not in `dict_word_metadata.rs`.
-That file carries exactly one feature-gated field:
+Inflectional features (case, gender, number, person, mood) live in this crate, in
+`src/morphology/`. Harper knows nothing about them: with the `language-bits`
+feature, `DictWordMetadata` carries one opaque field,
 
 ```rust
-#[cfg(feature = "language-module")]
-pub morphology: Option<crate::language::morphology::Morphology>,
+#[cfg(feature = "language-bits")]
+pub language_bits: harper_core::LanguageBits, // 128 bits, merged with a bitwise OR
 ```
+
+and `src/morphology/bits.rs` says which bit means what. Each reading a form can
+have gets a bit of its own, so Harper's OR of two entries is the union of their
+readings, which is what `Morphology::or` computes.
 
 Use the `MorphologyExt` trait for access (`get_noun_gender`, `get_determiner_case`,
 ...). In `annotations.json`, features go under a `morphology` key:
@@ -96,14 +101,18 @@ Use the `MorphologyExt` trait for access (`get_noun_gender`, `get_determiner_cas
 "M": { "metadata": { "noun": {}, "morphology": { "noun": { "gender": "Masculine" } } } }
 ```
 
+`src/morphology/annotations.rs` turns every such object into `language_bits`
+before Harper parses the file. Harper skips keys it does not know, so this step
+refuses anything it cannot read instead of letting a feature go missing.
+
 Agreement features are grouped **per part of speech** on purpose. A headword is
 routinely several parts of speech at once — German `der` is both a determiner and
 (per the dictionary) a noun. Flattening `gender` onto `Morphology` would let the
 noun's gender read back as the determiner's, and the agreement linters compare
 exactly those two values. Flattening would silently disable them.
 
-These features are not German-specific: Slovak and Polish need case and gender
-too. Put shared features in `morphology.rs`, not under `german/`.
+Another language plugin (Slovak, Polish) brings its own features and its own bit
+layout; nothing here is shared with it. See Dronakurl/harper#15.
 
 ## Generated files — do not edit
 

@@ -7,6 +7,7 @@ pub mod language_detection;
 pub mod lexing;
 pub mod linting;
 pub mod module;
+pub mod morphology;
 pub mod parsers;
 pub mod plugin;
 pub mod spell;

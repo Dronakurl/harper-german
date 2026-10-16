@@ -20,7 +20,7 @@
 use hashbrown::HashMap;
 use std::sync::LazyLock;
 
-use harper_core::morphology::{Agreement, NumberSet, PersonSet};
+use crate::morphology::{Agreement, NumberSet, PersonSet};
 
 /// The person and number of one form, as a pair of sets.
 ///

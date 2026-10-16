@@ -53,7 +53,7 @@ mod tests {
     /// A genitive singular is not a plural, which is why this is not on `b`.
     #[test]
     fn the_genitive_is_not_called_a_plural() {
-        use harper_core::morphology::{MorphologyExt, Number};
+        use crate::morphology::{MorphologyExt, Number};
 
         let dict = curated_german_dictionary();
 

@@ -15,8 +15,8 @@
 
 #[cfg(test)]
 mod tests {
+    use crate::morphology::{Gender, GenderSet, MorphologyExt};
     use crate::spell::curated_german_dictionary;
-    use harper_core::morphology::{Gender, GenderSet, MorphologyExt};
     use harper_core::spell::Dictionary;
 
     fn gender(word: &str) -> GenderSet {

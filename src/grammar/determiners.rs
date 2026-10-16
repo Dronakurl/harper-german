@@ -16,7 +16,7 @@
 use hashbrown::HashMap;
 use std::sync::LazyLock;
 
-use harper_core::morphology::{
+use crate::morphology::{
     Agreement, Case, CaseSet, Gender, GenderSet, Number, NumberSet, PersonSet,
 };
 
@@ -24,7 +24,7 @@ use harper_core::morphology::{
 ///
 /// `gender` is `None` in the plural, where German draws no gender distinction —
 /// that is a genuine absence, not an unknown, which is why it is not a
-/// [`harper_core::morphology::GenderSet`].
+/// [`crate::morphology::GenderSet`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct DeterminerReading {
     pub case: Case,
@@ -56,7 +56,6 @@ impl DeterminerReading {
             // is third person, and the verb rule reads that from the phrase
             // rather than from here.
             person: PersonSet::empty(),
-            ..Agreement::default()
         }
     }
 }

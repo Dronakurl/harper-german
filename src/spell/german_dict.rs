@@ -26,10 +26,16 @@ fn load_german_word_list() -> Vec<harper_core::spell::rune::word_list::Annotated
 fn build_german_base_dict(
     word_list: &[harper_core::spell::rune::word_list::AnnotatedWord],
 ) -> CompactDictionary {
-    let attr_list = AttributeList::parse(include_str!("../../data/annotations.json"))
-        .expect("Failed to parse German dictionary attribute list");
+    expand_in_blocks(&german_attribute_list(), word_list)
+}
 
-    expand_in_blocks(&attr_list, word_list)
+/// The affixes and properties of `annotations.json`, with its morphology turned into
+/// [`LanguageBits`](harper_core::LanguageBits) (see [`crate::morphology::annotations`]).
+pub(crate) fn german_attribute_list() -> AttributeList {
+    let annotations =
+        crate::morphology::annotations::prepare(include_str!("../../data/annotations.json"))
+            .expect("Failed to read the morphology in the German attribute list");
+    AttributeList::parse(&annotations).expect("Failed to parse German dictionary attribute list")
 }
 
 /// What a dictionary pack must have been built from to be used: this crate version, the word list, the
@@ -46,6 +52,9 @@ fn pack_stamp() -> u64 {
         include_str!("../../data/annotations.json"),
         include_str!("compact_dict.rs"),
         include_str!("german_dict.rs"),
+        // How the morphology in the annotations becomes the bits the pack stores.
+        include_str!("../morphology/annotations.rs"),
+        include_str!("../morphology/bits.rs"),
         // The harper-core revision the pack was expanded with.
         include_str!("../../Cargo.toml"),
         include_str!("../../Cargo.lock"),

@@ -1,9 +1,9 @@
 //! Checks that a determiner carries the gender of the noun it introduces.
 
+use crate::morphology::Gender;
 use harper_core::{
     Document, Token, TokenKind, TokenStringExt,
     linting::{Lint, LintKind, Linter, Suggestion},
-    morphology::Gender,
     spell::Dictionary,
 };
 

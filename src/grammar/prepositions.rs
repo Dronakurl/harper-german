@@ -26,7 +26,7 @@
 use hashbrown::HashMap;
 use std::sync::LazyLock;
 
-use harper_core::morphology::CaseSet;
+use crate::morphology::CaseSet;
 
 /// What a preposition requires of the noun phrase that follows it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]

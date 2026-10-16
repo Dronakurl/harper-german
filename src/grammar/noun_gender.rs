@@ -10,11 +10,8 @@ use std::sync::Arc;
 
 use crate::spell::compact_dict::CompactDictionary;
 
-use harper_core::{
-    Document, Punctuation, Token, TokenKind,
-    morphology::{Gender, GenderSet, MorphologyExt, NumberSet},
-    spell::Dictionary,
-};
+use crate::morphology::{Gender, GenderSet, MorphologyExt, NumberSet};
+use harper_core::{Document, Punctuation, Token, TokenKind, spell::Dictionary};
 
 use crate::{
     grammar::determiners::could_be_a_dative_plural,
@@ -351,7 +348,7 @@ pub fn trusted_head(document: &Document, words: &[&Token], phrase: &Phrase) -> O
 #[cfg(test)]
 mod tests {
     use super::{NounGender, umlaut_last_vowel};
-    use harper_core::morphology::Gender;
+    use crate::morphology::Gender;
 
     #[test]
     fn the_last_stem_vowel_is_umlauted() {

@@ -927,12 +927,7 @@
 			"target": [
 				{
 					"metadata": {
-						"adjective": {},
-						"morphology": {
-							"adjective": {
-								"degree": "Comparative"
-							}
-						}
+						"adjective": {}
 					}
 				}
 			],
@@ -1250,12 +1245,7 @@
 			"target": [
 				{
 					"metadata": {
-						"adjective": {},
-						"morphology": {
-							"adjective": {
-								"degree": "Superlative"
-							}
-						}
+						"adjective": {}
 					}
 				}
 			],

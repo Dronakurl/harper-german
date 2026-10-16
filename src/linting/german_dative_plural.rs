@@ -1,9 +1,9 @@
 //! *mit den Kinder*, *seit drei Jahre*: the dative plural ends in *-n*.
 
+use crate::morphology::{Case, CaseSet, Number};
 use harper_core::{
     Document, Token, TokenKind, TokenStringExt,
     linting::{Lint, LintKind, Linter, Suggestion},
-    morphology::{Case, CaseSet, Number},
 };
 
 use crate::{

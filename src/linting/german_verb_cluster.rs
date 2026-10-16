@@ -1,10 +1,10 @@
 //! *Er kann das nicht gemacht*, *Sie hat das Buch lesen*: the verb at the end
 //! of the clause in the form the finite verb in front does not take.
 
+use crate::morphology::{Gender, GenderSet};
 use harper_core::{
     Document, Punctuation, Token, TokenKind, TokenStringExt,
     linting::{Lint, LintKind, Linter},
-    morphology::{Gender, GenderSet},
 };
 
 use crate::{

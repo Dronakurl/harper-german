@@ -1,9 +1,9 @@
 //! The comma around a relative clause.
 
+use crate::morphology::{Gender, GenderSet};
 use harper_core::{
     Document, Punctuation, Token, TokenKind, TokenStringExt,
     linting::{Lint, LintKind, Linter, Suggestion},
-    morphology::{Gender, GenderSet},
     spell::Dictionary,
 };
 

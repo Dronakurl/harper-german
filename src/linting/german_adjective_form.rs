@@ -1,10 +1,10 @@
 //! Adjectives that lost their ending, and nominalized adjectives that took the
 //! wrong one.
 
+use crate::morphology::{CaseSet, Gender, MorphologyExt, NumberSet};
 use harper_core::{
     Document, Token, TokenKind, TokenStringExt,
     linting::{Lint, LintKind, Linter, Suggestion},
-    morphology::{CaseSet, Gender, MorphologyExt, NumberSet},
     spell::Dictionary,
 };
 
@@ -381,7 +381,7 @@ impl GermanAdjectiveForm {
                 // The plural of a covered paradigm: *die neuen*, *keine neuen*.
                 None if reading.gender.is_none() => {
                     let singular = DeterminerReading {
-                        gender: Some(harper_core::morphology::Gender::Masculine),
+                        gender: Some(crate::morphology::Gender::Masculine),
                         ..*reading
                     };
                     adjective_ending_after(&singular)?;

@@ -13,9 +13,9 @@ use crate::grammar::subjects::{
 use crate::grammar::verbs::{
     looks_like_participle, plain_stem_present, second_person_of_raised, third_person_of_raised,
 };
+use crate::morphology::{Case, GenderSet, MorphologyExt, Number, NumberSet, PersonSet};
 use crate::spell::lexical_classes::STRONG_PRESENT_FORMS;
 use harper_core::linting::{Lint, LintKind, Linter, Suggestion};
-use harper_core::morphology::{Case, GenderSet, MorphologyExt, Number, NumberSet, PersonSet};
 use harper_core::spell::Dictionary;
 use harper_core::{Document, Punctuation, Token, TokenKind, TokenStringExt};
 
@@ -1014,7 +1014,7 @@ impl<T: Dictionary> GermanSubjectVerbAgreement<T> {
 
     /// Which form the subject wants, spelled out for the message.
     fn wanted(features: &Features) -> &'static str {
-        use harper_core::morphology::{NumberSet, PersonSet};
+        use crate::morphology::{NumberSet, PersonSet};
         match (features.person, features.number) {
             (PersonSet::FIRST, NumberSet::SINGULAR) => "die 1. Person Singular",
             (PersonSet::SECOND, NumberSet::SINGULAR) => "die 2. Person Singular",

@@ -23,8 +23,25 @@
 mod tests {
     use std::io::Write;
 
+    use crate::morphology::MorphologyExt;
     use crate::spell::curated_german_dictionary;
+    use harper_core::DictWordMetadata;
     use harper_core::spell::Dictionary;
+
+    /// The metadata as JSON, with the morphology readable rather than as
+    /// `language_bits`, so the dumps keep the shape the scripts read.
+    fn metadata_json(metadata: &DictWordMetadata) -> String {
+        let mut value = serde_json::to_value(metadata).unwrap();
+        let object = value.as_object_mut().unwrap();
+        object.remove("language_bits");
+        if let Some(morphology) = metadata.morphology() {
+            object.insert(
+                "morphology".to_owned(),
+                serde_json::to_value(morphology).unwrap(),
+            );
+        }
+        value.to_string()
+    }
 
     #[test]
     #[ignore = "writes a large file; run on demand"]
@@ -39,7 +56,7 @@ mod tests {
                 continue;
             };
             let word: String = word.iter().collect();
-            let json = serde_json::to_string(&*metadata).unwrap();
+            let json = metadata_json(&metadata);
             writeln!(out, "{word}\t{json}").unwrap();
         }
     }
@@ -58,7 +75,7 @@ mod tests {
         for word in std::fs::read_to_string(input).unwrap().lines() {
             let json = dict
                 .get_word_metadata_str(word)
-                .map(|metadata| serde_json::to_string(&*metadata).unwrap())
+                .map(|metadata| metadata_json(&metadata))
                 .unwrap_or_default();
             writeln!(out, "{word}\t{json}").unwrap();
         }
@@ -121,7 +138,7 @@ mod tests {
                 if metadata.preposition {
                     pos.push("prep");
                 }
-                let m = serde_json::to_string(&metadata.morphology).unwrap();
+                let m = serde_json::to_string(&metadata.morphology()).unwrap();
                 println!("{word}\t{} {m}", pos.join("+"));
             } else {
                 println!("{word}\t-");
