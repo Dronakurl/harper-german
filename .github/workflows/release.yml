@@ -1,11 +1,17 @@
 name: Release
 
-# Push a tag like v0.1.0 to publish harper-de.wasm, harper-de.wasm.sha256 and plugin-index.json.
+# Publishes harper-de.wasm, harper-de.wasm.sha256 and plugin-index.json as a release: push a tag like
+# v0.1.0, or run the workflow by hand with a version (it then creates the tag on the commit it runs on).
+# Run by hand without a version, it is a dry run: it keeps the files as a workflow artifact, publishes nothing.
 on:
   push:
     tags: ["v*"]
-  # A dry run: builds and packages everything, keeps the files as a workflow artifact, publishes nothing.
   workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release, like 0.1.0 (empty: dry run)"
+        required: false
+        default: ""
 
 env:
   CARGO_TERM_COLOR: always
@@ -28,20 +34,34 @@ jobs:
       - name: Build, load-test and package
         run: |
           version="${GITHUB_REF_NAME#v}"
-          if [ "${GITHUB_REF_TYPE}" != "tag" ]; then version="0.0.0-dry-run"; fi
+          if [ "${GITHUB_REF_TYPE}" != "tag" ]; then version="${INPUT_VERSION:-0.0.0-dry-run}"; fi
+          echo "VERSION=$version" >> "$GITHUB_ENV"
           just test-plugin
           just release-files "$version"
         env:
           HARPER_DE_WASM: target/wasm32-unknown-unknown/release/harper_german.wasm
+          INPUT_VERSION: ${{ inputs.version }}
       - name: Keep the files (dry runs)
         uses: actions/upload-artifact@v4
         with:
           name: harper-de
           path: dist/*
       - name: Publish
-        if: github.ref_type == 'tag'
+        if: github.ref_type == 'tag' || inputs.version != ''
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: v${{ env.VERSION }}
+          target_commitish: ${{ github.sha }}
+          name: harper-de.wasm ${{ env.VERSION }}
+          body: |
+            German for Harper: one file, `harper-de.wasm`. In a checkout of Harper:
+
+            ```bash
+            just install
+            just language-install Dronakurl/harper-german
+            ```
+
+            Obsidian, the browser extension and harper.js take the same file. See Harper's docs page "Other Languages".
           files: |
             dist/harper-de.wasm
             dist/harper-de.wasm.sha256
