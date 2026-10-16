@@ -79,6 +79,10 @@ impl German {
     }
 }
 
+fn names(names: &[&str]) -> Vec<String> {
+    names.iter().map(|n| n.to_string()).collect()
+}
+
 impl LanguagePlugin for German {
     fn info() -> PluginInfo {
         PluginInfo {
@@ -91,17 +95,23 @@ impl LanguagePlugin for German {
                 DialectInfo {
                     id: "Standard".into(),
                     name: "Deutschland".into(),
+                    aliases: names(&["Germany", "de-DE", "de_DE"]),
                 },
                 DialectInfo {
                     id: "Austrian".into(),
                     name: "Österreich".into(),
+                    aliases: names(&["Austria", "AT", "de-AT", "de_AT"]),
                 },
                 DialectInfo {
                     id: "Swiss".into(),
                     name: "Schweiz".into(),
+                    aliases: names(&["Switzerland", "CH", "de-CH", "de_CH"]),
                 },
             ],
             default_dialect: Some("Standard".into()),
+            // What the multilingual build of Harper accepted for German, so its settings keep
+            // working.
+            aliases: names(&["German", "Deutsch"]),
         }
     }
 
@@ -189,3 +199,21 @@ impl LanguagePlugin for German {
 }
 
 export_plugin!(German);
+
+#[cfg(test)]
+mod tests {
+    use harper_plugin_api::LanguagePlugin;
+
+    use super::German;
+
+    /// Hosts find the plugin by these names, e.g. a harper-ls setting `"dialect": "German"`.
+    #[test]
+    fn answers_to_its_names_and_dialects() {
+        let info = German::info();
+        for name in ["de", "Deutsch", "german", "Swiss", "Schweiz", "de-AT", "Germany"] {
+            assert!(info.answers_to(name), "{name}");
+        }
+        assert!(!info.answers_to("English"));
+        assert_eq!(info.dialect_named("ch").unwrap().id, "Swiss");
+    }
+}
