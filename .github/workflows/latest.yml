@@ -1,6 +1,6 @@
 name: Latest
 
-# Keeps one rolling pre-release, "latest", holding the harper-de.wasm built from the newest main commit.
+# Keeps one rolling release, "latest", holding the harper-de.wasm built from the newest main commit.
 # The tag moves and the assets are replaced on every push, so no release history builds up.
 on:
   push:
@@ -34,14 +34,15 @@ jobs:
       - name: Replace the latest release
         env:
           GH_TOKEN: ${{ github.token }}
+        # --latest makes it the release GitHub reports as the latest, which `just language-install` downloads.
         run: |
           git tag -f latest "$GITHUB_SHA"
           git push -f origin refs/tags/latest
           if gh release view latest >/dev/null 2>&1; then
-            gh release edit latest --prerelease --title "Latest build" \
+            gh release edit latest --latest --title "Latest build" \
               --notes "Built from ${GITHUB_SHA}. Replaced on every push to main."
           else
-            gh release create latest --prerelease --title "Latest build" \
+            gh release create latest --latest --title "Latest build" \
               --notes "Built from ${GITHUB_SHA}. Replaced on every push to main."
           fi
           gh release upload latest dist/harper-de.wasm dist/harper-de.wasm.sha256 --clobber

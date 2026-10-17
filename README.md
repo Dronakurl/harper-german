@@ -18,12 +18,12 @@ just test-plugin              # Modul bauen, laden, damit prüfen (braucht das Z
 
 ## In Harper installieren
 
-Das Plugin ist **eine einzige Datei**, `harper-de.wasm`. Jedes [Release](https://github.com/Dronakurl/harper-german/releases)
-enthält sie, mit Prüfsumme. Im Harper-Checkout:
+Das Plugin ist **eine einzige Datei**, `harper-de.wasm`. Das Release [`latest`](https://github.com/Dronakurl/harper-german/releases/tag/latest) wird bei jedem Push auf `main`
+ersetzt und enthält sie, mit Prüfsumme; direkter Link: <https://github.com/Dronakurl/harper-german/releases/download/latest/harper-de.wasm>. Im Harper-Checkout:
 
 ```bash
 just install                                   # harper-ls und harper-cli, nur Englisch
-just language-install Dronakurl/harper-german  # lädt harper-de.wasm aus dem neuesten Release und installiert sie
+just language-install Dronakurl/harper-german  # lädt harper-de.wasm aus dem Release `latest` und installiert sie
 harper-cli lint --language de notizen.md
 # harper-ls erkennt Deutsch von selbst ("language": "auto"); nur Deutsch: "harper-ls": { "language": "de" }
 ```
