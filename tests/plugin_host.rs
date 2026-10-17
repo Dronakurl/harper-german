@@ -195,3 +195,99 @@ fn recognizes_german_without_building_the_dictionary() {
         .unwrap();
     assert_eq!(english, None);
 }
+
+fn request(text: &str, words: &[&str]) -> LintRequest {
+    let mut req = LintRequest::plain(text);
+    req.user_words = Some(words.iter().map(|w| w.to_string()).collect());
+    req
+}
+
+fn flags(plugin: &LoadedPlugin, req: &LintRequest, word: &str) -> bool {
+    let at = req.text.find(word).unwrap();
+    let at = req.text[..at].chars().count();
+    plugin
+        .lint(req)
+        .unwrap()
+        .iter()
+        .any(|l| l.rule == "GermanSpellCheck" && l.span.0 <= at && at < l.span.1)
+}
+
+/// The words come with the request: what one request brings does not leak into the next, and a
+/// request without words does not undo `set_user_words`.
+#[test]
+fn words_belong_to_the_request() {
+    let Some(plugin) = load() else { return };
+    let text = "Der Quorblix ist hier.";
+
+    assert!(flags(&plugin, &request(text, &[]), "Quorblix"));
+    assert!(!flags(&plugin, &request(text, &["Quorblix"]), "Quorblix"));
+    assert!(flags(&plugin, &request(text, &[]), "Quorblix"));
+
+    plugin.set_user_words(vec!["Quorblix".into()]).unwrap();
+    assert!(!flags(&plugin, &LintRequest::plain(text), "Quorblix"));
+    assert!(flags(&plugin, &request(text, &[]), "Quorblix"));
+}
+
+/// Several threads share one plugin and lint with different words at the same time.
+#[test]
+fn concurrent_requests_do_not_see_each_others_words() {
+    let Some(plugin) = load() else { return };
+    let text = "Der Quorblix ist hier.";
+    std::thread::scope(|scope| {
+        for thread in 0..4 {
+            let plugin = &plugin;
+            scope.spawn(move || {
+                for round in 0..25 {
+                    let known = (thread + round) % 2 == 0;
+                    let words: &[&str] = if known { &["Quorblix"] } else { &[] };
+                    assert_eq!(
+                        flags(plugin, &request(text, words), "Quorblix"),
+                        !known,
+                        "thread {thread}, round {round}"
+                    );
+                }
+            });
+        }
+    });
+}
+
+/// What a request with words costs: the same words again, different words each time, and a
+/// large user dictionary. Run with `--nocapture` to read the numbers.
+#[test]
+fn what_words_in_the_request_cost() {
+    let Some(plugin) = load() else { return };
+    let text = "Die Katze schläft auf dem Sofa und der Hund bellt laut im Garten.";
+    let big: Vec<String> = (0..5000).map(|i| format!("Wort{i}x")).collect();
+    let big: Vec<&str> = big.iter().map(String::as_str).collect();
+    // The first call builds the dictionary.
+    plugin.lint(&request(text, &[])).unwrap();
+
+    let time = |label: &str, make: &dyn Fn(usize) -> LintRequest| {
+        let n = 30;
+        let t = Instant::now();
+        for i in 0..n {
+            plugin.lint(&make(i)).unwrap();
+        }
+        eprintln!("{label}: {:?} per request", t.elapsed() / n as u32);
+    };
+    time("no words", &|_| LintRequest::plain(text));
+    time("same 2 words", &|_| {
+        request(text, &["Quorblix", "Kuchenblech"])
+    });
+    time("alternating 2 lists", &|i| {
+        request(
+            text,
+            if i % 2 == 0 {
+                &["Quorblix"]
+            } else {
+                &["Kuchenblech"]
+            },
+        )
+    });
+    time("same 5000 words", &|_| request(text, &big));
+    let alt: Vec<String> = (0..5000).map(|i| format!("Anders{i}x")).collect();
+    let alt: Vec<&str> = alt.iter().map(String::as_str).collect();
+    time("alternating 2 x 5000 words", &|i| {
+        request(text, if i % 2 == 0 { &big } else { &alt })
+    });
+}

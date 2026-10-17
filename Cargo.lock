@@ -1195,7 +1195,7 @@ dependencies = [
  "cfg_aliases",
  "derive-new",
  "derive_more 2.1.1",
- "dirs",
+ "dirs 6.0.0",
  "embassy-futures",
  "embassy-time",
  "float4",
@@ -1495,7 +1495,7 @@ dependencies = [
  "cubecl-common",
  "cubecl-ir",
  "derive-new",
- "dirs",
+ "dirs 6.0.0",
  "enumset",
  "foldhash 0.1.5",
  "hashbrown 0.15.5",
@@ -1716,6 +1716,15 @@ name = "dirs"
 version = "6.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c3e8aa94d75141228480295a7d0e7feb620b1a5ad9f12bc40be62411e38cce4e"
+dependencies = [
+ "dirs-sys",
+]
+
+[[package]]
+name = "dirs"
+version = "7.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8d57d423b3c82e89b9a24ca3091fee61f456a26edbd28d26c65906f4bc1dcd8f"
 dependencies = [
  "dirs-sys",
 ]
@@ -2465,8 +2474,8 @@ dependencies = [
 
 [[package]]
 name = "harper-brill"
-version = "2.12.0"
-source = "git+https://github.com/Dronakurl/harper?rev=0ac8619aa0da22785a0152e7dca9b6c1af1a142f#0ac8619aa0da22785a0152e7dca9b6c1af1a142f"
+version = "2.13.0"
+source = "git+https://github.com/Dronakurl/harper?rev=ef659a5b81af3981555bd01100f154ca5ebb2745#ef659a5b81af3981555bd01100f154ca5ebb2745"
 dependencies = [
  "harper-pos-utils",
  "serde_json",
@@ -2474,8 +2483,8 @@ dependencies = [
 
 [[package]]
 name = "harper-core"
-version = "2.12.0"
-source = "git+https://github.com/Dronakurl/harper?rev=0ac8619aa0da22785a0152e7dca9b6c1af1a142f#0ac8619aa0da22785a0152e7dca9b6c1af1a142f"
+version = "2.13.0"
+source = "git+https://github.com/Dronakurl/harper?rev=ef659a5b81af3981555bd01100f154ca5ebb2745#ef659a5b81af3981555bd01100f154ca5ebb2745"
 dependencies = [
  "ammonia",
  "bitflags",
@@ -2532,7 +2541,7 @@ dependencies = [
 [[package]]
 name = "harper-plugin-api"
 version = "2.12.0"
-source = "git+https://github.com/Dronakurl/harper?rev=0ac8619aa0da22785a0152e7dca9b6c1af1a142f#0ac8619aa0da22785a0152e7dca9b6c1af1a142f"
+source = "git+https://github.com/Dronakurl/harper?rev=ef659a5b81af3981555bd01100f154ca5ebb2745#ef659a5b81af3981555bd01100f154ca5ebb2745"
 dependencies = [
  "harper-core",
  "serde",
@@ -2542,9 +2551,9 @@ dependencies = [
 [[package]]
 name = "harper-plugin-host"
 version = "2.12.0"
-source = "git+https://github.com/Dronakurl/harper?rev=0ac8619aa0da22785a0152e7dca9b6c1af1a142f#0ac8619aa0da22785a0152e7dca9b6c1af1a142f"
+source = "git+https://github.com/Dronakurl/harper?rev=ef659a5b81af3981555bd01100f154ca5ebb2745#ef659a5b81af3981555bd01100f154ca5ebb2745"
 dependencies = [
- "dirs",
+ "dirs 7.0.0",
  "harper-core",
  "harper-plugin-api",
  "serde",
@@ -2555,8 +2564,8 @@ dependencies = [
 
 [[package]]
 name = "harper-pos-utils"
-version = "2.12.0"
-source = "git+https://github.com/Dronakurl/harper?rev=0ac8619aa0da22785a0152e7dca9b6c1af1a142f#0ac8619aa0da22785a0152e7dca9b6c1af1a142f"
+version = "2.13.0"
+source = "git+https://github.com/Dronakurl/harper?rev=ef659a5b81af3981555bd01100f154ca5ebb2745#ef659a5b81af3981555bd01100f154ca5ebb2745"
 dependencies = [
  "burn",
  "burn-ndarray",
@@ -4859,7 +4868,7 @@ dependencies = [
  "anyhow",
  "bytes",
  "constcat",
- "dirs",
+ "dirs 6.0.0",
  "liblzma",
  "regex",
  "reqwest",

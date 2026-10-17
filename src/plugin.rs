@@ -19,12 +19,14 @@ use crate::parsers::PlainGerman;
 use crate::spell::compound_aware_german_dictionary;
 
 /// The `harper-core` this plugin is built against; kept in step with `Cargo.toml`.
-const HARPER_CORE_VERSION: &str = "2.12.0";
+const HARPER_CORE_VERSION: &str = "2.13.0";
 
 pub struct German {
     base: Arc<dyn Dictionary>,
     /// The dictionary the linters were built with: `base`, plus the user's words.
     dictionary: Arc<MergedDictionary>,
+    /// The user words `dictionary` and `group` were built with.
+    words: Vec<String>,
     group: LintGroup,
 }
 
@@ -66,6 +68,32 @@ impl German {
                 })
             })
             .collect()
+    }
+
+    /// Make `words` the user words, rebuilding the linters only if they differ from the ones in use.
+    fn use_words(&mut self, words: &[String]) {
+        if self.words == words {
+            return;
+        }
+        let mut user = MutableDictionary::new();
+        user.extend_words(words.iter().map(|w| {
+            (
+                w.chars().collect::<Vec<char>>(),
+                DictWordMetadata::default(),
+            )
+        }));
+
+        let mut merged = MergedDictionary::new();
+        merged.add_dictionary(self.base.clone());
+        merged.add_dictionary(Arc::new(user));
+        let merged = Arc::new(merged);
+
+        // The linters hold on to the dictionary, so they are rebuilt with the new one. Keep the
+        // rules the user switched off.
+        let config: FlatConfig = self.group.config.clone();
+        self.group = Self::build_group(&merged).with_lint_config(config);
+        self.dictionary = merged;
+        self.words = words.to_vec();
     }
 
     fn apply_config(&mut self, config: &PluginConfig) {
@@ -124,10 +152,15 @@ impl LanguagePlugin for German {
             group: Self::build_group(&dictionary),
             base,
             dictionary,
+            words: Vec::new(),
         }
     }
 
     fn lint(&mut self, req: LintRequest) -> Vec<PluginLint> {
+        // The words belong to the request, so a host may lint several files in any order.
+        if let Some(words) = &req.user_words {
+            self.use_words(words);
+        }
         if let Some(config) = &req.config {
             self.apply_config(config);
         }
@@ -177,24 +210,7 @@ impl LanguagePlugin for German {
     }
 
     fn set_user_words(&mut self, words: Vec<String>) {
-        let mut user = MutableDictionary::new();
-        user.extend_words(words.iter().map(|w| {
-            (
-                w.chars().collect::<Vec<char>>(),
-                DictWordMetadata::default(),
-            )
-        }));
-
-        let mut merged = MergedDictionary::new();
-        merged.add_dictionary(self.base.clone());
-        merged.add_dictionary(Arc::new(user));
-        let merged = Arc::new(merged);
-
-        // The linters hold on to the dictionary, so they are rebuilt with the new one. Keep the
-        // rules the user switched off.
-        let config: FlatConfig = self.group.config.clone();
-        self.group = Self::build_group(&merged).with_lint_config(config);
-        self.dictionary = merged;
+        self.use_words(&words);
     }
 }
 
