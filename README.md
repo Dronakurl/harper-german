@@ -33,7 +33,10 @@ Obsidian, Browser-Erweiterung und `harper.js` nehmen dieselbe Datei; wie, steht 
 [Other Languages](https://github.com/Dronakurl/harper/blob/claude/language-plugin-architecture-h8bw6z/packages/web/src/routes/docs/integrations/language-plugins/+page.md).
 
 Das Modul ist etwa 45 MB groß (gepackt ca. 16 MB): fast alles davon ist das deutsche Wörterbuch.
-Das erste Prüfen nach dem Laden dauert rund eine halbe Sekunde, danach wenige Millisekunden.
+Gemessen mit `just test-plugin` (Release-Build, ein Rechner, Zahlen als Größenordnung):
+das erste Laden einer neuen Datei kompiliert das Modul, rund 6,5 s (Harper merkt sich das Ergebnis im
+Cache-Ordner, danach dauert das Laden etwa 35 ms); die erste Prüfung baut das Wörterbuch, rund 0,8 s;
+jede weitere Prüfung eines kurzen Textes dauert wenige Millisekunden.
 
 ## Lokal zusammen mit Harper entwickeln
 

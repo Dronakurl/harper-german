@@ -140,6 +140,8 @@ impl LanguagePlugin for German {
             // What the multilingual build of Harper accepted for German, so its settings keep
             // working.
             aliases: names(&["German", "Deutsch"]),
+            // The API crate adds what this build can do (`request_words`).
+            features: Vec::new(),
         }
     }
 
