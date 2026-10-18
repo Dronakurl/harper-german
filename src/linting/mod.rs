@@ -3,6 +3,7 @@
 pub mod german_absolute_superlative;
 pub mod german_adjective_form;
 pub mod german_common_typos;
+pub mod german_compound_adjective_capitalization;
 pub mod german_country_article;
 pub mod german_dative_plural;
 pub mod german_determiner_gender;

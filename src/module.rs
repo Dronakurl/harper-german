@@ -9,6 +9,7 @@ pub fn rust_lint_group(dictionary: Arc<impl Dictionary + 'static>) -> LintGroup 
     use crate::linting::{
         german_absolute_superlative::GermanAbsoluteSuperlative,
         german_adjective_form::GermanAdjectiveForm, german_common_typos::GermanCommonTypos,
+        german_compound_adjective_capitalization::GermanCompoundAdjectiveCapitalization,
         german_country_article::GermanCountryArticle, german_dative_plural::GermanDativePlural,
         german_determiner_gender::GermanDeterminerGender, german_filler_words::GermanFillerWords,
         german_fixed_nominalization::GermanFixedNominalization,
@@ -65,6 +66,10 @@ pub fn rust_lint_group(dictionary: Arc<impl Dictionary + 'static>) -> LintGroup 
     group.add("GermanRepeatedWords", GermanRepeatedWords);
     group.add("GermanSplitParticle", GermanSplitParticle);
     group.add("GermanCommonTypos", GermanCommonTypos);
+    group.add(
+        "GermanCompoundAdjectiveCapitalization",
+        GermanCompoundAdjectiveCapitalization::new(dictionary.clone()),
+    );
     group.add("GermanAbsoluteSuperlative", GermanAbsoluteSuperlative);
     group.add("GermanFixedNominalization", GermanFixedNominalization);
     group.add("GermanNominalizedInfinitive", GermanNominalizedInfinitive);

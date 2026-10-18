@@ -11,11 +11,11 @@ publish = false
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-# Pinned to a revision of the `claude/language-plugin-architecture-h8bw6z` branch of
+# Pinned to a revision of the `feature/language-plugins` branch of
 # Dronakurl/harper, which holds the plugin API and the harper-core hooks this crate needs.
 # To work on both at once, see "Local harper checkout" in README.md.
-harper-core = { git = "https://github.com/Dronakurl/harper", rev = "0ac8619aa0da22785a0152e7dca9b6c1af1a142f", default-features = false, features = ["concurrent", "language-bits"] }
-harper-plugin-api = { git = "https://github.com/Dronakurl/harper", rev = "0ac8619aa0da22785a0152e7dca9b6c1af1a142f", features = ["core"] }
+harper-core = { git = "https://github.com/Dronakurl/harper", rev = "ec12f0d5877fb19978a5e9b60a088d0c854aad48", default-features = false, features = ["concurrent", "language-bits"] }
+harper-plugin-api = { git = "https://github.com/Dronakurl/harper", rev = "ec12f0d5877fb19978a5e9b60a088d0c854aad48", features = ["core"] }
 bitflags = { version = "2.11.0", features = ["serde"] }
 is-macro = "0.3.6"
 hashbrown = { version = "0.16.1", features = ["serde"] }
@@ -32,7 +32,7 @@ getrandom02 = { package = "getrandom", version = "0.2", features = ["custom"] }
 getrandom03 = { package = "getrandom", version = "0.3" }
 
 [dev-dependencies]
-harper-plugin-host = { git = "https://github.com/Dronakurl/harper", rev = "0ac8619aa0da22785a0152e7dca9b6c1af1a142f" }
+harper-plugin-host = { git = "https://github.com/Dronakurl/harper", rev = "ec12f0d5877fb19978a5e9b60a088d0c854aad48" }
 
 [profile.release]
 opt-level = 3

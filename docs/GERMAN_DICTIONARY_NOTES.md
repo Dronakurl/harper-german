@@ -2340,3 +2340,29 @@ number here is worse than no number. Record *how to measure* instead —
 - **Metadata format**: Harper-specific annotations system
 
 For more details, see the main [Language Support README](../README.md).
+## Single cases from harper issues #16–#20 (October 2026)
+
+* **`alles falsch`, `alle falsch`, `beide falsch`** (#19): the chunker took the
+  quantifier for an article and crowned the bare adjective as head. A
+  nominalization behind them carries an ending (*alles Gute*, *alle Guten*), so a
+  base-form adjective there is a predicate. Fixed in `grammar/noun_phrase.rs`
+  with the existing "predicative" exception, for these three words only.
+* **`Es könnte ist`** (#18): `weir_rules/de/ModalIst.weir`, subjunctive II modals
+  in front of *ist* only. *kann ist* / *könnten sind* are left out on purpose
+  (missing comma, not missing *sein*).
+* **`Wurst Wurst`** (#20), **not changed**: two capitalized copies are skipped
+  for *Bora Bora* and *Duran Duran*, and the dictionary has no proper-name marker
+  (`is_proper` is never set), so *Wurst* and *Bora* look identical. A name list
+  or a "known as a plain noun" test would trade this miss for false alarms.
+* **`Skistiefelnd`** (#16): the lower-case spelling is still accepted as *Ski* +
+  *stiefelnd* (*stiefelnd* is the `c` affix on the verb *stiefeln*); rejecting
+  derived present participles as compound heads would also reject unlisted real
+  words like *fleischfressend*, and there is no corpus here to measure the cost.
+  Capitalized in the middle of a sentence it is reported by
+  `GermanCompoundAdjectiveCapitalization`: the compound has the bare synthesized
+  adjective metadata, ends in a present participle with a known verb, and a
+  finite verb or adverb stands in front. **Do not widen it to "any synthesized
+  adjective"**: the splitter hands that metadata to nouns whose first element
+  looks like an adjective too (*Kurzgeschichten*, *Weißwein*,
+  *Sicherungskonzept*, *Neubauwohnungen*), and the first version reported all of
+  them.
