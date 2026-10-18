@@ -30,6 +30,7 @@ pub fn rust_lint_group(dictionary: Arc<impl Dictionary + 'static>) -> LintGroup 
         german_repeated_words::GermanRepeatedWords,
         german_sentence_capitalization::GermanSentenceCapitalization,
         german_spell_check::GermanSpellCheck,
+        german_split_compound::GermanSplitCompound,
         german_split_particle::GermanSplitParticle,
         german_strong_imperative::GermanStrongImperative,
         german_subject_verb_agreement::GermanSubjectVerbAgreement,
@@ -93,6 +94,10 @@ pub fn rust_lint_group(dictionary: Arc<impl Dictionary + 'static>) -> LintGroup 
     group.add(
         "GermanVerbSecond",
         GermanVerbSecond::new(dictionary.clone()),
+    );
+    group.add(
+        "GermanSplitCompound",
+        GermanSplitCompound::new(crate::spell::base_german_dictionary()),
     );
     group.add("GermanDoubleComparison", GermanDoubleComparison);
     group.add("GermanDoublePassive", GermanDoublePassive);
