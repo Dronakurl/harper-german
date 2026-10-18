@@ -39,6 +39,7 @@ pub fn rust_lint_group(dictionary: Arc<impl Dictionary + 'static>) -> LintGroup 
         german_suspended_hyphen::GermanSuspendedHyphen,
         german_typography::{GermanNumberFormat, GermanQuotationMarks},
         german_verb_cluster::GermanVerbCluster,
+        german_verb_preposition::GermanVerbPreposition,
         german_verb_second::GermanVerbSecond,
         german_wider_wieder::GermanWiderWieder,
         german_wording::{GermanDoubleComparison, GermanDoublePassive, GermanReasonIsBecause},
@@ -95,6 +96,7 @@ pub fn rust_lint_group(dictionary: Arc<impl Dictionary + 'static>) -> LintGroup 
         "GermanVerbSecond",
         GermanVerbSecond::new(dictionary.clone()),
     );
+    group.add("GermanVerbPreposition", GermanVerbPreposition::new());
     group.add(
         "GermanSplitCompound",
         GermanSplitCompound::new(crate::spell::base_german_dictionary()),

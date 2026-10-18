@@ -33,6 +33,7 @@ pub mod german_subordinate_word_order;
 pub mod german_suspended_hyphen;
 pub mod german_typography;
 pub mod german_verb_cluster;
+pub mod german_verb_preposition;
 pub mod german_verb_second;
 pub mod german_wider_wieder;
 pub mod german_wording;
