@@ -8,10 +8,14 @@ use harper_core::spell::Dictionary;
 pub fn rust_lint_group(dictionary: Arc<impl Dictionary + 'static>) -> LintGroup {
     use crate::linting::{
         german_absolute_superlative::GermanAbsoluteSuperlative,
-        german_adjective_form::GermanAdjectiveForm, german_common_typos::GermanCommonTypos,
+        german_adjective_form::GermanAdjectiveForm,
+        german_common_typos::GermanCommonTypos,
         german_compound_adjective_capitalization::GermanCompoundAdjectiveCapitalization,
-        german_country_article::GermanCountryArticle, german_dative_plural::GermanDativePlural,
-        german_determiner_gender::GermanDeterminerGender, german_filler_words::GermanFillerWords,
+        german_coordinating_comma::GermanCoordinatingComma,
+        german_country_article::GermanCountryArticle,
+        german_dative_plural::GermanDativePlural,
+        german_determiner_gender::GermanDeterminerGender,
+        german_filler_words::GermanFillerWords,
         german_fixed_nominalization::GermanFixedNominalization,
         german_genitive_after_nominative_article::GermanGenitiveAfterNominativeArticle,
         german_modal_zu_infinitive::GermanModalZuInfinitive,
@@ -19,18 +23,24 @@ pub fn rust_lint_group(dictionary: Arc<impl Dictionary + 'static>) -> LintGroup 
         german_nominalized_infinitive::GermanNominalizedInfinitive,
         german_noun_capitalization::GermanNounCapitalization,
         german_perfect_auxiliary::GermanPerfectAuxiliary,
-        german_preposition_case::GermanPrepositionCase, german_question_mark::GermanQuestionMark,
+        german_preposition_case::GermanPrepositionCase,
+        german_question_mark::GermanQuestionMark,
         german_recommended_fusion::GermanRecommendedFusion,
         german_relative_clause_comma::GermanRelativeClauseComma,
         german_repeated_words::GermanRepeatedWords,
         german_sentence_capitalization::GermanSentenceCapitalization,
-        german_spell_check::GermanSpellCheck, german_split_particle::GermanSplitParticle,
+        german_spell_check::GermanSpellCheck,
+        german_split_particle::GermanSplitParticle,
         german_strong_imperative::GermanStrongImperative,
         german_subject_verb_agreement::GermanSubjectVerbAgreement,
         german_subordinate_comma::GermanSubordinateComma,
         german_subordinate_word_order::GermanSubordinateWordOrder,
-        german_suspended_hyphen::GermanSuspendedHyphen, german_verb_cluster::GermanVerbCluster,
-        german_wider_wieder::GermanWiderWieder, german_year_preposition::GermanYearPreposition,
+        german_suspended_hyphen::GermanSuspendedHyphen,
+        german_typography::{GermanNumberFormat, GermanQuotationMarks},
+        german_verb_cluster::GermanVerbCluster,
+        german_wider_wieder::GermanWiderWieder,
+        german_wording::{GermanDoubleComparison, GermanReasonIsBecause},
+        german_year_preposition::GermanYearPreposition,
     };
 
     let mut group = LintGroup::empty();
@@ -75,6 +85,11 @@ pub fn rust_lint_group(dictionary: Arc<impl Dictionary + 'static>) -> LintGroup 
     group.add("GermanNominalizedInfinitive", GermanNominalizedInfinitive);
     group.add("GermanNominalizedAdjective", GermanNominalizedAdjective);
     group.add("GermanSubordinateComma", GermanSubordinateComma);
+    group.add("GermanCoordinatingComma", GermanCoordinatingComma);
+    group.add("GermanNumberFormat", GermanNumberFormat);
+    group.add("GermanQuotationMarks", GermanQuotationMarks);
+    group.add("GermanReasonIsBecause", GermanReasonIsBecause);
+    group.add("GermanDoubleComparison", GermanDoubleComparison);
     group.add("GermanSubordinateWordOrder", GermanSubordinateWordOrder);
     group.add("GermanVerbCluster", GermanVerbCluster::new());
     group.add("GermanSuspendedHyphen", GermanSuspendedHyphen);

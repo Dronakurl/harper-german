@@ -1,0 +1,16 @@
+# "nichtsdestotrotz" is one word; it is also spelled "nichtsdestoweniger". Split it reads as
+# three real words.
+expr main [(nichts desto trotz), (nichts destotrotz), (nichts desto weniger)]
+
+let message "»nichtsdestotrotz« wird zusammengeschrieben."
+let description "Zieht »nichts desto trotz« zu »nichtsdestotrotz« zusammen."
+let kind "Spelling"
+let becomes "nichtsdestotrotz"
+let strategy "MatchCase"
+
+test "Nichts desto trotz gehen wir hin." "Nichtsdestotrotz gehen wir hin."
+test "Wir machen nichts desto trotz weiter." "Wir machen nichtsdestotrotz weiter."
+test "Es geht nichts destotrotz weiter." "Es geht nichtsdestotrotz weiter."
+
+allows "Nichtsdestotrotz gehen wir hin."
+allows "Wir haben nichts davon gewusst."

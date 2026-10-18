@@ -436,7 +436,7 @@ impl<T: Dictionary> GermanSubjectVerbAgreement<T> {
                 return None;
             }
             let head = trusted_head(document, tokens, phrase)?;
-            if self.nouns.is_surely_plural(&head) || self.is_s_plural_of_a_singular(&head) {
+            if self.nouns.is_surely_plural(&head) {
                 return Some(NumberSet::PLURAL);
             }
             // *Test sind gut*: a single noun that opens the sentence and is surely a
@@ -499,22 +499,6 @@ impl<T: Dictionary> GermanSubjectVerbAgreement<T> {
             .is_some_and(|(_, surely_singular)| surely_singular);
         (!genders.is_empty() && !genders.intersects(singular_genders) && !surely_singular)
             .then_some(NumberSet::PLURAL)
-    }
-
-    /// Is `head` the *-s* plural of a masculine or neuter noun that is surely a singular, so
-    /// that *Tests* is the plural of *Test*? Only for a noun that stands alone and opens the
-    /// sentence, where it cannot be the genitive (*des Tests*) that spells the same.
-    fn is_s_plural_of_a_singular(&self, head: &str) -> bool {
-        head.strip_suffix('s').is_some_and(|singular| {
-            singular.chars().count() >= 3
-                && matches!(
-                    self.nouns.gender_of(singular),
-                    Some((
-                        crate::morphology::Gender::Masculine | crate::morphology::Gender::Neuter,
-                        true
-                    ))
-                )
-        })
     }
 
     /// Can the phrase only be a nominative, so that it is the subject whatever
@@ -660,6 +644,14 @@ impl<T: Dictionary> GermanSubjectVerbAgreement<T> {
                         head: 0,
                         end: 1,
                     });
+            // *Kameraden singt!*: a vocative and an imperative in the plural.
+            if lone_noun
+                && tokens.last().is_some_and(|last| {
+                    matches!(last.kind, TokenKind::Punctuation(Punctuation::Bang))
+                })
+            {
+                continue;
+            }
             if lone_noun
                 && Self::word_at(tokens, phrase.end, document).ends_with("en")
                 && !["sind", "waren"].contains(
@@ -1563,7 +1555,6 @@ mod tests {
     fn a_bare_singular_noun_has_to_agree() {
         for text in [
             "Test sind gut.",
-            "Tests ist gut.",
             "Der Test sind gut.",
             "Das Problem sind schwierig.",
             "Fahrrad sind billig.",
@@ -1580,6 +1571,7 @@ mod tests {
             "Test und Training sind gut.",
             "Kuchen essen die Kinder.",
             "Zeit haben wir nicht.",
+            "Kameraden singt!",
             "Werbung schalten mit Facebook, Google & Co!",
             "Probleme gebe es oft mit der Verlängerung.",
             "Geld haben.",

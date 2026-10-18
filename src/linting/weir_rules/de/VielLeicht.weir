@@ -1,0 +1,14 @@
+# "vielleicht" is one word; "viel leicht" reads as two real words.
+expr main (viel leicht)
+
+let message "»vielleicht« wird zusammengeschrieben."
+let description "Zieht »viel leicht« zu »vielleicht« zusammen."
+let kind "Spelling"
+let becomes "vielleicht"
+let strategy "MatchCase"
+
+test "Viel leicht kommt er morgen." "Vielleicht kommt er morgen."
+test "Er kommt viel leicht morgen." "Er kommt vielleicht morgen."
+
+allows "Vielleicht kommt er morgen."
+allows "Er hat viel Zeit."

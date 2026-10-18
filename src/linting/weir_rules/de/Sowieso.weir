@@ -1,0 +1,15 @@
+# "sowieso" is one word. Split ("so wie so", "sowie so") it reads as real words, and "sowie"
+# is a conjunction, so the spell checker is silent.
+expr main [(so wie so), (sowie so)]
+
+let message "»sowieso« wird zusammengeschrieben."
+let description "Zieht »so wie so« und »sowie so« zu »sowieso« zusammen."
+let kind "Spelling"
+let becomes "sowieso"
+let strategy "MatchCase"
+
+test "Das mache ich so wie so." "Das mache ich sowieso."
+test "Er kommt sowie so nicht." "Er kommt sowieso nicht."
+
+allows "Das mache ich sowieso."
+allows "Er kam sowie sie."

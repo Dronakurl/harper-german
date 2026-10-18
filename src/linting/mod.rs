@@ -4,6 +4,7 @@ pub mod german_absolute_superlative;
 pub mod german_adjective_form;
 pub mod german_common_typos;
 pub mod german_compound_adjective_capitalization;
+pub mod german_coordinating_comma;
 pub mod german_country_article;
 pub mod german_dative_plural;
 pub mod german_determiner_gender;
@@ -29,8 +30,10 @@ pub mod german_subject_verb_agreement;
 pub mod german_subordinate_comma;
 pub mod german_subordinate_word_order;
 pub mod german_suspended_hyphen;
+pub mod german_typography;
 pub mod german_verb_cluster;
 pub mod german_wider_wieder;
+pub mod german_wording;
 pub mod german_year_preposition;
 pub mod weir_rules;
 

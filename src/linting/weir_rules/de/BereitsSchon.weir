@@ -1,0 +1,20 @@
+# "bereits" and "schon" say the same thing, so "bereits schon" is a pleonasm. It is a
+# common slip in spoken German that gets written down, and both words are real, so the
+# spell checker has nothing to object to.
+expr main [(bereits schon), (schon bereits)]
+
+let message "»bereits« und »schon« bedeuten dasselbe. Eines von beiden genügt."
+let description "Streicht eines der beiden Wörter in »bereits schon« und »schon bereits«."
+let kind "Redundancy"
+let becomes "bereits"
+let strategy "MatchCase"
+
+test "Er hat bereits schon gegessen." "Er hat bereits gegessen."
+test "Das ist schon bereits erledigt." "Das ist bereits erledigt."
+test "Bereits schon im Mittelalter war das bekannt." "Bereits im Mittelalter war das bekannt."
+test "Wir haben bereits schon bezahlt." "Wir haben bereits bezahlt."
+
+allows "Er hat bereits gegessen."
+allows "Das ist schon erledigt."
+allows "Wir haben schon bezahlt, bereits gestern."
+allows "Ist das bereits fertig oder schon gedruckt?"

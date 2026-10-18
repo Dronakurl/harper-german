@@ -1,0 +1,15 @@
+# "genau" and "exakt" are synonyms; stacked they are a pleonasm.
+expr main [(genau exakt), (exakt genau)]
+
+let message "»genau« und »exakt« bedeuten dasselbe. Eines von beiden genügt."
+let description "Streicht eines der beiden Wörter in »genau exakt« und »exakt genau«."
+let kind "Redundancy"
+let becomes "genau"
+let strategy "MatchCase"
+
+test "Das ist genau exakt richtig." "Das ist genau richtig."
+test "Er hat exakt genau gerechnet." "Er hat genau gerechnet."
+
+allows "Das ist genau richtig."
+allows "Er hat exakt gerechnet."
+allows "Genau, das ist exakt der Punkt."
