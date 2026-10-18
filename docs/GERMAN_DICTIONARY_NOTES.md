@@ -1768,6 +1768,73 @@ weitere*).
   actually recur already have the reading, and it costs several times that many
   injected detections. The gap is real; closing it this way is not worth it.
 
+## Tenth round: rules that were missing, and what the corpus talked out of
+
+Found by probing the built plugin with about fifty typical mistakes and comparing the English
+rule set. Eleven classes had nothing; nine rules came out of it. The measure that decided what
+stayed is cheap enough to repeat: `examples/lint_tsv.rs` lints a file of `id<TAB>sentence` lines
+in one process (6 s for 11 000 sentences), and two runs are compared by id, rule and span.
+The corpora, none of them in the repository:
+
+* the examples of LanguageTool's `grammar.xml` (curl from `raw.githubusercontent.com`, the
+  `<example>` elements, `correction="…"` marks an error), for recall and for a first false-alarm
+  count: 1948 of 6844 marked errors found before, 1973 after, and the correct sentences with a
+  lint unchanged at 570;
+* the training part of `UD_German-GSD` (13 813 sentences of web and news German, the `# text =`
+  lines): real prose, so what a rule reports there is almost always a false alarm.
+
+What each rule was held to, and what the corpus took out again:
+
+* **`GermanSubjectVerbAgreement`, a lone noun** (*Test sind gut*). The chunker opens no phrase on
+  a bare noun, so the first word of a sentence gets a one-word phrase. A copula keeps its
+  plural-predicate exception only when a noun phrase or a declined adjective can carry the plural.
+  Three guards from the first run: a lone noun trusts only *sind*/*waren* in *-en* (*Zeit haben*,
+  *Werbung schalten mit …* are infinitive groups), stays quiet before *es* (*Probleme gebe es oft*)
+  and in a sentence ending in *!* (*Kameraden singt!*, a vocative with an imperative). **The *-s*
+  plural of a lone noun was tried and dropped** (*Tests ist gut*): it fired on *Trockeneis*, on the
+  genitive in a broken sentence (*Jahrhunderts erbaut*) and on the adverb *Samstags*.
+* **`GermanCoordinatingComma`.** *sondern* always takes a comma — **except as the verb
+  *absondern*** (*Diese Insekten sondern einen Duftstoff ab*), found only because the corpus had two
+  such sentences; the particle *ab* later in the clause tells them apart. *aber*/*denn* only in
+  front of a subject pronoun, with a complete clause before it and not directly after the finite
+  verb (the inverted particle: *Damals wollte aber er …*). *doch* and *jedoch* are left out: each
+  is also a particle or an adverb.
+* **`GermanNumberFormat`.** Units that cannot be anything else glued to a digit (*kg*, *MB*, *€*),
+  never a single letter (*5m*), never before a hyphen (*5kg-Packung*). The day of a date takes a
+  point only behind a preposition or article and in front of a capitalized month.
+* **`GermanQuotationMarks`: reported only where the text uses „…“ or »…« elsewhere.** Reporting every
+  straight pair was 945 reports in 13 813 sentences — most German on the web is typed with
+  straight quotes. One lint per mark, one character wide: a lint across the whole quotation
+  *swallowed* the spelling lints inside it, because `remove_overlaps_map` keeps one of two
+  overlapping lints (357 spelling reports disappeared in the first run).
+* **A dash rule was written and dropped.** A hyphen with a space on both sides became an en dash:
+  2898 reports, most of them broken compounds (*deutsch - dänischen*, *Trink - und Brauchwasser*)
+  where an en dash is the wrong advice.
+* **`GermanReasonIsBecause`, `GermanDoubleComparison`, `GermanDoublePassive`.** *Der Grund ist,
+  weil* is written as Rust, not Weir: a Weir pattern with a comma followed by a word did not match
+  (`(ist(,) weil)`), whatever the surrounding. *mehr besser* is not reported after *nicht*, *nie*,
+  *immer* … (*nicht mehr besser* is right). *wurde … worden* stays quiet before *sein*
+  (*wird gebaut worden sein*) and across a comma, *und* or *oder*.
+* **`GermanVerbSecond`.** A closed list of opening adverbs, a personal pronoun and a finite verb
+  that agrees with it. *weil* with the verb second is **still not reported** (spoken German).
+* **`GermanSplitCompound`** (*Kaffee Maschine*). Only an entry of the base dictionary counts as the
+  joined word, never one the compound checker builds. Guards, each from a false alarm: a number, a
+  quantity or a noun in front (*2 Jahre Zeit* → *Jahreszeit*), an adjective written with a capital
+  (*der Liebe Gott*), an article that fits only the first noun (*Der Katze Fell*), a day or month
+  first (*Sonntag Nachmittag*), fewer than four words (*Thomas Stahl (SPD)*). One false alarm is
+  left in the treebank (*in diesem Amt Leiter des …*, two objects).
+* **`GermanVerbPreposition`.** Eight verbs with their forms written out, and only the singular
+  articles that are unambiguous (*meinen* is the masculine accusative and the dative plural).
+  *warten auf dem Bahnsteig*, *an dem Abend* are adjuncts and out of reach by construction;
+  *warten*, *hoffen*, *achten* were left out for that reason.
+* **Weir:** *bereits schon*, *genau exakt*, *nichtsdestotrotz*, *sowieso*, *vielleicht*.
+
+Considered and **not** done: *Sie*/*Ihnen* capitalization (*sie* and *ihnen* mean "they" as well; no
+context short of a letter's salutation tells), *nicht keine* (often meant as litotes), *Das macht
+Sinn* (taste, not an error), *Der Mädchen spielt* (*der Mädchen* is a valid genitive plural), the
+auxiliary of motion verbs with a direction (*hat nach Berlin gefahren*; rare, and *hat gefahren*
+is right with an object).
+
 ## Development Guide
 
 ### Adding New Words
