@@ -38,8 +38,9 @@ pub fn rust_lint_group(dictionary: Arc<impl Dictionary + 'static>) -> LintGroup 
         german_suspended_hyphen::GermanSuspendedHyphen,
         german_typography::{GermanNumberFormat, GermanQuotationMarks},
         german_verb_cluster::GermanVerbCluster,
+        german_verb_second::GermanVerbSecond,
         german_wider_wieder::GermanWiderWieder,
-        german_wording::{GermanDoubleComparison, GermanReasonIsBecause},
+        german_wording::{GermanDoubleComparison, GermanDoublePassive, GermanReasonIsBecause},
         german_year_preposition::GermanYearPreposition,
     };
 
@@ -89,7 +90,12 @@ pub fn rust_lint_group(dictionary: Arc<impl Dictionary + 'static>) -> LintGroup 
     group.add("GermanNumberFormat", GermanNumberFormat);
     group.add("GermanQuotationMarks", GermanQuotationMarks);
     group.add("GermanReasonIsBecause", GermanReasonIsBecause);
+    group.add(
+        "GermanVerbSecond",
+        GermanVerbSecond::new(dictionary.clone()),
+    );
     group.add("GermanDoubleComparison", GermanDoubleComparison);
+    group.add("GermanDoublePassive", GermanDoublePassive);
     group.add("GermanSubordinateWordOrder", GermanSubordinateWordOrder);
     group.add("GermanVerbCluster", GermanVerbCluster::new());
     group.add("GermanSuspendedHyphen", GermanSuspendedHyphen);

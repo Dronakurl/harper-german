@@ -183,9 +183,67 @@ impl Linter for GermanDoubleComparison {
     }
 }
 
+/// *Das Haus wurde gebaut worden.* The passive has its auxiliary once: *wurde gebaut* or *ist
+/// gebaut worden*. *wurde* and *worden* in one clause is the two forms mixed.
+///
+/// Only *wurde* and *wurden*, and *worden* within the next three words, with no comma, *und*,
+/// *oder* or *sein* in between or behind: *wird gebaut worden sein* is the future perfect and
+/// right, and a comma ends the clause.
+#[derive(Default)]
+pub struct GermanDoublePassive;
+
+impl Linter for GermanDoublePassive {
+    fn lint(&mut self, document: &Document) -> Vec<Lint> {
+        let mut lints = Vec::new();
+        for sentence in document.iter_sentences() {
+            let tokens = sentence_tokens(sentence);
+            for (index, token) in tokens.iter().enumerate() {
+                if !is_word(token) || !["wurde", "wurden"].contains(&word(document, token).as_str())
+                {
+                    continue;
+                }
+                for offset in 1..=4 {
+                    let Some(candidate) = tokens.get(index + offset) else {
+                        break;
+                    };
+                    if !is_word(candidate) {
+                        break;
+                    }
+                    let text = word(document, candidate);
+                    if ["und", "oder", "sowie", "dass", "weil", "wenn", "ob"]
+                        .contains(&text.as_str())
+                    {
+                        break;
+                    }
+                    if text == "worden" {
+                        let followed_by_sein = tokens
+                            .get(index + offset + 1)
+                            .is_some_and(|t| is_word(t) && word(document, t).starts_with("sei"));
+                        if !followed_by_sein {
+                            lints.push(Lint {
+                                span: candidate.span,
+                                lint_kind: LintKind::Grammar,
+                                suggestions: vec![Suggestion::Remove],
+                                priority: 31,
+                                message: "»wurde« und »worden« stehen zusammen im Passiv nicht nebeneinander: entweder »wurde gebaut« oder »ist gebaut worden«.".to_owned(),
+                            });
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+        lints
+    }
+
+    fn description(&self) -> &str {
+        "Meldet »wurde … worden« in einem Satz."
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{GermanDoubleComparison, GermanReasonIsBecause};
+    use super::{GermanDoubleComparison, GermanDoublePassive, GermanReasonIsBecause};
     use crate::parsers::PlainGerman;
     use crate::spell::combined_german_dictionary;
     use harper_core::Document;
@@ -236,6 +294,25 @@ mod tests {
             "Das ist mehr als besser.",
         ] {
             assert_eq!(count(GermanDoubleComparison, text), 0, "{text}");
+        }
+    }
+
+    #[test]
+    fn the_passive_has_its_auxiliary_once() {
+        for text in [
+            "Das Haus wurde gebaut worden.",
+            "Die Häuser wurden vor Jahren verkauft worden.",
+        ] {
+            assert_eq!(count(GermanDoublePassive, text), 1, "{text}");
+        }
+        for text in [
+            "Das Haus wurde gebaut.",
+            "Das Haus ist gebaut worden.",
+            "Das Haus wird gebaut worden sein.",
+            "Das Haus wurde gebaut, nachdem es verkauft worden war.",
+            "Das Haus wurde gebaut und verkauft worden ist es nie.",
+        ] {
+            assert_eq!(count(GermanDoublePassive, text), 0, "{text}");
         }
     }
 }

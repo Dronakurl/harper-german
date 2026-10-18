@@ -132,7 +132,7 @@ impl<T: Dictionary> GermanSubjectVerbAgreement<T> {
     /// exist as entries of their own and carry generic verb flags, some of
     /// which are also affixes and would hand back a reading built for a
     /// different word.
-    fn verb_features(&self, word: &str, token: &Token) -> Vec<Features> {
+    pub(crate) fn verb_features(&self, word: &str, token: &Token) -> Vec<Features> {
         if let Some(features) = irregular_finite_verb(word) {
             return vec![features];
         }
