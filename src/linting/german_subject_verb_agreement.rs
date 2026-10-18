@@ -436,10 +436,20 @@ impl<T: Dictionary> GermanSubjectVerbAgreement<T> {
                 return None;
             }
             let head = trusted_head(document, tokens, phrase)?;
-            return self
-                .nouns
-                .is_surely_plural(&head)
-                .then_some(NumberSet::PLURAL);
+            if self.nouns.is_surely_plural(&head) || self.is_s_plural_of_a_singular(&head) {
+                return Some(NumberSet::PLURAL);
+            }
+            // *Test sind gut*: a single noun that opens the sentence and is surely a
+            // singular. Nowhere else, since a bare noun further in may be a fronted
+            // object (*Kuchen essen die Kinder*) and the guards for that sit behind
+            // the verb, where only a sentence-initial phrase has them all.
+            return (phrase.open == 0
+                && phrase.head == phrase.open
+                && self
+                    .nouns
+                    .gender_of(&head)
+                    .is_some_and(|(_, surely_singular)| surely_singular))
+            .then_some(NumberSet::SINGULAR);
         };
 
         let mut number = NumberSet::empty();
@@ -491,6 +501,22 @@ impl<T: Dictionary> GermanSubjectVerbAgreement<T> {
             .then_some(NumberSet::PLURAL)
     }
 
+    /// Is `head` the *-s* plural of a masculine or neuter noun that is surely a singular, so
+    /// that *Tests* is the plural of *Test*? Only for a noun that stands alone and opens the
+    /// sentence, where it cannot be the genitive (*des Tests*) that spells the same.
+    fn is_s_plural_of_a_singular(&self, head: &str) -> bool {
+        head.strip_suffix('s').is_some_and(|singular| {
+            singular.chars().count() >= 3
+                && matches!(
+                    self.nouns.gender_of(singular),
+                    Some((
+                        crate::morphology::Gender::Masculine | crate::morphology::Gender::Neuter,
+                        true
+                    ))
+                )
+        })
+    }
+
     /// Can the phrase only be a nominative, so that it is the subject whatever
     /// stands behind the verb? *Der Abruf fehlen ebenso wie die Möglichkeit*:
     /// *der* fits the masculine *Abruf* in the nominative alone, so *die
@@ -538,7 +564,32 @@ impl<T: Dictionary> GermanSubjectVerbAgreement<T> {
         document: &Document,
         lints: &mut Vec<Lint>,
     ) {
-        for phrase in noun_phrase::phrases(tokens, document) {
+        let mut phrases = noun_phrase::phrases(tokens, document);
+        // The chunker opens a phrase on a determiner or an adjective, so a lone noun that opens
+        // the sentence (*Test sind gut*, *Tests ist gut*) has none. Give it one, one word wide.
+        let bare_noun_opens = tokens.first().is_some_and(|first| {
+            first.kind.is_noun()
+                && document
+                    .get_span_content(&first.span)
+                    .first()
+                    .is_some_and(|c| c.is_uppercase())
+                && !first.kind.is_determiner()
+                && !first.kind.is_pronoun()
+                && !first.kind.is_preposition()
+                && !first.kind.is_conjunction()
+        }) && phrases.iter().all(|p| p.open != 0 && p.head != 0);
+        if bare_noun_opens {
+            phrases.insert(
+                0,
+                Phrase {
+                    open: 0,
+                    head: 0,
+                    end: 1,
+                },
+            );
+        }
+
+        for phrase in phrases {
             if !Self::opens_a_clause(tokens, phrase.open, document) {
                 continue;
             }
@@ -598,6 +649,32 @@ impl<T: Dictionary> GermanSubjectVerbAgreement<T> {
             // which of them it is. The cost is the *singular subject, plural
             // verb* direction — *das Kind spielen* goes unreported — and what
             // is kept is *die Kinder spielt*.
+            // A lone noun is the shortest of phrases, and what stands behind it in *-en* is
+            // as often an infinitive of a heading or a group (*Werbung schalten mit …*, *Zeit
+            // haben*) as a finite plural. Only the forms of *sein*, which has an infinitive
+            // of its own, are trusted there.
+            let lone_noun = bare_noun_opens
+                && phrase
+                    == (Phrase {
+                        open: 0,
+                        head: 0,
+                        end: 1,
+                    });
+            if lone_noun
+                && Self::word_at(tokens, phrase.end, document).ends_with("en")
+                && !["sind", "waren"].contains(
+                    &Self::word_at(tokens, phrase.end, document)
+                        .to_lowercase()
+                        .as_str(),
+                )
+            {
+                continue;
+            }
+            // *Probleme gebe es oft*: the fronted object, and the placeholder behind the verb.
+            if lone_noun && pronoun_subject_follows(tokens, document, phrase.end, &["es"]) {
+                continue;
+            }
+
             if Self::word_at(tokens, phrase.end, document).ends_with("en")
                 && !(number == NumberSet::SINGULAR
                     && Self::is_finite_plural(tokens, phrase.end, document))
@@ -642,9 +719,14 @@ impl<T: Dictionary> GermanSubjectVerbAgreement<T> {
             // correct German, while *viele Leute ist müde* is not. A singular
             // subject with a plural copula is therefore left alone, and the
             // reverse stays reportable.
+            //
+            // That only holds while there is a predicate to carry it. With a bare
+            // adjective behind the copula (*Der Test sind gut.*) nothing can be
+            // plural but the verb.
             if number == NumberSet::SINGULAR
                 && is_copula(&verb_text)
                 && readings.iter().any(|r| r.number == NumberSet::PLURAL)
+                && !predicate_is_a_bare_adjective(tokens, document, phrase.end)
             {
                 continue;
             }
@@ -1107,6 +1189,37 @@ impl<T: Dictionary> Linter for GermanSubjectVerbAgreement<T> {
 /// concession `es` gets in a subordinate clause, for the same reason — and it
 /// is only needed where the subject is a noun phrase, because a personal
 /// pronoun never yields the number this way.
+/// Is the copula at `verb_at` followed by nothing but a lower-case adjective that ends the
+/// sentence? *Der Test sind gut.* A declined adjective (*laufende Kosten*) or a noun phrase is
+/// a predicate that can carry the plural, and a bare one cannot.
+fn predicate_is_a_bare_adjective(tokens: &[&Token], document: &Document, verb_at: usize) -> bool {
+    let Some(next) = tokens.get(verb_at + 1) else {
+        return false;
+    };
+    let lowercase = document
+        .get_span_content(&next.span)
+        .first()
+        .is_some_and(|c| c.is_lowercase());
+    if !lowercase || !(next.kind.is_adjective() || next.kind.is_adverb()) {
+        return false;
+    }
+    // A declined adjective or a quantifier (*viele*, *anderen*) may be a plural predicate.
+    let word: String = document.get_span_content(&next.span).iter().collect();
+    if ["e", "en", "em", "er", "es"]
+        .iter()
+        .any(|end| word.ends_with(end))
+    {
+        return false;
+    }
+    match tokens.get(verb_at + 2) {
+        None => true,
+        Some(after) => matches!(
+            after.kind,
+            TokenKind::Punctuation(Punctuation::Period | Punctuation::Question | Punctuation::Bang)
+        ),
+    }
+}
+
 fn is_copula(word: &str) -> bool {
     const COPULAS: &[&str] = &[
         "ist", "sind", "war", "waren", "sei", "seien", "wäre", "wären", "bin", "bist", "seid",
@@ -1442,6 +1555,41 @@ mod tests {
             "Wenige Leute glaubt das.",
         ] {
             assert_eq!(lint_count(text), 1, "{text}");
+        }
+    }
+
+    /// A noun without an article that opens the sentence, and a copula with a bare adjective.
+    #[test]
+    fn a_bare_singular_noun_has_to_agree() {
+        for text in [
+            "Test sind gut.",
+            "Tests ist gut.",
+            "Der Test sind gut.",
+            "Das Problem sind schwierig.",
+            "Fahrrad sind billig.",
+        ] {
+            assert_eq!(lint_count(text), 1, "{text}");
+        }
+    }
+
+    #[test]
+    fn a_bare_noun_that_is_no_subject_or_a_predicate_with_a_noun_is_quiet() {
+        for text in [
+            "Test ist gut.",
+            "Wasser ist kalt.",
+            "Test und Training sind gut.",
+            "Kuchen essen die Kinder.",
+            "Zeit haben wir nicht.",
+            "Werbung schalten mit Facebook, Google & Co!",
+            "Probleme gebe es oft mit der Verlängerung.",
+            "Geld haben.",
+            "Hunger haben viele.",
+            "Ein weiteres Problem sind die langen Wege.",
+            "Das Problem sind laufende Kosten.",
+            "Hauptproblem sind die Kosten.",
+            "Das Ergebnis sind viele.",
+        ] {
+            assert_eq!(lint_count(text), 0, "{text}");
         }
     }
 
