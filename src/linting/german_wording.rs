@@ -241,9 +241,105 @@ impl Linter for GermanDoublePassive {
     }
 }
 
+/// *Die Tür ist gelegt wurden.* The perfect of the passive ends in *worden*, never in *wurde* or
+/// *wurden*: *ist gelegt worden*, *war besiegt worden*.
+///
+/// Two shapes, both clause-final and without a guess about the participle:
+///
+/// * *wurde(n)* right in front of a finite *sein* or *haben* (*Nachdem er besiegt wurden war*): a
+///   participle, and then no word that could be anything else, since a preterite is never
+///   followed by the auxiliary of the next verb without a comma.
+/// * a *sein* form (*ist*, *sind*, *war*, *waren*) earlier in the clause, a participle with the
+///   prefix *ge-* in front of *wurde(n)*, and the clause ending right behind it. A subordinator,
+///   relative pronoun, article-like *der/die/das* or coordinator in between starts another
+///   clause (*Das ist das Haus, das gebaut wurde*), and so does a comma.
+#[derive(Default)]
+pub struct GermanPassivePerfect;
+
+impl Linter for GermanPassivePerfect {
+    fn lint(&mut self, document: &Document) -> Vec<Lint> {
+        const BREAKS: &[&str] = &[
+            "dass", "weil", "wenn", "ob", "als", "da", "nachdem", "bevor", "obwohl", "damit",
+            "wie", "was", "wer", "welche", "welcher", "welches", "der", "die", "das", "und",
+            "oder", "aber", "sondern", "denn", "wo", "wann", "warum", "während", "seit", "seitdem",
+            "ehe", "bis", "falls", "sobald", "solange", "sodass",
+        ];
+        const AUXILIARIES: &[&str] = &[
+            "war", "waren", "ist", "sind", "hat", "haben", "hatte", "hatten", "wäre", "wären",
+            "sei", "seien", "seid",
+        ];
+        let mut lints = Vec::new();
+        for sentence in document.iter_sentences() {
+            let tokens = sentence_tokens(sentence);
+            for (index, token) in tokens.iter().enumerate() {
+                let form = word(document, token);
+                if index == 0
+                    || !is_word(token)
+                    || !["wurde", "wurden"].contains(&form.as_str())
+                    || !is_word(tokens[index - 1])
+                {
+                    continue;
+                }
+                let participle = word(document, tokens[index - 1]);
+                // *Als ich geboren wurde war ich jung* only lacks its comma.
+                if participle == "geboren" {
+                    continue;
+                }
+                let participle_shaped = participle.chars().count() >= 5
+                    && (participle.ends_with('t') || participle.ends_with("en"));
+                let next = tokens.get(index + 1);
+                let followed_by_auxiliary = next.is_some_and(|t| {
+                    is_word(t) && AUXILIARIES.contains(&word(document, t).as_str())
+                });
+                let clause_ends = next.is_none_or(|t| !is_word(t));
+
+                let wrong = if followed_by_auxiliary {
+                    participle_shaped
+                } else if clause_ends && participle.starts_with("ge") && participle_shaped {
+                    // The earlier *sein* form, with no clause boundary between it and the participle.
+                    let mut found = false;
+                    for at in (0..index - 1).rev() {
+                        let earlier = tokens[at];
+                        if !is_word(earlier) {
+                            break;
+                        }
+                        let text = word(document, earlier);
+                        if BREAKS.contains(&text.as_str()) {
+                            break;
+                        }
+                        if ["ist", "sind", "war", "waren"].contains(&text.as_str()) {
+                            found = index - at <= 8;
+                            break;
+                        }
+                    }
+                    found
+                } else {
+                    false
+                };
+                if wrong {
+                    lints.push(Lint {
+                        span: token.span,
+                        lint_kind: LintKind::Grammar,
+                        suggestions: vec![Suggestion::ReplaceWith("worden".chars().collect())],
+                        priority: 31,
+                        message: "Das Perfekt des Passivs endet auf »worden«: »ist gebaut worden«, nicht »ist gebaut wurde«.".to_owned(),
+                    });
+                }
+            }
+        }
+        lints
+    }
+
+    fn description(&self) -> &str {
+        "Meldet »wurde« und »wurden« statt »worden« im Perfekt und Plusquamperfekt des Passivs."
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{GermanDoubleComparison, GermanDoublePassive, GermanReasonIsBecause};
+    use super::{
+        GermanDoubleComparison, GermanDoublePassive, GermanPassivePerfect, GermanReasonIsBecause,
+    };
     use crate::parsers::PlainGerman;
     use crate::spell::combined_german_dictionary;
     use harper_core::Document;
@@ -313,6 +409,34 @@ mod tests {
             "Das Haus wurde gebaut und verkauft worden ist es nie.",
         ] {
             assert_eq!(count(GermanDoublePassive, text), 0, "{text}");
+        }
+    }
+
+    #[test]
+    fn the_perfect_of_the_passive_ends_in_worden() {
+        for text in [
+            "Die Tür ist auf den Boden gelegt wurden.",
+            "Nachdem er besiegt wurden war, gab er auf.",
+            "Das Haus ist vor Jahren gebaut wurde.",
+            "Die Bilder sind vom Künstler gemalt wurden.",
+            "Das Paket hat er erst, nachdem es verschickt wurde war.",
+        ] {
+            assert_eq!(count(GermanPassivePerfect, text), 1, "{text}");
+        }
+        for text in [
+            "Die Tür ist auf den Boden gelegt worden.",
+            "Das Haus wurde gebaut.",
+            "Das Haus ist alt und wurde gebaut.",
+            "Ich weiß, dass das Haus gebaut wurde.",
+            "Es ist klar dass es gebaut wurde.",
+            "Das ist das Haus das gebaut wurde.",
+            "Sie ist die Frau die gerufen wurde.",
+            "Er war müde, weil er gestern gerufen wurde.",
+            "Er wurde gerufen und war da.",
+            "Es war so, wie es gebaut wurde.",
+            "Als ich vor 30 Jahren geboren wurde war ich noch jung.",
+        ] {
+            assert_eq!(count(GermanPassivePerfect, text), 0, "{text}");
         }
     }
 }

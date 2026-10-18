@@ -1,0 +1,17 @@
+# "eine Millionen" agrees with nothing: the numeral noun is singular behind "eine" and plural
+# behind a number, "zwei Millionen". Hyphenated compounds ("Millionen-Show") are a token of
+# their own and never reach this pattern.
+expr main [(eine millionen), (einer millionen)]
+
+let message "Hinter »eine« steht »Million« im Singular."
+let description "Ersetzt »eine Millionen« durch »eine Million«."
+let kind "Grammar"
+let becomes "eine Million"
+let strategy "MatchCase"
+
+test "Sie verdient eine Millionen Euro im Jahr." "Sie verdient eine Million Euro im Jahr."
+test "Das Haus kostet eine Millionen." "Das Haus kostet eine Million."
+
+allows "Sie verdient eine Million Euro im Jahr."
+allows "Es kostet zwei Millionen Euro."
+allows "Eine von vielen Millionen Fans."

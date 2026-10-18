@@ -1,0 +1,13 @@
+# "eine Milliarden" - see EineMillionen.
+expr main (eine milliarden)
+
+let message "Hinter »eine« steht »Milliarde« im Singular."
+let description "Ersetzt »eine Milliarden« durch »eine Milliarde«."
+let kind "Grammar"
+let becomes "eine Milliarde"
+let strategy "MatchCase"
+
+test "Der Konzern investiert eine Milliarden Euro." "Der Konzern investiert eine Milliarde Euro."
+
+allows "Der Konzern investiert eine Milliarde Euro."
+allows "Es kostet drei Milliarden Euro."

@@ -2433,3 +2433,29 @@ For more details, see the main [Language Support README](../README.md).
   looks like an adjective too (*Kurzgeschichten*, *Weißwein*,
   *Sicherungskonzept*, *Neubauwohnungen*), and the first version reported all of
   them.
+
+## Eleventh round: what the old branch and the LanguageTool misses still offered
+
+Looked up first in `feature/german-language-support` (README "Known Gaps", the rounds, the
+reverted attempts), then measured on the 16 042 sentences. Errors found 1973 → 1988, false-alarm
+sentences 570 → 570, 16 new reports, every one right.
+
+* `GermanPassivePerfect`: *ist gelegt wurden*, *besiegt wurden war* → *worden*. Not after
+  *geboren* (*als ich geboren wurde war ich jung* only lacks a comma), not past a subordinator,
+  relative pronoun or coordinator.
+* `GermanDativePlural` reads a small count in digits (2–99) and *nach* in front of one:
+  *Nach 9 Monate*. Years stay out (*seit 1998 Feldversuche*).
+* `GermanFixedNominalization`: *im stillen*, *im dunkeln*, *im freien*, *im geheimen*, *in
+  flammen*, *auf verlangen*, *sein/ihr bestes*.
+* Weir: *eine Millionen*, *eine Milliarden*.
+* `GermanCoordinatingComma`: *Sehr geehrte Frau Müller vielen Dank* (a closed list of what may
+  follow).
+
+Tried and dropped, because the corpus showed false alarms:
+
+* *als erstes/zweites/letztes* → capital: *als erstes und einziges Unternehmen*, *als drittes
+  und letztes Schiff* are adjectives (6 of 8 reports wrong).
+* *zu Liebe* → *zuliebe*: *uns zu Liebe, Gemeinschaft, Frieden führen*, *zu Liebe statt zu
+  Hass* are the noun (2 of 7 wrong). Weir cannot look at what follows.
+* A reflexive check (*ich freue sich*): no true hit in the corpus, and *In ihr befindet sich*
+  shows how *ihr* defeats it. *nicht kein* likewise has no hit outside a battery.

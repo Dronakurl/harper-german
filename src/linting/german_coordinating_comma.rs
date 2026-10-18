@@ -28,6 +28,27 @@ const AFTER_THE_NAME: &[&str] = &[
     "heute",
 ];
 
+/// What a formal salutation (*Sehr geehrte Frau Müller*) may be followed by, without its comma.
+const AFTER_THE_SALUTATION: &[&str] = &[
+    "vielen",
+    "ich",
+    "wir",
+    "hiermit",
+    "anbei",
+    "danke",
+    "bezugnehmend",
+    "herzlichen",
+    "besten",
+    "leider",
+    "gerne",
+    "zunächst",
+    "aufgrund",
+    "bitte",
+    "unter",
+    "im",
+    "für",
+];
+
 const GREETINGS: &[&str] = &[
     "hallo", "hi", "hey", "moin", "servus", "liebe", "lieber", "liebes",
 ];
@@ -174,6 +195,40 @@ impl Linter for GermanCoordinatingComma {
                 }
             }
 
+            // *Sehr geehrte Frau Müller vielen Dank*: the salutation is a run of capitalized words
+            // (and *und*: *Damen und Herren*), then the letter goes on in small letters.
+            if tokens.len() >= 4
+                && Self::word(tokens[0], document) == "sehr"
+                && ["geehrte", "geehrter", "geehrtes"]
+                    .contains(&Self::word(tokens[1], document).as_str())
+            {
+                let capitalized = |token: &Token| {
+                    Self::is_word(token)
+                        && document
+                            .get_span_content(&token.span)
+                            .first()
+                            .is_some_and(|c| c.is_uppercase())
+                };
+                let mut end = 2;
+                while end < tokens.len()
+                    && end < 8
+                    && (capitalized(tokens[end]) || Self::word(tokens[end], document) == "und")
+                {
+                    end += 1;
+                }
+                if end >= 3
+                    && end < tokens.len()
+                    && capitalized(tokens[end - 1])
+                    && Self::is_word(tokens[end])
+                    && AFTER_THE_SALUTATION.contains(&Self::word(tokens[end], document).as_str())
+                {
+                    lints.push(Self::insert_comma_after(
+                        tokens[end - 1],
+                        "Nach der Anrede steht ein Komma.".to_owned(),
+                    ));
+                }
+            }
+
             // Greeting, name, and then the rest of the sentence.
             if tokens.len() >= 3
                 && Self::is_word(tokens[0])
@@ -269,6 +324,9 @@ mod tests {
             "Hallo Peter wie geht es dir?",
             "Liebe Anna ich hoffe es geht dir gut.",
             "Hi Tom danke für die Hilfe.",
+            "Sehr geehrte Frau Müller vielen Dank für Ihre Nachricht.",
+            "Sehr geehrte Damen und Herren hiermit bewerbe ich mich.",
+            "Sehr geehrter Herr Schmidt ich schreibe Ihnen.",
         ] {
             assert_eq!(lint_count(text), 1, "{text}");
         }
@@ -276,6 +334,9 @@ mod tests {
             "Hallo Peter, wie geht es dir?",
             "Hallo Welt.",
             "Hallo Peter Müller kommt später.",
+            "Sehr geehrte Frau Müller, vielen Dank für Ihre Nachricht.",
+            "Sehr geehrte Damen und Herren, hiermit bewerbe ich mich.",
+            "Sehr geehrte Kunden sind willkommen.",
         ] {
             assert_eq!(lint_count(text), 0, "{text}");
         }

@@ -49,6 +49,16 @@ const FIXED_NOMINALIZATIONS: &[(&[&str], &str, &str, &[&str])] = &[
     (&["des"], "öfteren", "Öfteren", &[]),
     (&["des"], "weiteren", "Weiteren", &[]),
     (&["fürs"], "erste", "Erste", &[]),
+    (&["im"], "stillen", "Stillen", &[]),
+    (&["im"], "dunkeln", "Dunkeln", &[]),
+    (&["im"], "verborgenen", "Verborgenen", &[]),
+    (&["im"], "geheimen", "Geheimen", &[]),
+    (&["im"], "freien", "Freien", &[]),
+    (&["im"], "ungewissen", "Ungewissen", &[]),
+    (&["in"], "flammen", "Flammen", &[]),
+    (&["auf"], "verlangen", "Verlangen", &[]),
+    (&["sein"], "bestes", "Bestes", &[]),
+    (&["ihr"], "bestes", "Bestes", &[]),
     (&["auf", "dem"], "laufenden", "Laufenden", &[]),
     (&["seit", "geraumer"], "zeit", "Zeit", &[]),
     // A pair: both halves are capitalized, and each half is only the
@@ -368,6 +378,10 @@ mod tests {
             ("Sie hielten ihn auf dem laufenden.", "laufenden"),
             ("Im einzelnen sind das drei Punkte.", "einzelnen"),
             ("Fürs erste reicht das.", "erste"),
+            ("Ich sitze hier im stillen.", "stillen"),
+            ("Das Haus steht in flammen.", "flammen"),
+            ("Auf verlangen des Zeugen wurde vertagt.", "verlangen"),
+            ("Sie hat immer ihr bestes getan.", "bestes"),
         ] {
             assert_eq!(flagged(text), vec![word.to_string()], "in {text:?}");
         }
@@ -385,6 +399,10 @@ mod tests {
         );
         for text in [
             "Im Großen und Ganzen bin ich zufrieden.",
+            "Im stillen Zimmer sitzt er.",
+            "Als zweites und letztes Schiff kam die Britannic.",
+            "Als erstes nach dem Krieg wurde es eingeführt.",
+            "Das ist ihr bestes Kleid.",
             "Im großen Saal stehen Schuhe.",
             "Im großen und kleinen Saal stehen Schuhe.",
             "Im ganzen Land gibt es Schuhmacher.",

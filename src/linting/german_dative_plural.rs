@@ -124,7 +124,15 @@ impl GermanDativePlural {
         let mut counted = false;
         while let Some(token) = words.get(at) {
             let word = Self::lower(token, document);
-            let number = (NUMERALS.contains(&word) && !word.starts_with("ein"))
+            // A small count in digits is as sure a plural as the word: *nach 9 Monate*. Not 1,
+            // and not from 100 on, which is mostly a year (*seit 1998 Feldversuche*).
+            let small_count = matches!(token.kind, TokenKind::Number(_))
+                && document
+                    .get_span_content_str(&token.span)
+                    .parse::<u32>()
+                    .is_ok_and(|n| (2..100).contains(&n));
+            let number = small_count
+                || (NUMERALS.contains(&word) && !word.starts_with("ein"))
                 // *mit vielen Leute*, *bei beiden Kinder*: the plural
                 // quantifiers in their dative form.
                 || word
@@ -238,6 +246,15 @@ impl Linter for GermanDativePlural {
                     }
                     closed_head_after(document, &words, &phrases, at, true)
                 } else if let Some(conjunction) = Self::governs_only_the_dative(&word)
+                    // *nach* is a postposition as often (*meiner Meinung nach*), but a number
+                    // right behind it makes it the preposition: *nach 9 Monate*.
+                    .or_else(|| {
+                        (word == "nach"
+                            && words
+                                .get(at + 1)
+                                .is_some_and(|next| matches!(next.kind, TokenKind::Number(_))))
+                        .then_some(false)
+                    })
                     && words.get(at + 1).is_some_and(|next| {
                         determiner_readings(&Self::lower(next, document)).is_none()
                     })
@@ -290,6 +307,8 @@ mod tests {
             ("Ich spiele mit den Kinder.", "Kindern"),
             ("Ich gehe mit meinen Freunde ins Kino.", "Freunden"),
             ("Ich wohne seit drei Jahre in Berlin.", "Jahren"),
+            ("Nach 9 Monate ist es soweit.", "Monaten"),
+            ("Er wohnt seit 12 Jahre in Berlin.", "Jahren"),
             ("Ich habe es den Kinder gegeben.", "Kindern"),
             ("Ich spreche mit vielen Leute.", "Leuten"),
             ("Von zwei Freunde habe ich das gehört.", "Freunden"),
@@ -328,6 +347,11 @@ mod tests {
             "Seit drei Jahre vergangen sind, ist alles anders.",
             "Die Befehle sind viel zu komplexen Befehlssätze.",
             "Er bietet seit 1998 Feldversuche an.",
+            "Nach 9 Monaten ist es soweit.",
+            "Er wohnt seit 1 Jahr hier.",
+            "Das Spiel dauert nach 90 Minuten noch an.",
+            "Wir haben 9 Monate gewartet.",
+            "Es gibt von 5 Teilnehmern nur einen.",
             "Bis zu sieben Geräte sind erlaubt.",
             "Der Fehler dürfte nur selten zu Tage treten.",
             "Das verdient meiner Meinung nach fünf Sterne.",
