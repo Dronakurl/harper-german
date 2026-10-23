@@ -36,19 +36,19 @@ use harper_core::{Document, Token, TokenKind};
 /// in one command.
 const FOREIGN_FUNCTION_WORDS: &[&str] = &[
     // English
-    "the", "of", "and", "for", "with", "from", "their", "its", "his", "her", "they", "these",
-    "those", "which", "that", "about", "into", "upon", "between", "among", "were", "been", "being",
-    "there", "when", "where", "would", "could", "should", "to", "is", "as", "at", "by", "this",
-    "are", "it", "have", "had", "but", "we", "you", "can", "more", "than", "may", "must", "shall",
-    "our", "your", "on", "or", "what", "how", "them", "us", "him", "he", "she", "if", "who",
-    "whom", "whose", "why", "very", "much", "many", "only", "some", "any", "each", "through",
-    "during", "against", "because", "while", "both", "then", "other", "others", "own", "do",
-    "does", "did", // French
-    "la", "le", "les", "du", "de", "au", "aux", "et", "une", "dans", "sur", "pour", "avec", "sans",
+    "the", "of", "and", "for", "with", "from", "their", "its", "his", "they", "these", "those",
+    "which", "that", "about", "into", "upon", "between", "among", "were", "been", "being", "there",
+    "when", "where", "would", "could", "should", "to", "is", "as", "at", "by", "this", "are", "it",
+    "have", "had", "but", "we", "you", "can", "more", "than", "may", "must", "shall", "our",
+    "your", "on", "or", "what", "how", "them", "us", "him", "he", "she", "if", "who", "whom",
+    "whose", "why", "very", "much", "many", "only", "some", "any", "each", "through", "during",
+    "against", "because", "while", "both", "then", "other", "others", "own", "do", "does",
+    "did", // French
+    "la", "le", "les", "de", "au", "aux", "et", "une", "dans", "sur", "pour", "avec", "sans",
     "chez", "leur", "ses", "son", "sa", "cette", "ces", "qui", "que",
     // Italian / Spanish / Portuguese
     "della", "delle", "degli", "dei", "nel", "nella", "il", "lo", "gli", "una", "col", "por",
-    "para", "los", "las", "del", "el", "uma", "dos", // Latin
+    "para", "las", "del", "el", "uma", "dos", // Latin
     "apud", "atque", "quae", "quod", "cum", "sive", "seu", "ratione", "liber", "libri",
 ];
 
@@ -113,9 +113,13 @@ pub fn in_foreign_stretch(
         return false;
     }
 
-    let mut function_words = 0;
+    // The word itself counts too: *of* in *Institute of Technology* is as good a sign as one
+    // next to it. A learner writes *Du must* or *for die nächste* among misspelled German words,
+    // though, so an unknown word then counts only with a capital, as in a name or a title.
+    let itself = FOREIGN_FUNCTION_WORDS.contains(&lowercase_of(tokens[index], document).as_str());
+    let mut function_words = usize::from(itself);
     let mut unknown_words = 0;
-    let mut adjacent_function_word = false;
+    let mut adjacent_function_word = itself;
 
     let mut visit = |token: &Token, distance: usize| {
         if !matches!(token.kind, TokenKind::Word(_)) {
@@ -124,7 +128,13 @@ pub fn in_foreign_stretch(
         if FOREIGN_FUNCTION_WORDS.contains(&lowercase_of(token, document).as_str()) {
             function_words += 1;
             adjacent_function_word |= distance == 1;
-        } else if token.kind.is_oov() {
+        } else if token.kind.is_oov()
+            && (!itself
+                || document
+                    .get_span_content(&token.span)
+                    .first()
+                    .is_some_and(|c| c.is_uppercase()))
+        {
             unknown_words += 1;
         }
     };
@@ -163,7 +173,7 @@ mod tests {
         "also", "all", "alle", "will", "war", "man", "in", "an", "was", "not", "such", "per",
         "pro", "art", "arm", "band", "bad", "first", "last", "after", "before", "out", "down",
         "am", "made", "make", "most", "same", "has", "be", "list", "mode", "so", "wer", "hat",
-        "bald", "fast", "gift", "rat", "ohne", "bin", "sie", "wie", "sind",
+        "bald", "fast", "gift", "rat", "ohne", "bin", "sie", "wie", "sind", "du", "her", "los",
     ];
 
     #[test]

@@ -164,20 +164,26 @@ mod tests {
         let reported = misspelled("Er kaufte die Zeitung The Guardian in Berlin.");
 
         assert!(
-            reported.iter().any(|w| w == "The"),
+            reported.iter().any(|w| w == "Guardian"),
             "'die Zeitung The Guardian' is a German sentence; reported: {reported:?}"
         );
     }
 
-    /// One foreign function word is not a stretch.
+    /// One foreign function word among German words is not a stretch: a learner writes *for*
+    /// for *für*.
     #[test]
     fn a_single_foreign_function_word_is_not_enough() {
+        let reported = misspelled("Ich habe das Buch for meinen Freund gekauft.");
+
+        assert_eq!(reported, ["for"]);
+    }
+
+    /// An English title is: *The* and *of* are evidence of their own.
+    #[test]
+    fn an_english_title_is_a_stretch() {
         let reported = misspelled("Der Titel lautet The Origin of Species.");
 
-        assert!(
-            !reported.is_empty(),
-            "two words of English do not silence the rule; reported: {reported:?}"
-        );
+        assert!(reported.is_empty(), "reported: {reported:?}");
     }
 
     /// A misspelling at the very start of a German sentence.
