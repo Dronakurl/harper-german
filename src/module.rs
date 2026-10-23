@@ -51,6 +51,7 @@ pub fn rust_lint_group(
             GermanDoubleComparison, GermanDoublePassive, GermanPassivePerfect,
             GermanReasonIsBecause,
         },
+        german_written_together::GermanWrittenTogether,
         german_year_preposition::GermanYearPreposition,
     };
 
@@ -84,6 +85,7 @@ pub fn rust_lint_group(
     group.add("GermanFillerWords", GermanFillerWords::default());
     group.add("GermanRecommendedFusion", GermanRecommendedFusion);
     group.add("GermanWiderWieder", GermanWiderWieder);
+    group.add("GermanWrittenTogether", GermanWrittenTogether);
     group.add("GermanRepeatedWords", GermanRepeatedWords);
     group.add("GermanSplitParticle", GermanSplitParticle);
     group.add("GermanCommonTypos", GermanCommonTypos);

@@ -37,6 +37,7 @@ pub mod german_verb_preposition;
 pub mod german_verb_second;
 pub mod german_wider_wieder;
 pub mod german_wording;
+pub mod german_written_together;
 pub mod german_year_preposition;
 pub mod weir_rules;
 
