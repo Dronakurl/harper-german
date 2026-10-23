@@ -1,6 +1,7 @@
 //! Checks that a determiner carries the gender of the noun it introduces.
 
 use crate::morphology::Gender;
+use crate::spell::lexical_classes::NUMERALS;
 use harper_core::{
     Document, Token, TokenKind, TokenStringExt,
     linting::{Lint, LintKind, Linter, Suggestion},
@@ -222,6 +223,67 @@ impl GermanDeterminerGender {
                 && COPULAS.contains(&previous_word.as_str()))
     }
 
+    /// The phrase is no article with its noun, whatever the noun's gender:
+    ///
+    /// * *vor allem Kontinuität*, *trotz allem Ärger*: *allem* is the pronoun of the idiom;
+    /// * *das Gleiche*, *die ersten Zehn*: the head is an adjective or a numeral used as a
+    ///   noun, which takes the gender it is given;
+    /// * *Ergibt das tatsächlich Sinn?*, *doch die gefielen ihm nicht*: an adverb or a verb
+    ///   between the two makes the first word a pronoun.
+    fn is_not_a_gendered_noun(
+        words: &[&Token],
+        phrase: &Phrase,
+        text: &str,
+        document: &Document,
+    ) -> bool {
+        let lower = text.to_lowercase();
+        if lower == "allem"
+            && phrase.open.checked_sub(1).is_some_and(|at| {
+                [
+                    "vor", "trotz", "bei", "nach", "von", "mit", "aus", "zu", "unter",
+                ]
+                .contains(&noun_phrase::lowercase_of(words[at], document).as_str())
+            })
+        {
+            return true;
+        }
+        let head = words[phrase.head];
+        let head_lower = noun_phrase::lowercase_of(head, document);
+        let declined = |word: &str| {
+            ["e", "en", "er", "es", "em"]
+                .iter()
+                .any(|ending| word.ends_with(ending))
+        };
+        // *das Gleiche*, not *das Wert*: an adjective with its ending.
+        if (head.kind.is_adjective() && declined(&head_lower)) || NUMERALS.contains(&head_lower) {
+            return true;
+        }
+        // Only a demonstrative stands alone like that: *ein neu Wohnung* is the article.
+        if !matches!(
+            lower.as_str(),
+            "das" | "die" | "der" | "dies" | "diese" | "dieser" | "dieses"
+        ) {
+            return false;
+        }
+        // An undeclined word that modifies no adjective cannot stand inside the phrase: *das
+        // sehr große Haus* has its degree word, *das tatsächlich Sinn* has none.
+        (phrase.open + 1..phrase.head).any(|at| {
+            let word = words[at];
+            let lower = noun_phrase::lowercase_of(word, document);
+            let lowercase = document
+                .get_span_content(&word.span)
+                .first()
+                .is_some_and(|c| c.is_lowercase());
+            lowercase
+                && !declined(&lower)
+                && !word.kind.is_noun()
+                && (word.kind.is_adverb() || word.kind.is_verb() || word.kind.is_adjective())
+                && !words
+                    .get(at + 1)
+                    .is_some_and(|next| at + 1 != phrase.head && next.kind.is_adjective())
+        })
+    }
+
     /// German name of a gender, for the message.
     fn label(gender: Gender) -> &'static str {
         match gender {
@@ -340,9 +402,20 @@ impl Linter for GermanDeterminerGender {
                 let Some(head) = trusted_head(document, &words, phrase) else {
                     continue;
                 };
+                if Self::is_not_a_gendered_noun(&words, phrase, &text, document) {
+                    continue;
+                }
                 let Some((gender, surely_singular)) = self.nouns.gender_of(&head) else {
                     continue;
                 };
+                // *in diesem Falle*, *im Hause*: the old dative *-e* of a masculine or neuter
+                // noun, not the feminine *Falle*.
+                if let Some(stem) = head.strip_suffix('e')
+                    && let Some((stem_gender, _)) = self.nouns.gender_of(stem)
+                    && fits(readings, stem_gender)
+                {
+                    continue;
+                }
                 // *Wir verlieren alle Respekt*, *Alle kamen erst im zweiten
                 // Anlauf*: *alle* and *alles* float away from the noun they
                 // quantify, and a singular noun behind them is never theirs.
@@ -592,6 +665,25 @@ mod tests {
 
     /// *das* in front of a predicate noun is the subject pronoun, and a head
     /// cut short by a hyphen, a dash or a gender sign is no head at all.
+    #[test]
+    fn idioms_nominalizations_and_pronouns_are_not_checked() {
+        for text in [
+            "In diesem Falle kann Ihre Bewerbung warten.",
+            "Er braucht Zeit und vor allem Kontinuität.",
+            "Ungefähr das Gleiche gilt für Schäden.",
+            "Sie kamen unter die ersten Zehn.",
+            "Ergibt das tatsächlich Sinn?",
+        ] {
+            assert!(reported(text).is_empty(), "{text}: {:?}", reported(text));
+        }
+        assert_eq!(reported("Die Auto durchbrach ein Geländer."), ["Die"]);
+        assert_eq!(
+            reported("Also wird das Wert eines Diploms kleiner."),
+            ["das"]
+        );
+        assert_eq!(reported("Jetzt brauche ich ein neu Wohnung."), ["ein"]);
+    }
+
     #[test]
     fn a_pronoun_or_a_cut_head_is_not_checked() {
         for text in [
