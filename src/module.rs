@@ -5,7 +5,12 @@ use std::sync::Arc;
 use harper_core::linting::LintGroup;
 use harper_core::spell::Dictionary;
 
-pub fn rust_lint_group(dictionary: Arc<impl Dictionary + 'static>) -> LintGroup {
+use crate::dialects::GermanDialect;
+
+pub fn rust_lint_group(
+    dictionary: Arc<impl Dictionary + 'static>,
+    dialect: GermanDialect,
+) -> LintGroup {
     use crate::linting::{
         german_absolute_superlative::GermanAbsoluteSuperlative,
         german_adjective_form::GermanAdjectiveForm,
@@ -62,7 +67,7 @@ pub fn rust_lint_group(dictionary: Arc<impl Dictionary + 'static>) -> LintGroup 
 
     group.add(
         "GermanSpellCheck",
-        GermanSpellCheck::new(dictionary.clone()),
+        GermanSpellCheck::for_dialect(dictionary.clone(), dialect),
     );
     group.add(
         "GermanNounCapitalization",

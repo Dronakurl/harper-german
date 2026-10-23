@@ -1,5 +1,6 @@
-use hashbrown::HashMap;
+use hashbrown::{HashMap, HashSet};
 
+use crate::dialects::GermanDialect;
 use crate::linting::german_foreign_stretch;
 use crate::linting::german_relative_clause_comma::GermanRelativeClauseComma;
 use crate::spell::compound_checker::{
@@ -295,6 +296,21 @@ fn is_non_lexical_token(word: &[char]) -> bool {
         return true;
     }
 
+    // Harper joins single letters with their stops into one token: *z. B.*,
+    // *d. h.*, *e. V.*, *u.a.*, the initial in *Beate H.*, the caption *(l.)*.
+    if word.len() >= 2
+        && word
+            .chunks(2)
+            .all(|pair| matches!(pair, [letter, '.'] if letter.is_alphabetic()))
+    {
+        return true;
+    }
+
+    // And these with their stop and the space inside: *vs.*, *et al.*
+    if matches!(word, ['v', 's', '.'] | ['e', 't', ' ', 'a', 'l', '.']) {
+        return true;
+    }
+
     // Anything with a digit in it is an identifier, not a word ("O2", "S12").
     if word.iter().any(char::is_ascii_digit) {
         return true;
@@ -325,6 +341,8 @@ where
     T: Dictionary,
 {
     dictionary: T,
+    /// Swiss German writes *ss* where the others write *ß* (*Strasse*, *heisst*).
+    swiss: bool,
 }
 
 impl<T: Dictionary> GermanSpellCheck<T> {
@@ -408,7 +426,147 @@ impl<T: Dictionary> GermanSpellCheck<T> {
     }
 
     pub fn new(dictionary: T) -> Self {
-        Self { dictionary }
+        Self::for_dialect(dictionary, GermanDialect::Standard)
+    }
+
+    pub fn for_dialect(dictionary: T, dialect: GermanDialect) -> Self {
+        Self {
+            dictionary,
+            swiss: dialect == GermanDialect::Swiss,
+        }
+    }
+
+    /// Is `word` a name written in lower case (*putin*, *jörg*)? The dictionary looks words up
+    /// whatever their case, and a name is a word only with its capital: in lower case it is far
+    /// more often a typo (*reul* for *reue*).
+    fn is_lowercase_name(&self, word: &[char]) -> bool {
+        // A noun and nothing else: *draus* is an adverb too.
+        let only_a_noun = |word: &[char], proper: bool| {
+            self.dictionary.get_word_metadata(word).is_some_and(|m| {
+                m.noun
+                    .as_ref()
+                    .is_some_and(|n| !proper || n.is_proper == Some(true))
+                    && m.verb.is_none()
+                    && m.adjective.is_none()
+                    && m.adverb.is_none()
+                    && m.pronoun.is_none()
+                    && m.determiner.is_none()
+                    && m.conjunction.is_none()
+                    && !m.preposition
+            })
+        };
+        let is_name =
+            |word: &[char]| !self.dictionary.contains_exact_word(word) && only_a_noun(word, true);
+        // The genitive (*grosses* from *Grosse*) does not carry the name's reading.
+        word.first().is_some_and(|c| c.is_lowercase())
+            && (is_name(word)
+                || (only_a_noun(word, false) && word.strip_suffix(&['s']).is_some_and(is_name)))
+    }
+
+    /// Is `word` the Swiss spelling of a word written with *ß* elsewhere?
+    /// Every *ss* may stand for *ß* or for itself (*Schlossstrasse*).
+    fn is_swiss_spelling(&self, word: &[char]) -> bool {
+        let seams: Vec<usize> = (1..word.len())
+            .filter(|&at| word[at - 1..=at] == ['s', 's'])
+            .collect();
+        if seams.is_empty() || seams.len() > 4 {
+            return false;
+        }
+        (1..1u32 << seams.len()).any(|choice| {
+            let mut spelled = Vec::with_capacity(word.len());
+            let mut at = 0;
+            while at < word.len() {
+                if let Some(bit) = seams.iter().position(|&seam| seam == at + 1)
+                    && choice & (1 << bit) != 0
+                {
+                    spelled.push('ß');
+                    at += 2;
+                } else {
+                    spelled.push(word[at]);
+                    at += 1;
+                }
+            }
+            self.dictionary.contains_word(&spelled) || self.try_compound_word_check(&spelled)
+        })
+    }
+
+    /// The words of `tokens` that are part of a dictionary entry written with
+    /// a hyphen: *Know-how*, *Play-offs*, *baden-württembergischen*,
+    /// *Dipl.-Ing.* Harper splits these at the hyphen, and *how* or
+    /// *württembergischen* alone are no German words. The entry has to match
+    /// in its own case, but for the first letter: *Play-Offs* is a misspelling.
+    fn in_hyphenated_entries(&self, tokens: &[&Token], document: &Document) -> HashSet<usize> {
+        let mut known = HashSet::new();
+        let touch = |at: usize| {
+            tokens
+                .get(at + 1)
+                .is_some_and(|next| tokens[at].span.end == next.span.start)
+        };
+        let is_word = |at: usize| {
+            tokens
+                .get(at)
+                .is_some_and(|t| matches!(t.kind, TokenKind::Word(_)))
+        };
+        let is_period = |at: usize| {
+            tokens
+                .get(at)
+                .is_some_and(|t| matches!(t.kind, TokenKind::Punctuation(Punctuation::Period)))
+        };
+        let is_hyphen = |at: usize| tokens.get(at).is_some_and(|t| t.kind.is_hyphen());
+        let is_entry = |text: &[char]| {
+            let mut flipped = text.to_vec();
+            if let Some(first) = flipped.first_mut() {
+                *first = if first.is_uppercase() {
+                    first.to_lowercase().next().unwrap_or(*first)
+                } else {
+                    first.to_uppercase().next().unwrap_or(*first)
+                };
+            }
+            self.dictionary.contains_exact_word(text)
+                || self.dictionary.contains_exact_word(&flipped)
+        };
+
+        let mut start = 0;
+        while start < tokens.len() {
+            // The words of a chain `word-word-…` (or `abbr.-word`) with nothing between them.
+            let mut words = vec![start];
+            while let Some(&last) = words.last()
+                && is_word(last)
+            {
+                let next = if is_hyphen(last + 1) && touch(last) && touch(last + 1) {
+                    last + 2
+                } else if is_period(last + 1)
+                    && is_hyphen(last + 2)
+                    && touch(last)
+                    && touch(last + 1)
+                    && touch(last + 2)
+                {
+                    last + 3
+                } else {
+                    break;
+                };
+                if !is_word(next) {
+                    break;
+                }
+                words.push(next);
+            }
+            for (i, &first) in words.iter().enumerate() {
+                for &last in &words[i + 1..] {
+                    let mut span =
+                        harper_core::Span::new(tokens[first].span.start, tokens[last].span.end);
+                    let mut found = is_entry(document.get_span_content(&span));
+                    if !found && is_period(last + 1) && touch(last) {
+                        span.end += 1;
+                        found = is_entry(document.get_span_content(&span));
+                    }
+                    if found {
+                        known.extend((first..=last).map(|at| tokens[at].span.start));
+                    }
+                }
+            }
+            start = words.last().map_or(start, |&last| last) + 1;
+        }
+        known
     }
 
     /// Take `interfix` off the front of `remainder`, if it may stand there.
@@ -639,6 +797,12 @@ impl<T: Dictionary> Linter for GermanSpellCheck<T> {
         let mut lints = Vec::new();
 
         for paragraph in document.iter_paragraphs() {
+            // Across sentences: Harper ends one at the stop of *Dr.-Ing.*
+            let words: Vec<&Token> = paragraph
+                .iter()
+                .filter(|t| !t.kind.is_whitespace())
+                .collect();
+            let hyphenated = self.in_hyphenated_entries(&words, document);
             for sentence in paragraph.iter_sentences() {
                 let tokens: Vec<&Token> = sentence
                     .iter()
@@ -657,7 +821,10 @@ impl<T: Dictionary> Linter for GermanSpellCheck<T> {
                     }
 
                     // Skip words in dictionary
-                    if self.dictionary.contains_word(word_chars) {
+                    if hyphenated.contains(&word.span.start)
+                        || (self.dictionary.contains_word(word_chars)
+                            && !self.is_lowercase_name(word_chars))
+                    {
                         continue;
                     }
 
@@ -690,6 +857,28 @@ impl<T: Dictionary> Linter for GermanSpellCheck<T> {
 
                     // Try compound word splitting
                     if self.try_compound_word_check(word_chars) {
+                        continue;
+                    }
+
+                    // *3-tägigen*, *20-prozentige*: the number stands for a numeral the word
+                    // would otherwise be compounded with (*dreitägigen*).
+                    if index >= 2
+                        && tokens[index - 1].kind.is_hyphen()
+                        && tokens[index - 1].span.end == word.span.start
+                        && tokens[index - 2].kind.is_number()
+                        && tokens[index - 2].span.end == tokens[index - 1].span.start
+                        && word_chars.first().is_some_and(|c| c.is_lowercase())
+                    {
+                        let spelled: Vec<char> =
+                            "drei".chars().chain(word_chars.iter().copied()).collect();
+                        if self.dictionary.contains_word(&spelled)
+                            || self.try_compound_word_check(&spelled)
+                        {
+                            continue;
+                        }
+                    }
+
+                    if self.swiss && self.is_swiss_spelling(word_chars) {
                         continue;
                     }
 
@@ -997,6 +1186,88 @@ mod tests {
         assert_eq!(spelling_reports("Ruf mich an, Tel 0611."), ["Tel"]);
         // The abbreviation of a noun is capitalized, like the noun.
         assert_eq!(spelling_reports("Lieber Herr dr. Müller"), ["dr"]);
+    }
+
+    #[test]
+    fn letters_with_their_stops_are_abbreviations() {
+        for text in [
+            "Das gilt z. B. für Kinder, d. h. für alle.",
+            "Der Verein Musik e. V. lädt ein.",
+            "Das war um 500 v. Chr. und u.a. in Rom.",
+            "Zar Alexander I. regierte, sagt Beate H. (l.) im Bild.",
+            "Müller et al. zeigen, dass A vs. B gilt.",
+        ] {
+            assert!(
+                spelling_reports(text).is_empty(),
+                "{text}: {:?}",
+                spelling_reports(text)
+            );
+        }
+    }
+
+    #[test]
+    fn an_entry_with_a_hyphen_is_one_word() {
+        for text in [
+            "Das Know-how fehlt.",
+            "Die baden-württembergischen Banken sind stark.",
+            "Sie gewannen die Play-offs mit viel Know-how-Transfer.",
+        ] {
+            assert!(
+                spelling_reports(text).is_empty(),
+                "{text}: {:?}",
+                spelling_reports(text)
+            );
+        }
+        assert!(spelling_reports("Nach der 3-tägigen Reise kam die 4-köpfige Familie.").is_empty());
+        assert_eq!(spelling_reports("Nach der 3-tägign Reise."), ["tägign"]);
+        let text = "Prof. Dr.-Ing. Meier und Dipl.-Ing. Schulz kommen.";
+        assert!(
+            spelling_reports(text).is_empty(),
+            "{:?}",
+            spelling_reports(text)
+        );
+        assert_eq!(spelling_reports("Ich bin ein Dipl. Ing."), ["Dipl", "Ing"]);
+        // In the case of the entry: *Play-off*, not *Play-Off*.
+        assert_eq!(
+            spelling_reports("Die Play-Offs beginnen."),
+            ["Play", "Offs"]
+        );
+        // Each part still has to be a word when the whole is no entry.
+        assert_eq!(spelling_reports("Das Know-hwo fehlt."), ["Know", "hwo"]);
+    }
+
+    #[test]
+    fn swiss_german_writes_ss_for_eszett() {
+        let swiss = |text: &str| {
+            let dict = combined_german_dictionary();
+            let document = Document::new(text, &PlainGerman, &dict);
+            GermanSpellCheck::for_dialect(dict, GermanDialect::Swiss)
+                .lint(&document)
+                .into_iter()
+                .map(|lint| document.get_span_content_str(&lint.span))
+                .collect::<Vec<_>>()
+        };
+        let text = "Es heisst, die grosse Strasse sei gemäss Plan geschlossen.";
+        assert!(swiss(text).is_empty(), "{:?}", swiss(text));
+        assert_eq!(
+            spelling_reports(text),
+            ["heisst", "grosse", "Strasse", "gemäss"]
+        );
+        assert_eq!(
+            swiss("Die Strasse ist grossartig, die Strase nicht."),
+            ["Strase"]
+        );
+    }
+
+    #[test]
+    fn a_name_is_a_word_only_with_its_capital() {
+        assert!(spelling_reports("Gestern sprach Putin mit Jörg in Flensburg.").is_empty());
+        assert_eq!(
+            spelling_reports("Gestern sprach putin mit jörg."),
+            ["putin", "jörg"]
+        );
+        assert_eq!(spelling_reports("Das war ein grosses Glück."), ["grosses"]);
+        assert!(spelling_reports("Wir machen das Beste draus.").is_empty());
     }
 
     #[test]

@@ -49,15 +49,15 @@ use crate::module::rust_lint_group;
 
 /// The German rules, all enabled: the Weir rules and the Rust linters.
 ///
-/// The dialect does not change which rules run; it is kept so that callers can say which one
-/// they mean.
+/// The dialect does not change which rules run, only what the spell checker accepts: Swiss
+/// German writes *ss* for *ß*.
 pub fn new_curated_german(
-    _dialect: GermanDialect,
+    dialect: GermanDialect,
     dictionary: Arc<impl Dictionary + 'static>,
 ) -> LintGroup {
     let mut group = LintGroup::empty();
     group.merge_from(weir_rules::lint_group());
-    group.merge_from(rust_lint_group(dictionary));
+    group.merge_from(rust_lint_group(dictionary, dialect));
     group.set_all_rules_to(Some(true));
 
     group

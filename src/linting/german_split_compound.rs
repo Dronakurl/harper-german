@@ -171,7 +171,14 @@ impl<T: Dictionary> Linter for GermanSplitCompound<T> {
                         .collect();
                     self.entries
                         .get_word_metadata(&candidate)
-                        .filter(|meta| meta.is_noun())
+                        // A name (*Hanspeter*) is how some write two names, not a compound.
+                        .filter(|meta| {
+                            meta.is_noun()
+                                && !meta
+                                    .noun
+                                    .as_ref()
+                                    .is_some_and(|n| n.is_proper == Some(true))
+                        })
                         .map(|_| candidate)
                 });
                 if let Some(joined) = joined {
@@ -232,6 +239,7 @@ mod tests {
             "Peter Schmidt wohnt hier.",
             "Das Neue Rathaus Berlin Mitte Ist Offen.",
             "Wir kaufen Papier Stifte.",
+            "Ich bin froh, dass Hans Peter Doskozil das macht.",
         ] {
             assert_eq!(count(text), 0, "{text}");
         }

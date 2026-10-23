@@ -27,12 +27,28 @@ pub struct German {
     dictionary: Arc<MergedDictionary>,
     /// The user words `dictionary` and `group` were built with.
     words: Vec<String>,
+    /// The dialect `group` was built for.
+    dialect: GermanDialect,
     group: LintGroup,
 }
 
 impl German {
-    fn build_group(dictionary: &Arc<MergedDictionary>) -> LintGroup {
-        new_curated_german(GermanDialect::Standard, dictionary.clone())
+    fn build_group(dictionary: &Arc<MergedDictionary>, dialect: GermanDialect) -> LintGroup {
+        new_curated_german(dialect, dictionary.clone())
+    }
+
+    /// Lint as `dialect`, an id, name or alias of [`PluginInfo::dialects`]; as the standard
+    /// German of Germany when it is none of them, or absent.
+    fn use_dialect(&mut self, dialect: Option<&str>) {
+        let dialect = dialect
+            .and_then(|name| Self::info().dialect_named(name).cloned())
+            .and_then(|info| info.id.parse::<GermanDialect>().ok())
+            .unwrap_or_default();
+        if dialect != self.dialect {
+            let config: FlatConfig = self.group.config.clone();
+            self.group = Self::build_group(&self.dictionary, dialect).with_lint_config(config);
+            self.dialect = dialect;
+        }
     }
 
     fn parser(format: &str) -> Box<dyn Parser> {
@@ -91,7 +107,7 @@ impl German {
         // The linters hold on to the dictionary, so they are rebuilt with the new one. Keep the
         // rules the user switched off.
         let config: FlatConfig = self.group.config.clone();
-        self.group = Self::build_group(&merged).with_lint_config(config);
+        self.group = Self::build_group(&merged, self.dialect).with_lint_config(config);
         self.dictionary = merged;
         self.words = words.to_vec();
     }
@@ -151,10 +167,11 @@ impl LanguagePlugin for German {
         merged.add_dictionary(base.clone());
         let dictionary = Arc::new(merged);
         Self {
-            group: Self::build_group(&dictionary),
+            group: Self::build_group(&dictionary, GermanDialect::Standard),
             base,
             dictionary,
             words: Vec::new(),
+            dialect: GermanDialect::Standard,
         }
     }
 
@@ -163,6 +180,8 @@ impl LanguagePlugin for German {
         if let Some(words) = &req.user_words {
             self.use_words(words);
         }
+        // Like the words, the dialect belongs to the request.
+        self.use_dialect(req.dialect.as_deref());
         if let Some(config) = &req.config {
             self.apply_config(config);
         }
@@ -220,7 +239,7 @@ export_plugin!(German);
 
 #[cfg(test)]
 mod tests {
-    use harper_plugin_api::LanguagePlugin;
+    use harper_plugin_api::{LanguagePlugin, LintRequest};
 
     use super::German;
 
@@ -235,5 +254,25 @@ mod tests {
         }
         assert!(!info.answers_to("English"));
         assert_eq!(info.dialect_named("ch").unwrap().id, "Swiss");
+    }
+
+    #[test]
+    fn lints_in_the_dialect_of_the_request() {
+        let mut german = German::new();
+        let text = "Es heisst, die Strasse sei gesperrt.";
+        let spelling = |german: &mut German, dialect: Option<&str>| {
+            let mut req = LintRequest::plain(text);
+            req.dialect = dialect.map(str::to_owned);
+            german
+                .lint(req)
+                .into_iter()
+                .filter(|lint| lint.rule == "GermanSpellCheck")
+                .count()
+        };
+        assert_eq!(spelling(&mut german, None), 2);
+        assert_eq!(spelling(&mut german, Some("de-CH")), 0);
+        assert_eq!(spelling(&mut german, None), 2);
+        assert_eq!(spelling(&mut german, Some("Schweiz")), 0);
+        assert_eq!(spelling(&mut german, Some("Klingonisch")), 2);
     }
 }
