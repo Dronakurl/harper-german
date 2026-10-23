@@ -88,7 +88,20 @@ const SEPARABLE_VERB_PREFIXES: &[&str] = &[
 /// haus* really is a miscapitalized noun. The apposition the rest of the list
 /// gives up on — *wir Deutschen*, *du Dummkopf* — needs a capital anyway, and is
 /// far rarer than a first-person sentence.
+/// Lower-case abbreviations whose letters are also a noun or a verb (*Sog*, *sog*).
+const ABBREVIATIONS_WITH_STOP: &[&str] = &[
+    "sog", "ca", "bzw", "ggf", "evtl", "vgl", "inkl", "max", "min",
+];
+
 const SUBJECT_PRONOUNS: &[&str] = &["ich", "du", "er", "sie", "es", "wir"];
+
+/// Finite forms of the modals and auxiliaries that are also nouns or carry no *-t*: *das Soll*,
+/// *ein Muss*, *die Habe*, *die Würde*. Behind a pronoun, or at the end of a clause behind an
+/// infinitive (*… sein muss*), they are the verb.
+const MODAL_FORMS: &[&str] = &[
+    "soll", "muss", "kann", "will", "mag", "darf", "weiß", "sollte", "müsste", "könnte", "dürfte",
+    "möchte", "würde", "hätte", "wäre", "habe", "sei",
+];
 
 /// Nouns that German writes lower case when they are the predicate of a
 /// copula or of *tun*: *es tut mir **leid***, *mir ist **angst** und
@@ -307,8 +320,12 @@ impl<T: Dictionary> GermanNounCapitalization<T> {
         // at best. And a verb-second clause goes on behind its verb: *Das
         // gerät, mit dem ich arbeite* stops at the comma.
         let word = noun_phrase::lowercase_of(tokens[index], document);
-        let third_person =
-            word.ends_with('t') || word.ends_with('d') || word.ends_with("arf") || word == "würde";
+        let modal = MODAL_FORMS.contains(&word.as_str());
+        let third_person = modal
+            || word.ends_with('t')
+            || word.ends_with('d')
+            || word.ends_with("arf")
+            || word == "würde";
         let clause_goes_on = index + 1 < end;
         if !third_person || !clause_goes_on {
             return false;
@@ -317,9 +334,22 @@ impl<T: Dictionary> GermanNounCapitalization<T> {
         // pronoun that cannot be its article this is the auxiliary, and the
         // infinitive later in the clause belongs to it.
         let opener = noun_phrase::lowercase_of(tokens[opener_at], document);
-        if word == "würde" && !matches!(opener.as_str(), "die" | "der" | "eine" | "einer" | "keine")
-        {
+        let feminine_article =
+            matches!(opener.as_str(), "die" | "der" | "eine" | "einer" | "keine");
+        if matches!(word.as_str(), "würde" | "habe") && !feminine_article {
             return true;
+        }
+        // *Das soll sich ändern*, *Das muss dann für alle gelten*: a modal brings its infinitive,
+        // so another verb in the clause is no evidence against it. *Die würde des Menschen*, *Das
+        // soll ist erfüllt* are the nouns: a feminine article, or the verb right behind.
+        if modal && !matches!(word.as_str(), "würde" | "habe") {
+            let verb_behind = tokens.get(index + 1).is_some_and(|next| {
+                matches!(
+                    noun_phrase::lowercase_of(next, document).as_str(),
+                    "ist" | "war" | "wird" | "wurde" | "bleibt" | "blieb" | "hat" | "scheint"
+                )
+            });
+            return !verb_behind;
         }
         !(start..end).filter(|&at| at != index).any(|at| {
             let token = tokens[at];
@@ -413,9 +443,52 @@ impl<T: Dictionary> GermanNounCapitalization<T> {
         if chars.iter().skip(1).any(|c| c.is_uppercase()) {
             return true;
         }
+        let word = noun_phrase::lowercase_of(tokens[index], document);
+        // *zweieinhalb Jahre*, *dreieinhalb*: a numeral.
+        if word.len() > "einhalb".len() && word.ends_with("einhalb") {
+            return true;
+        }
+        let touching = |a: &Token, b: &Token| a.span.end == b.span.start;
+        let is_char = |token: &Token, c: char| document.get_span_content(&token.span) == [c];
+        // *www.mobiel.de/streik*: a part of an address or a path.
+        if index.checked_sub(1).is_some_and(|at| {
+            touching(tokens[at], tokens[index])
+                && (is_char(tokens[at], '.') || is_char(tokens[at], '/'))
+        }) || tokens
+            .get(index + 1)
+            .is_some_and(|next| touching(tokens[index], next) && is_char(next, '/'))
+        {
+            return true;
+        }
+        // *… sein muss.*, *… gewesen sein soll,*: a modal that closes the clause behind an
+        // infinitive is its verb (*sein Soll erfüllen* goes on).
+        if MODAL_FORMS.contains(&word.as_str())
+            && index.checked_sub(1).is_some_and(|at| {
+                matches!(
+                    noun_phrase::lowercase_of(tokens[at], document).as_str(),
+                    "sein" | "werden" | "haben" | "können" | "müssen" | "lassen"
+                ) || (tokens[at].kind.is_verb()
+                    && noun_phrase::lowercase_of(tokens[at], document).ends_with("en"))
+            })
+            && tokens
+                .get(index + 1)
+                .is_none_or(|next| matches!(next.kind, TokenKind::Punctuation(_)))
+        {
+            return true;
+        }
         let Some(next) = tokens.get(index + 1) else {
             return false;
         };
+        // *sog.*, *ca.*: an abbreviation with its stop.
+        if touching(tokens[index], next)
+            && matches!(
+                next.kind,
+                TokenKind::Punctuation(harper_core::Punctuation::Period)
+            )
+            && ABBREVIATIONS_WITH_STOP.contains(&word.as_str())
+        {
+            return true;
+        }
         if matches!(next.kind, TokenKind::Number(_))
             && tokens
                 .get(index + 2)
@@ -423,7 +496,6 @@ impl<T: Dictionary> GermanNounCapitalization<T> {
         {
             return true;
         }
-        let word = noun_phrase::lowercase_of(tokens[index], document);
         let next_capitalized = matches!(next.kind, TokenKind::Word(_))
             && document
                 .get_span_content(&next.span)
@@ -453,8 +525,14 @@ impl<T: Dictionary> GermanNounCapitalization<T> {
                         "zum" | "zur" | "im" | "am" | "vom" | "beim" | "ins" | "in" | "zu"
                     )
             });
+            // *dank künstlicher Intelligenz*: a declined adjective opens the phrase too.
+            let declined_adjective = next.kind.is_adjective()
+                && ["er", "en", "em", "es"]
+                    .iter()
+                    .any(|ending| noun_phrase::lowercase_of(next, document).ends_with(ending));
             let governs = next_capitalized
                 || next.kind.is_determiner()
+                || declined_adjective
                 || noun_phrase::supplies_determiner(next, document);
             return governs && !attributed;
         }
@@ -1187,6 +1265,15 @@ mod tests {
             "Eine neue 600-MHz-Version kommt.",
             "Er kaufte es bei eBay.",
             "Die hierzulande übliche Technik ist alt.",
+            "Das soll sich nun ändern.",
+            "Das muss dann aber für alle Bücher gelten.",
+            "Ein Ort, an dem man mal gewesen sein muss.",
+            "Der Räuber, der groß gewesen sein soll, floh.",
+            "Er kann dank künstlicher Intelligenz antworten.",
+            "Das wurde nicht infrage gestellt.",
+            "Vor zweieinhalb Jahren war das anders.",
+            "Ein Fall der sog. Miturheberschaft liegt vor.",
+            "Den Fahrplan gibt es unter www.mobiel.de/streik im Netz.",
         ] {
             let doc = create_document(text);
             let flagged: Vec<String> = linter
@@ -1198,6 +1285,10 @@ mod tests {
         }
         for (text, word) in [
             ("Das gerät, mit dem ich arbeite, ist alt.", "gerät"),
+            ("Er hat sein soll erfüllt.", "soll"),
+            ("Das ist ein muss für jeden.", "muss"),
+            ("Die würde des Menschen ist unantastbar.", "würde"),
+            ("Das soll ist erfüllt.", "soll"),
             ("Und du streust Salz in die wunde, du Trampel!", "wunde"),
             ("Vielen dank für deine Hilfe.", "dank"),
             ("Sie gab keinen laut von sich.", "laut"),

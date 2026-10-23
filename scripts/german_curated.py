@@ -600,6 +600,7 @@ Tausend N Tausende
 CORE_ADVERBS = """
 schweizweit vonstatten anderthalb eineinhalb deutschlandweit europaweit bundesweit österreichweit landesweit
 puncto petto alledem alldem sonstwo drein wohler
+infrage
 """.split()
 
 CORE_ADJECTIVES = """
