@@ -1,5 +1,6 @@
 //! Word pairs the reform of 1996 allows to be written as one word.
 
+use crate::grammar::token_text::lowercase_of;
 use harper_core::linting::{Lint, LintKind, Linter, Suggestion};
 use harper_core::{Document, Span, Token, TokenKind, TokenStringExt};
 
@@ -140,14 +141,6 @@ const FUSIONS: &[Fusion] = &[
 pub struct GermanRecommendedFusion;
 
 impl GermanRecommendedFusion {
-    fn lowercase_of(token: &Token, document: &Document) -> String {
-        document
-            .get_span_content(&token.span)
-            .iter()
-            .flat_map(|c| c.to_lowercase())
-            .collect()
-    }
-
     /// The fused form, capitalized the way the first word was.
     fn suggestion(fused: &str, first_was_capitalized: bool) -> Vec<char> {
         let mut chars: Vec<char> = fused.chars().collect();
@@ -173,7 +166,7 @@ impl Linter for GermanRecommendedFusion {
                     .map(|offset| {
                         let token = tokens[index + offset];
                         matches!(token.kind, TokenKind::Word(_))
-                            .then(|| Self::lowercase_of(token, document))
+                            .then(|| lowercase_of(token, document))
                     })
                     .collect();
                 let (Some(first), Some(second), Some(third)) = (&words[0], &words[1], &words[2])

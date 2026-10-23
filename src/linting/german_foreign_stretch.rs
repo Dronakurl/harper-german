@@ -22,6 +22,7 @@
 //! anything can appear in a title — but two inside a few tokens is a sentence
 //! that has stopped being German.
 
+use crate::grammar::token_text::lowercase_of;
 use harper_core::{Document, Token, TokenKind};
 
 /// Function words of the languages German prose quotes, chosen so that none of
@@ -54,15 +55,6 @@ const FOREIGN_FUNCTION_WORDS: &[&str] = &[
 
 /// How many **word** tokens either side of the candidate are consulted.
 const WINDOW: usize = 5;
-
-/// The lower-case spelling of a token.
-pub fn lowercase_of(token: &Token, document: &Document) -> String {
-    document
-        .get_span_content(&token.span)
-        .iter()
-        .flat_map(|c| c.to_lowercase())
-        .collect()
-}
 
 /// Is the token at `index` inside a stretch of another language?
 ///

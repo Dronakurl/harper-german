@@ -8,6 +8,7 @@ use harper_core::{
     spell::Dictionary,
 };
 
+use crate::grammar::token_text::starts_uppercase;
 use crate::{
     grammar::determiners::{DeterminerReading, adjective_ending_after, determiner_readings},
     grammar::noun_gender::NounGender,
@@ -155,13 +156,6 @@ impl GermanAdjectiveForm {
         self.metadata(word).is_some_and(|m| m.is_adjective())
     }
 
-    fn capitalized(token: &Token, document: &Document) -> bool {
-        document
-            .get_span_content(&token.span)
-            .first()
-            .is_some_and(|c| c.is_uppercase())
-    }
-
     /// The forms of `stem` the readings allow, as far as the dictionary knows
     /// them.
     fn declined_forms(&self, stem: &str, readings: &[DeterminerReading]) -> Vec<String> {
@@ -216,7 +210,7 @@ impl GermanAdjectiveForm {
         // A pronoun reading behind a verb: *hat das sicher Potenzial*.
         if PRONOMINAL.contains(&determiner.as_str())
             && at.checked_sub(1).is_some_and(|i| {
-                words[i].kind.is_verb() && (i == 0 || !Self::capitalized(words[i], document))
+                words[i].kind.is_verb() && (i == 0 || !starts_uppercase(words[i], document))
             })
         {
             return None;
@@ -240,8 +234,8 @@ impl GermanAdjectiveForm {
         let noun = words.get(adjective_at + 1)?;
         if !matches!(adjective.kind, TokenKind::Word(_))
             || !matches!(noun.kind, TokenKind::Word(_))
-            || Self::capitalized(adjective, document)
-            || !Self::capitalized(noun, document)
+            || starts_uppercase(adjective, document)
+            || !starts_uppercase(noun, document)
         {
             return None;
         }
@@ -300,10 +294,10 @@ impl GermanAdjectiveForm {
             let attribute = after.kind.is_adjective()
                 && words
                     .get(adjective_at + 3)
-                    .is_some_and(|next| Self::capitalized(next, document));
+                    .is_some_and(|next| starts_uppercase(next, document));
             if determiner_readings(&after_word).is_some()
                 || attribute
-                || Self::capitalized(after, document)
+                || starts_uppercase(after, document)
             {
                 return None;
             }
@@ -493,7 +487,7 @@ impl GermanAdjectiveForm {
         if government.also_a_postposition
             && at
                 .checked_sub(1)
-                .is_some_and(|i| i > 0 && Self::capitalized(words[i], document))
+                .is_some_and(|i| i > 0 && starts_uppercase(words[i], document))
         {
             return None;
         }
@@ -501,8 +495,8 @@ impl GermanAdjectiveForm {
         let noun_token = words.get(at + 2)?;
         if !matches!(adjective.kind, TokenKind::Word(_))
             || !matches!(noun_token.kind, TokenKind::Word(_))
-            || Self::capitalized(adjective, document)
-            || !Self::capitalized(noun_token, document)
+            || starts_uppercase(adjective, document)
+            || !starts_uppercase(noun_token, document)
         {
             return None;
         }
@@ -539,7 +533,7 @@ impl GermanAdjectiveForm {
             head_at += 2;
         }
         if words.get(head_at + 1).is_some_and(|next| {
-            matches!(next.kind, TokenKind::Word(_)) && Self::capitalized(next, document)
+            matches!(next.kind, TokenKind::Word(_)) && starts_uppercase(next, document)
         }) {
             return None;
         }
@@ -600,7 +594,7 @@ impl GermanAdjectiveForm {
         let determiner = lowercase_of(words[at], document);
         let readings = determiner_readings(&determiner)?;
         let head = words.get(at + 1)?;
-        if !matches!(head.kind, TokenKind::Word(_)) || !Self::capitalized(head, document) {
+        if !matches!(head.kind, TokenKind::Word(_)) || !starts_uppercase(head, document) {
             return None;
         }
         // The head has to end its phrase, with the verb or punctuation behind
@@ -609,7 +603,7 @@ impl GermanAdjectiveForm {
         // unüberlegten Reaktionen provozierendes Verhalten*.
         if let Some(after) = words.get(at + 2)
             && matches!(after.kind, TokenKind::Word(_))
-            && (Self::capitalized(after, document)
+            && (starts_uppercase(after, document)
                 || !GermanRelativeClauseComma::is_verb_token(after, document))
         {
             return None;
@@ -730,7 +724,7 @@ impl Linter for GermanAdjectiveForm {
                     continue;
                 }
                 // A capitalized determiner in mid-sentence is part of a name.
-                if at > 0 && Self::capitalized(words[at], document) {
+                if at > 0 && starts_uppercase(words[at], document) {
                     continue;
                 }
                 if let Some(lint) = self.undeclined_adjective(&words, at, document) {

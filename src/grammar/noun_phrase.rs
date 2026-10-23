@@ -38,6 +38,8 @@
 //! `CompoundAwareDictionary`'s global mutex and attempt a compound
 //! decomposition on every miss.
 
+use super::token_text::is_capitalized;
+pub(crate) use super::token_text::lowercase_of;
 use crate::grammar::determiners::determiner_readings;
 use crate::grammar::prepositions::preposition_government;
 use crate::grammar::verbs::looks_like_participle;
@@ -584,14 +586,6 @@ pub(crate) fn opens_relative_clause(tokens: &[&Token], index: usize, document: &
         .is_some_and(|before| tokens[previous].kind.is_preposition() && opens_a_clause(before))
 }
 
-pub(crate) fn lowercase_of(token: &Token, document: &Document) -> String {
-    document
-        .get_span_content(&token.span)
-        .iter()
-        .map(|c| c.to_lowercase().next().unwrap_or(*c))
-        .collect()
-}
-
 /// Is this token an opening quote or bracket, by its characters?
 ///
 /// The lexer is uneven about them: German's closing `“` arrives as
@@ -934,11 +928,6 @@ pub(crate) fn closes_the_phrase(word: &str) -> bool {
         || CONTRACTIONS.contains(&word)
         || CONJUNCTIONS.contains(&word)
 }
-
-fn is_capitalized(word: &str) -> bool {
-    word.chars().next().is_some_and(char::is_uppercase)
-}
-
 /// The index of the head of the noun phrase the token at `determiner_at`
 /// opens, if it can be identified with confidence. Shared by
 /// `GermanPrepositionCase` and `GermanDativePlural`.

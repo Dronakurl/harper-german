@@ -6,6 +6,7 @@ use harper_core::{
     linting::{Lint, LintKind, Linter, Suggestion},
 };
 
+use crate::grammar::token_text::{lowercase_of, starts_uppercase};
 use crate::{
     grammar::{
         determiners::{determiner_readings, is_plural_only_quantifier},
@@ -53,17 +54,6 @@ impl GermanDativePlural {
         }
     }
 
-    fn lower(token: &Token, document: &Document) -> String {
-        noun_phrase::lowercase_of(token, document)
-    }
-
-    fn capitalized(token: &Token, document: &Document) -> bool {
-        document
-            .get_span_content(&token.span)
-            .first()
-            .is_some_and(|c| c.is_uppercase())
-    }
-
     /// Does the determiner mean the dative whenever its noun is a plural?
     fn plural_is_dative(word: &str) -> bool {
         determiner_readings(word).is_some_and(|readings| {
@@ -106,7 +96,7 @@ impl GermanDativePlural {
     /// determiner is the mistake, not the noun.
     fn after_a_non_dative_preposition(words: &[&Token], at: usize, document: &Document) -> bool {
         at.checked_sub(1)
-            .and_then(|previous| preposition_government(&Self::lower(words[previous], document)))
+            .and_then(|previous| preposition_government(&lowercase_of(words[previous], document)))
             .is_some_and(|preposition| !preposition.cases.contains(CaseSet::from(Case::Dative)))
     }
 
@@ -123,7 +113,7 @@ impl GermanDativePlural {
         let mut at = start;
         let mut counted = false;
         while let Some(token) = words.get(at) {
-            let word = Self::lower(token, document);
+            let word = lowercase_of(token, document);
             // A small count in digits is as sure a plural as the word: *nach 9 Monate*. Not 1,
             // and not from 100 on, which is mostly a year (*seit 1998 Feldversuche*).
             let small_count = matches!(token.kind, TokenKind::Number(_))
@@ -138,7 +128,7 @@ impl GermanDativePlural {
                 || word
                     .strip_suffix('n')
                     .is_some_and(is_plural_only_quantifier);
-            let adjective = !Self::capitalized(token, document)
+            let adjective = !starts_uppercase(token, document)
                 && token.kind.is_adjective()
                 && !token.kind.is_determiner()
                 && determiner_readings(&word).is_none();
@@ -156,8 +146,8 @@ impl GermanDativePlural {
             return None;
         }
         let head = words.get(at)?;
-        if !Self::capitalized(head, document)
-            || determiner_readings(&Self::lower(head, document)).is_some()
+        if !starts_uppercase(head, document)
+            || determiner_readings(&lowercase_of(head, document)).is_some()
         {
             return None;
         }
@@ -171,12 +161,12 @@ impl GermanDativePlural {
             None => true,
             Some(next) if !matches!(next.kind, TokenKind::Word(_)) => true,
             Some(next) => {
-                !Self::capitalized(next, document)
-                    && (closes_the_phrase(&Self::lower(next, document))
+                !starts_uppercase(next, document)
+                    && (closes_the_phrase(&lowercase_of(next, document))
                         || (verb_closes
                             && next.kind.is_verb()
                             && (!next.kind.is_adjective()
-                                || looks_like_participle(&Self::lower(next, document)))))
+                                || looks_like_participle(&lowercase_of(next, document)))))
             }
         };
         ends.then_some(at)
@@ -216,10 +206,10 @@ impl Linter for GermanDativePlural {
                     continue;
                 }
                 // A capital in mid-sentence is a name: *Den Haag*.
-                if at > 0 && Self::capitalized(token, document) {
+                if at > 0 && starts_uppercase(token, document) {
                     continue;
                 }
-                let word = Self::lower(token, document);
+                let word = lowercase_of(token, document);
 
                 // *in vielen Länder*: a plural quantifier in *-n* is the
                 // dative whatever governs it — the accusative is *viele*.
@@ -233,7 +223,7 @@ impl Linter for GermanDativePlural {
                 let after_a_dative_preposition = at
                     .checked_sub(1)
                     .and_then(|previous| {
-                        preposition_government(&Self::lower(words[previous], document))
+                        preposition_government(&lowercase_of(words[previous], document))
                     })
                     .is_some_and(|preposition| {
                         preposition.cases.contains(CaseSet::from(Case::Dative))
@@ -256,7 +246,7 @@ impl Linter for GermanDativePlural {
                         .then_some(false)
                     })
                     && words.get(at + 1).is_some_and(|next| {
-                        determiner_readings(&Self::lower(next, document)).is_none()
+                        determiner_readings(&lowercase_of(next, document)).is_none()
                     })
                 {
                     Self::bare_head_from(&words, at + 1, document, !conjunction)

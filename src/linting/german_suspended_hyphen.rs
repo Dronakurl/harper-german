@@ -7,6 +7,7 @@ use harper_core::{
     spell::Dictionary,
 };
 
+use crate::grammar::token_text::starts_uppercase;
 use crate::{
     grammar::{
         noun_phrase::lowercase_of,
@@ -41,13 +42,6 @@ impl GermanSuspendedHyphen {
     fn is_entry(word: &str) -> bool {
         let chars: Vec<char> = word.chars().collect();
         curated_german_dictionary().contains_word(&chars)
-    }
-
-    fn capitalized(token: &Token, document: &Document) -> bool {
-        document
-            .get_span_content(&token.span)
-            .first()
-            .is_some_and(|c| c.is_uppercase())
     }
 
     /// The tail of `second` that makes a word of its own behind `first`:
@@ -102,10 +96,10 @@ impl GermanSuspendedHyphen {
             return None;
         }
 
-        let tail = if Self::capitalized(second, document) {
+        let tail = if starts_uppercase(second, document) {
             // A compound noun pairs with a capitalized first half: *erzeugen
             // oder Bilder* is a verb and a noun.
-            if !Self::capitalized(first, document) {
+            if !starts_uppercase(first, document) {
                 return None;
             }
             Self::shared_tail(&first_text, &second_text)?

@@ -6,6 +6,7 @@ use harper_core::{
     linting::{Lint, LintKind, Linter, Suggestion},
 };
 
+use crate::grammar::token_text::starts_lowercase;
 use crate::{
     grammar::{
         noun_phrase::lowercase_of,
@@ -65,13 +66,6 @@ impl GermanSubordinateWordOrder {
 
     fn ends_clause(word: &str) -> bool {
         COORDINATORS.contains(&word) || word == "weil" || Self::opens_clause(word)
-    }
-
-    fn is_lowercase(token: &Token, document: &Document) -> bool {
-        document
-            .get_span_content(&token.span)
-            .first()
-            .is_some_and(|c| c.is_lowercase())
     }
 
     /// The clause the conjunction at `at` opens.
@@ -167,7 +161,7 @@ impl GermanSubordinateWordOrder {
         }
         let particle_at = *words.last()?;
         let particle = tokens[particle_at];
-        if !Self::is_lowercase(particle, document) {
+        if !starts_lowercase(particle, document) {
             return None;
         }
         let particle_text = lowercase_of(particle, document);
@@ -175,7 +169,7 @@ impl GermanSubordinateWordOrder {
         // The subject comes first, so the verb is not the first word.
         let mut verbs = words[1..words.len() - 1].iter().filter_map(|&index| {
             let token = tokens[index];
-            if !token.kind.is_verb() || !Self::is_lowercase(token, document) {
+            if !token.kind.is_verb() || !starts_lowercase(token, document) {
                 return None;
             }
             let joined = joined_separable_verb(&particle_text, &lowercase_of(token, document))?;
@@ -227,7 +221,7 @@ impl GermanSubordinateWordOrder {
         // *dass er hat kommen können*: the auxiliary in front of two
         // infinitives is the standard order.
         let ends_in_en = |index: usize| {
-            Self::is_lowercase(tokens[index], document)
+            starts_lowercase(tokens[index], document)
                 && lowercase_of(tokens[index], document).ends_with("en")
         };
         if ends_in_en(last) && ends_in_en(words[words.len() - 2]) {

@@ -7,6 +7,7 @@ use harper_core::{
     linting::{Lint, LintKind, Linter},
 };
 
+use crate::grammar::token_text::starts_lowercase;
 use crate::{
     grammar::{
         noun_gender::NounGender,
@@ -99,13 +100,6 @@ impl GermanVerbCluster {
         !genders.is_empty() && genders != GenderSet::from(Gender::Neuter)
     }
 
-    fn is_lowercase(token: &Token, document: &Document) -> bool {
-        document
-            .get_span_content(&token.span)
-            .first()
-            .is_some_and(|c| c.is_lowercase())
-    }
-
     /// The clauses of a sentence that a clause-ending mark closes, as word
     /// indices.
     ///
@@ -150,7 +144,7 @@ impl GermanVerbCluster {
     fn check(&self, clause: &[usize], tokens: &[&Token], document: &Document) -> Option<Lint> {
         let (&last_at, before) = clause.split_last()?;
         let last = tokens[last_at];
-        if before.is_empty() || !Self::is_lowercase(last, document) {
+        if before.is_empty() || !starts_lowercase(last, document) {
             return None;
         }
         let last_word = lowercase_of(last, document);

@@ -11,6 +11,7 @@ use harper_core::{
     spell::Dictionary,
 };
 
+use crate::grammar::token_text::is_capitalized;
 use crate::{
     grammar::determiners::{
         DeterminerReading, could_be_a_dative_plural, determiner_readings, forms_for_readings,
@@ -461,11 +462,6 @@ fn is_infinitive_with_zu(word: &str) -> bool {
 
     word.starts_with("zuzu") || word.match_indices("zu").any(|(at, _)| at >= 2)
 }
-
-fn is_capitalized(word: &str) -> bool {
-    word.chars().next().is_some_and(char::is_uppercase)
-}
-
 /// Whether `word` can end the noun phrase that a postposition attaches to.
 ///
 /// A capitalized word is a noun — unless it only looks like one because it

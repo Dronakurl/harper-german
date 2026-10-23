@@ -6,6 +6,7 @@ use harper_core::{
     spell::Dictionary,
 };
 
+use crate::grammar::token_text::starts_lowercase;
 use crate::{
     grammar::{
         determiners::determiner_readings,
@@ -53,17 +54,10 @@ impl GermanModalZuInfinitive {
             .is_some_and(|lemma| BARE_INFINITIVE_GOVERNORS.contains(&lemma))
     }
 
-    fn is_lowercase(token: &Token, document: &Document) -> bool {
-        document
-            .get_span_content(&token.span)
-            .first()
-            .is_some_and(|c| c.is_lowercase())
-    }
-
     /// A lower-case word that can be the infinitive behind *zu*.
     fn is_infinitive(token: &Token, document: &Document) -> bool {
         let word = lowercase_of(token, document);
-        Self::is_lowercase(token, document)
+        starts_lowercase(token, document)
             && word.ends_with('n')
             && (word == "sein"
                 || GermanRelativeClauseComma::is_verb_token(token, document)
@@ -76,7 +70,7 @@ impl GermanModalZuInfinitive {
     /// Not when prefix and *zu* make a word of their own: *hinzukommen* is
     /// *hinzu* + *kommen*, not *hin* + *zu* + *kommen*.
     fn zu_infix_infinitive(token: &Token, document: &Document) -> Option<String> {
-        if !Self::is_lowercase(token, document) {
+        if !starts_lowercase(token, document) {
             return None;
         }
         let (prefix, rest) = zu_infix_parts(&lowercase_of(token, document))?;
@@ -108,14 +102,14 @@ impl GermanModalZuInfinitive {
     fn is_intervening_verb(clause: &[&Token], at: usize, document: &Document) -> bool {
         let token = clause[at];
         let word = lowercase_of(token, document);
-        if !Self::is_lowercase(token, document) || !(word.ends_with('n') || word.ends_with('t')) {
+        if !starts_lowercase(token, document) || !(word.ends_with('n') || word.ends_with('t')) {
             return false;
         }
         if word == "sein" {
             // The infinitive, unless a noun follows: *sein Auto*.
             return !clause
                 .get(at + 1)
-                .is_some_and(|next| !Self::is_lowercase(next, document));
+                .is_some_and(|next| !starts_lowercase(next, document));
         }
         // A participle, which the dictionary often files as an adjective:
         // *Er wurde aufgefordert zu kommen*, *Er wird verpflichtet zu zahlen*.

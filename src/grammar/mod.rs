@@ -17,4 +17,5 @@ pub mod noun_gender;
 pub mod noun_phrase;
 pub mod prepositions;
 pub mod subjects;
+pub mod token_text;
 pub mod verbs;

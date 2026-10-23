@@ -7,6 +7,7 @@ use harper_core::{
 };
 
 use crate::grammar::noun_phrase::lowercase_of;
+use crate::grammar::token_text::starts_lowercase;
 
 /// The indefinite quantifiers after which an adjective stands as a noun, with
 /// the ending the adjective takes behind each: *etwas Gutes*, *nichts Neues*,
@@ -41,17 +42,10 @@ const PRONOMINAL_STEMS: &[&str] = &["ander", "andr", "ein", "viel", "wenig"];
 pub struct GermanNominalizedAdjective;
 
 impl GermanNominalizedAdjective {
-    fn is_lowercase(token: &Token, document: &Document) -> bool {
-        document
-            .get_span_content(&token.span)
-            .first()
-            .is_some_and(|c| c.is_lowercase())
-    }
-
     /// A lower-case adjective with the ending the quantifier asks for.
     fn is_bare_adjective(token: &Token, ending: &str, document: &Document) -> bool {
         let word = lowercase_of(token, document);
-        Self::is_lowercase(token, document)
+        starts_lowercase(token, document)
             && word.ends_with(ending)
             && word.chars().count() > ending.len() + 2
             && !PRONOMINAL_STEMS.iter().any(|stem| word.starts_with(stem))
@@ -83,7 +77,7 @@ impl GermanNominalizedAdjective {
             next
         };
         next.kind.is_word()
-            && (!Self::is_lowercase(next, document)
+            && (!starts_lowercase(next, document)
                 || (next.kind.is_adjective() && !next.kind.is_verb()))
     }
 }
