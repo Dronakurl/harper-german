@@ -2459,3 +2459,53 @@ Tried and dropped, because the corpus showed false alarms:
   Hass* are the noun (2 of 7 wrong). Weir cannot look at what follows.
 * A reflexive check (*ich freue sich*): no true hit in the corpus, and *In ihr befindet sich*
   shows how *ihr* defeats it. *nicht kein* likewise has no hit outside a battery.
+
+## Twelfth round: prose the rules were never tuned on
+
+Measured on corpora nothing here had seen: 30 000 sentences of the Leipzig Corpora Collection
+(`deu_news_2023_10K`, `deu-de_web_2021_10K`, `deu_wikipedia_2021_10K`, from
+`downloads.wortschatz-leipzig.de`) for false alarms, and the test and dev part of Falko-MERLIN
+(`fm-test.m2`, `fm-dev.m2` in the release `wnut2018` of `adrianeboyd/boyd-wnut2018`) for
+recall. Vocabulary was taken from 400 000 other Leipzig sentences (news 2021 and 2022, web
+2020, Wikipedia 2016), never from the test sentences.
+
+| | before | after |
+|---|---|---|
+| Leipzig: sentences with a report | 9 332 | 8 075 |
+| Leipzig: spelling reports | 14 143 | 11 389 |
+| Leipzig: other reports (Spaces and CommaFixes aside) | 719 | 632 |
+| Falko-MERLIN: edits found | 3 177 | 3 181 |
+| Falko-MERLIN: spelling edits found | 1 346 / 1 650 | 1 349 / 1 650 |
+| Falko-MERLIN: corrected sentences with a report | 435 | 369 |
+
+What the prose showed, and what changed:
+
+* **The name list was a random third.** The Wikidata Query Service gives up after 60 s and
+  answers 200 with what it has and a Java stack trace; `fetch_wikidata_names.py` kept that.
+  Flensburg, Minsk, Ankara were missing, Hattiesburg was in. The script asks QLever now and
+  refuses an answer with an exception in it; given and family names are ranked by bearers
+  with a German Wikipedia article, and the best known people and P1549 demonyms are added.
+  A name is a word only with its capital (*putin*, *grosses* stay misspellings).
+* **`pp_regular` built wrong participles**: *angetwortet*, *hingedert*, *zugeckt* (a
+  separable prefix read into the stem), *gegönnet*, *gebrummet* (an *e* after *nn*, *mm*),
+  *beugt*, *bellt*, *erntet* (an inseparable prefix read into the stem). A preterite-only
+  paradigm (*verhalten*) gets its strong present from the verb it is built on.
+* **Abbreviations with spaces** (*z. B.*, *d. h.*, *e. V.*, *v. Chr.*) and **entries with a
+  hyphen** (*Know-how*, *Play-offs*, *Dipl.-Ing.*) were misspellings: Harper joins a letter
+  and its stop, and splits at the hyphen.
+* **The dialect was ignored.** `LintRequest::dialect` now reaches the spell checker; for
+  `Swiss` *ss* may stand for *ß*. Harper's hosts do not send a dialect yet.
+* **`du`, `her`, `los` were in `FOREIGN_FUNCTION_WORDS`**, so a sentence with *du* was half
+  foreign and learner errors next to it went unreported.
+* **`GermanNounCapitalization` read modals as nouns** (*Das soll sich ändern*, *… sein
+  muss*): the verb-second test wanted a verb in *-t*. **`GermanDeterminerGender`** read *in
+  diesem Falle*, *vor allem*, *das Gleiche* and *Ergibt das tatsächlich Sinn?* as gender
+  errors.
+* `GermanWrittenTogether` (*die selben* → *dieselben*, *mit einander*, *wieviele*) replaces
+  the Weir rules `SelbDer`, `SelbDie`, `SelbDas` and `WieViel`.
+
+A hand count of 70 random grammar reports on the Leipzig sentences before these changes found
+19 right, 6 debatable and 45 wrong; the classes above were most of the 45. What is left of the
+spelling reports is mostly unknown names and English inside German sentences (*New*, *The*,
+*League*, *Twitter*), which no dictionary of German words settles.
+

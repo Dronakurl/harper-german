@@ -30,6 +30,21 @@ just test-plugin    # build-wasm, then load it through the host and lint with it
 just release-files 0.1.0
 ```
 
+## Regenerating the dictionary
+
+`data/dictionary.dict` is generated; edit the tables in `scripts/german_curated.py` or the builder,
+never the file. The builder reproduces the committed file from a fresh dump up to what Wikidata changed
+since (a few dozen lines), so a diff of its output is a review of your change:
+
+```bash
+curl -LO https://dumps.wikimedia.org/wikidatawiki/entities/latest-lexemes.json.gz   # 650 MB, keep outside the repo
+scripts/extract_wikidata_lexemes.py latest-lexemes.json.gz /tmp/german_lexemes.db  # 2 minutes
+scripts/fetch_wikidata_names.py                                                    # data/wikidata_names.tsv, from QLever
+scripts/build_german_dictionary.py --lexemes /tmp/german_lexemes.db                # data/dictionary.dict, 1 minute
+```
+
+Then `just bake-pack`, and measure as in "Tenth round" of `docs/GERMAN_DICTIONARY_NOTES.md`.
+
 ## Rules
 
 - **Do not change `harper-core` from here.** It is a dependency, pinned by `rev` in `Cargo.toml`.
