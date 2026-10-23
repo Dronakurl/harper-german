@@ -17,7 +17,7 @@ import json
 import pathlib
 
 HERE = pathlib.Path(__file__).resolve().parent
-ANNOTATIONS = HERE.parent / "annotations.json"
+ANNOTATIONS = HERE.parent / "data" / "annotations.json"
 
 POS_KEYS = ("noun", "verb", "adjective", "adverb", "conjunction", "determiner", "pronoun")
 

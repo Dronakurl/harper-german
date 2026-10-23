@@ -87,6 +87,10 @@ def score(directory: Path, run_file, base_file=None, rules=()):
                 false_alarms += bool(lints)
         return found, errors, false_alarms, correct
 
+    # The runs are named as in the usage above: inside DIR, unless the path says otherwise.
+    resolve = lambda f: f if Path(f).exists() else directory / f
+    run_file = resolve(run_file)
+    base_file = base_file and resolve(base_file)
     run = load(run_file)
     found, errors, fa, correct = tally(run)
     print(f"LanguageTool examples: errors found {found}/{errors}, correct sentences with a report {fa}/{correct}")

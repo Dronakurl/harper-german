@@ -25,7 +25,7 @@ import random
 import re
 from pathlib import Path
 
-DICT = Path(__file__).resolve().parent.parent / "dictionary.dict"
+DICT = Path(__file__).resolve().parent.parent / "data" / "dictionary.dict"
 LINKS = ["", "s", "es", "n", "en", "e", "er", "ns", "ens"]
 FORM_ENDINGS = ["e", "en", "n", "s", "es", "er", "em", "et", "est", "st", "t", "te", "ten", "tet", "test", "ete", "eten"]
 MIN_HEAD, MIN_MOD = 4, 3

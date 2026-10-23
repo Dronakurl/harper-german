@@ -26,7 +26,7 @@ import pathlib
 import sqlite3
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-OUT = ROOT / "compound_begin_forms.txt"
+OUT = ROOT / "data" / "compound_begin_forms.txt"
 
 LINKS = ("", "s", "n", "en", "er", "es", "e", "ns")
 MIN_ELEMENT, MIN_HEAD = 2, 3
