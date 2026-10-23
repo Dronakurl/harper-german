@@ -28,7 +28,8 @@ import german_closed_classes as closed  # noqa: E402
 import german_curated as curated  # noqa: E402
 
 HERE = pathlib.Path(__file__).resolve().parent
-DICT = HERE.parent / "dictionary.dict"
+VOWELS = "aeiouäöüy"
+DICT = HERE.parent / "data" / "dictionary.dict"
 
 # Wikidata items that mean something here.
 SG, PL = "Q110786", "Q146786"
@@ -267,7 +268,7 @@ class Builder:
                  "teil vor voran voraus vorbei vorüber weg weiter wieder zu zurück zusammen zuvor herbei heraus "
                  "herein herauf herunter hinaus hinein hinauf hinunter dazu hervor umher bereit fertig fest "
                  "gegen gleich klar kaputt offen still tot zugrunde zunichte zurecht fehl hoch nieder rück "
-                 "vorher vorweg weiter zwischen wider mit").split()
+                 "vorher vorweg weiter zwischen wider mit wahr inne stand aufrecht").split()
     EITHER = "über unter um durch hinter wider voll".split()
     INSEPARABLE = "be ent er ge ver zer emp miss".split()
 
@@ -336,17 +337,47 @@ class Builder:
             pp.add(self.pp_regular(lemma))
         return {"flags": flags, "irregular": irregular, "pp": pp}
 
+    @staticmethod
+    def no_syllable_onset(rest):
+        """*cken*, *llen*, *nten*: letters no German syllable starts with, so what stands in front
+        of them is part of the stem (*zucken*, *bellen*, *ernten*), not a prefix."""
+        return len(rest) < 2 or rest[0] == rest[1] or rest.startswith("ck") or (rest[0] in "lmnr" and rest[1] not in VOWELS)
+
     def pp_regular(self, lemma):
         """The past participle of a weak verb: `lernen` -> `gelernt`."""
+        verbs = getattr(self, "all_verb_lemmas", set())
         for p in sorted(self.SEPARABLE, key=len, reverse=True):
-            if lemma.startswith(p) and len(lemma) - len(p) >= 4:
-                return p + self.pp_regular(lemma[len(p):])
+            rest = lemma[len(p):]
+            if (
+                lemma.startswith(p)
+                and (len(rest) >= 4 or rest in verbs)  # *hinein|tun*
+                and lemma not in curated.NOT_SEPARABLE and lemma not in getattr(self, "zu_apart", ())
+                and not self.no_syllable_onset(rest)
+            ):
+                return p + self.pp_regular(rest)
         stem = lemma[:-2] if lemma.endswith("en") else lemma[:-1]
-        if lemma.endswith(("ieren", "ieren")) or any(lemma.startswith(i) for i in self.INSEPARABLE if len(lemma) > len(i) + 3):
+
+        def inseparable(i):
+            rest = lemma[len(i):]
+            if not lemma.startswith(i) or len(lemma) <= len(i) + 3:
+                return False
+            if rest in verbs:
+                return True
+            # *beugen*, *geigen*: the *e* of the prefix and the *i*/*u* make *ei*/*eu*, a vowel of the stem
+            return not (i.endswith("e") and rest[0] in "iu") and not self.no_syllable_onset(rest)
+
+        if lemma.endswith("ieren") or any(inseparable(i) for i in self.INSEPARABLE):
             prefix = ""
         else:
             prefix = "ge"
-        needs_e = stem.endswith(("t", "d")) or (len(stem) > 1 and stem[-1] in "mn" and stem[-2] not in "aeiouäöüälrh")
+        # *atmen*, *rechnen*, *öffnen* take an *e*; *gönnen*, *lernen*, *wohnen* do not
+        needs_e = stem.endswith(("t", "d")) or (
+            len(stem) > 1
+            and stem[-1] in "mn"
+            and stem[-2] != stem[-1]
+            and stem[-2] not in VOWELS + "lr"
+            and not (stem[-2] == "h" and len(stem) > 2 and stem[-3] in VOWELS)
+        )
         return prefix + stem + ("et" if needs_e else "t")
 
     def derive_verb(self, lemma, known):
@@ -391,10 +422,12 @@ class Builder:
                 irregular.append((subjunctive + e, {"V", "t"}))
         if sg3:
             irregular.append((sg3, {"V", "%"}))
-            if sg3.endswith("t") and stem[-1] not in "td":
-                sg2 = sg3[:-1] + "st"
-            elif sg3.endswith("st"):
+            if sg3.endswith(("st", "ßt", "zt", "xt")):  # *lässt*, *liest*, *stößt*: the same
                 sg2 = sg3
+            elif sg3.endswith("dt"):  # *lädt* -> *lädst*
+                sg2 = sg3[:-2] + "dst"
+            elif sg3.endswith("t") and stem[-1] not in "td":
+                sg2 = sg3[:-1] + "st"
             elif sg3.endswith(("ß", "s", "x", "z")):
                 sg2 = sg3 + "t"
             elif sg3 == "wird":
@@ -404,9 +437,11 @@ class Builder:
             else:
                 sg2 = sg3 + "st"
             irregular.append((sg2, {"V", "%"}))
-            if "ä" not in sg3 and "äu" not in sg3 and sg3.endswith("t") and sg3 not in ("tut", "hat"):
+            if stem[-1] in "td" and sg3.endswith("t"):  # *tritt*, *gilt*, *flicht*: no ending to drop
+                irregular.append((sg3, {"V", "%"}))
+            elif not any(v in sg3 for v in "äö") and sg3.endswith("t") and sg3 not in ("tut", "hat"):
                 irregular.append((sg3[:-1], {"V", "%"}))  # gib, lies, nimm
-            elif "ä" in sg3:
+            elif any(v in sg3 for v in "äö"):  # *fahr*, *stoß*: the imperative keeps the vowel
                 irregular.append((stem, {"V", "imp"}))
         else:
             flags.add("G")
@@ -426,8 +461,11 @@ class Builder:
             Lexeme("x" + v, v, "verb", None, 0) for v in curated.EXTRA_VERBS if v not in have
         ]
         self.all_verb_lemmas = {l.lemma for l in lexemes} | {row.split()[0] for row in curated.STRONG_VERBS}
+        # *zu zerren*: Wikidata writes the *zu* apart, so the verb has no separable prefix
+        self.zu_apart = {l.lemma for l in lexemes if any(f == "zu " + l.lemma for f, _ in l.forms)}
         known = {}
         sparse = []
+        no_present = []
         table = self.strong_table()
         seen = set()
         for lex in lexemes:
@@ -444,15 +482,30 @@ class Builder:
                 listed = table.get(lemma)
                 if listed:
                     info["pp"] = info["pp"] | listed["pp"]
+                    # and the strong present it may leave out too (*entzieht*)
+                    attested = {f for f, _ in lex.forms}
+                    info["irregular"] = info["irregular"] + [
+                        x for x in listed["irregular"] if "%" in x[1] and x[0] not in attested
+                    ]
                 weak = any(PRETERITE in ft and f.endswith(("te", "ten")) for f, ft in lex.forms)
                 if lemma in curated.WEAK_AND_STRONG or (not info["pp"] and weak):
                     info["pp"] = info["pp"] | {self.pp_regular(lemma)}
                 known.setdefault(lemma, info)
                 self.emit_verb(lemma, info, lex)
+                if not any(PRESENT in ft for _, ft in lex.forms):
+                    no_present.append(lemma)
             else:
                 sparse.append(lex)
         for inf, info in table.items():
             known.setdefault(inf, info)
+        # *verhalten*: a paradigm of the preterite only lacks the strong present (*verhält*), which
+        # the verb it is built on has (*hält*)
+        for lemma in no_present:
+            info = table.get(lemma) or self.derive_verb(lemma, known)
+            for form, extra in info["irregular"] if info else ():
+                if "%" in extra and "imp" not in extra and form.startswith(lemma[:2]) and form not in self.entries:
+                    self.add(form, extra)
+                    self.stats["verb-strong-present-derived"] += 1
         for lex in sorted(sparse, key=lambda l: len(l.lemma)):
             lemma = lex.lemma
             info = table.get(lemma) or self.derive_verb(lemma, known)
@@ -625,7 +678,7 @@ class Builder:
     S_ONLY_SUFFIXES = ("ung", "heit", "keit", "schaft", "ion", "tät")
 
     def load_begin_forms(self):
-        path = HERE.parent / "compound_begin_forms.txt"
+        path = HERE.parent / "data" / "compound_begin_forms.txt"
         self.begin = set()
         if path.exists():
             self.begin = {l for l in path.read_text(encoding="utf-8").splitlines() if l and not l.startswith("#")}
@@ -755,6 +808,8 @@ class Builder:
             self.add(word, {"N", "H", gender})
         for word in curated.EXTRA_VERB_FORMS:
             self.add(word, {"V", "g"})
+        for word in curated.EXTRA_PRETERITES:
+            self.add(word, {"V", "t"})
         for word in curated.LATIN_PLURALS:
             self.add(word, {"N"} | ({"&"} if not word.endswith(("n", "s")) else set()))
         for word in curated.EXTRA_ADJECTIVES:
@@ -788,7 +843,7 @@ class Builder:
             self.add(word, {"r"})
         for word in curated.CORE_ADJECTIVES:
             self.add(word, {"J", "q", "r", "O", "Q", "R", "S", "T", "U", "W"})
-        for word in curated.GEOGRAPHIC_ADJECTIVES:
+        for word in curated.GEOGRAPHIC_ADJECTIVES + curated.UNGRADED_ADJECTIVES:
             if word not in self.entries:
                 self.add(word, {"J", "q", "r", "O", "Q", "R", "S", "T"})
 
@@ -869,7 +924,7 @@ class Builder:
 
     def names(self):
         """Proper names from Wikidata items, apart from those that are also function words."""
-        path = HERE.parent / "wikidata_names.tsv"
+        path = HERE.parent / "data" / "wikidata_names.tsv"
         if not path.exists():
             return
         known = {w.lower() for w, f in self.entries.items() if f != {"*"}}

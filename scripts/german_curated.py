@@ -308,6 +308,7 @@ hominum cogito sum errare humanum est repetitio studiorum nomen omen verbatim ex
 # More abbreviations with their stop, for the pieces German strings together (z. B., d. h., u. a.).
 MORE_PERIOD_ABBREVIATIONS = """
 z. d. u. a. o. ä. v. m. vgl. usw. etc. ca. evtl. ggf. sog. ebd. ders. dies. ff. f. s. Ggf. Evtl. Vgl. Usw.
+Chr. med. Co. stellv. phil. rer. nat. jur. dent. div. Univ. Inc. Ltd. Corp. Mr. Mrs. vorm. nachm. Mag. Ges. Jg. tägl. wöchentl. monatl. jährl. zus. max. Dr.-Ing.
 """.split()
 
 # Strong and irregular verbs: infinitive, preterite, past participle and, where the vowel changes,
@@ -486,6 +487,14 @@ wissen wusste gewusst weiß
 wollen wollte gewollt will
 ziehen zog gezogen
 zwingen zwang gezwungen
+beladen belud beladen belädt
+entziehen entzog entzogen entzieht
+bescheiden beschied beschieden
+verlesen verlas verlesen verliest
+verweben verwob verwoben
+schinden schund geschunden
+befallen befiel befallen befällt
+verfallen verfiel verfallen verfällt
 """.strip().splitlines()
 
 # Wikidata lexemes that are words of the language but so rare that their forms only get in the way of
@@ -510,6 +519,13 @@ Indices Matrizen Zyklen Genera Species Opera Tempora Modi Casus Foci Radii Nucle
 # Common adjectives Wikidata has no lexeme for.
 EXTRA_ADJECTIVES = """
 modern komplex rein grob schlimm ober inner äußer hinter vorder mittler nördlich südlich östlich westlich
+glatt populär
+""".split()
+
+
+# Adjectives that are declined but not graded, which Wikidata has no lexeme for.
+UNGRADED_ADJECTIVES = """
+ätherisch sämtlich nieder steuerbar stapelbar dimmbar aufrufbar unwählbar ungeimpft
 """.split()
 
 
@@ -544,6 +560,8 @@ mesopotamisch babylonisch persisch ottomanisch byzantinisch römisch griechisch 
 mongolisch tatarisch usbekisch kasachisch kirgisisch jesidisch alevitisch maronitisch koptisch
 nordrhein-westfälisch niedersächsisch schleswig-holsteinisch rheinland-pfälzisch sachsen-anhaltisch
 hamburgisch bremisch berlinerisch münchnerisch kölnisch düsseldorferisch frankfurterisch
+pazifisch südpazifisch katarisch iberisch namibisch haitianisch texanisch kanarisch kosovarisch athenisch
+habsburgisch gallorömisch mallorquinisch ugandisch kretisch karolingisch bernisch
 """.split()
 
 # Common words Wikidata has no lexeme for: `Lemma G Plural`, with `=` for a plural that spells like the singular
@@ -575,10 +593,13 @@ Fessel F Fesseln
 Laster N =
 Schock M Schocks
 Geiz M -
+Hundert N Hunderte
+Tausend N Tausende
 """.strip().splitlines()
 
 CORE_ADVERBS = """
 schweizweit vonstatten anderthalb eineinhalb deutschlandweit europaweit bundesweit österreichweit landesweit
+puncto petto alledem alldem sonstwo drein wohler
 """.split()
 
 CORE_ADJECTIVES = """
@@ -644,10 +665,19 @@ EXTRA_VERBS = [
     "puffen", "wallen", "walzen", "tauen", "keilen", "filzen", "drillen", "dichten", "hitzen", "kränzen", "lichten",
     "petzen", "pflichten", "planken", "beschweren", "prangern", "reihen", "reichern", "einreihen", "umdrohen",
     "hydrolysieren", "schweißen", "rahmen", "puffen",
+    "toppen", "shoppen", "pushen", "köcheln", "punkten", "verzinken", "entzünden", "chippen", "launchen",
+    "spitzeln", "türmen",  # not *stutzen*: it would let *unterstutzt* pass for *unterstützt*
 ]
+
+# Verbs that begin with the letters of a separable prefix without having one: *geantwortet*, not
+# *angetwortet*.
+NOT_SEPARABLE = {"antworten", "hindern", "zucken", "zuzeln"}
 
 # Forms Wikidata does not list under the verb they belong to.
 EXTRA_VERB_FORMS = ["worden"]
+
+# Preterites Wikidata does not list (*Und ward nicht mehr gesehen*).
+EXTRA_PRETERITES = ["ward", "wardst"]
 
 # Countries, regions and cities (Wikidata lists most under labels of several words: *Frankfurt am Main*).
 MORE_PLACES = """
@@ -674,6 +704,7 @@ Montana Alaska Hawaii Michigan Illinois Indiana Louisiana Kentucky Tennessee Mis
 Pennsylvania Connecticut Vermont Delaware Colorado Utah Wyoming Idaho Kansas Nebraska Oklahoma Missouri Iowa Minnesota
 Wisconsin Mecklenburg Schleswig Rheinland Nordrhein Pfalz Hunsrück Eifel Harz Allgäu Tirol Vorarlberg Kärnten
 Steiermark Burgenland Bukowina Siebenbürgen Böhmen Mähren Schlesien Pommern Ostpreußen Westpreußen Sudeten
+Angeles
 """.split()
 
 # Verbs with a weak and a strong paradigm (*erschreckt* transitive, *erschrickt* intransitive): the weak one is
