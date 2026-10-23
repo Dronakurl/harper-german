@@ -47,8 +47,14 @@ jede weitere Prüfung eines kurzen Textes dauert wenige Millisekunden.
 
 Das Plugin kennt Deutschland (`Standard`), Österreich (`Austrian`, `de-AT`) und die Schweiz (`Swiss`,
 `de-CH`). Für die Schweiz akzeptiert die Rechtschreibprüfung *ss* statt *ß* (*Strasse*, *heisst*); sonst
-prüfen alle drei gleich. Den Dialekt muss das Programm, das das Plugin lädt, in der Anfrage mitschicken
-(`LintRequest::dialect`); `harper-cli` und `harper-ls` tun das noch nicht.
+prüfen alle drei gleich. Gewählt wird der Dialekt über die Sprache oder die Dialekt-Einstellung des Programms, das das Plugin
+lädt (ab dem Harper-Branch `claude/german-implementation-review-nam2a2`):
+
+```bash
+harper-cli lint --language Swiss notizen.md            # oder --language de-CH
+harper-cli lint --language de --dialect Swiss notizen.md
+# harper-ls: "harper-ls": { "language": "Swiss" }  oder  { "language": "de", "dialect": "de-CH" }
+```
 
 ## Wie gut ist es?
 
