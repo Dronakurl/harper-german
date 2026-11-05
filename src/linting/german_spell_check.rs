@@ -1,4 +1,6 @@
-use hashbrown::HashMap;
+use std::sync::LazyLock;
+
+use hashbrown::{HashMap, HashSet};
 
 use crate::linting::german_foreign_stretch;
 use crate::linting::german_relative_clause_comma::GermanRelativeClauseComma;
@@ -11,8 +13,10 @@ use crate::spell::german_dict::{
     GERMAN_BARRED_ELEMENTS, GERMAN_FUNCTION_WORDS, GERMAN_STEMS, GERMAN_SUFFIXED_ELEMENTS,
 };
 use harper_core::linting::{Lint, LintKind, Linter, Suggestion};
-use harper_core::spell::Dictionary;
-use harper_core::{CharStringExt, Document, Punctuation, Token, TokenKind, TokenStringExt};
+use harper_core::spell::{
+    Dictionary, EditKind, SuggestionHints, suggest_correct_spelling_with_hints,
+};
+use harper_core::{Document, Punctuation, Token, TokenKind, TokenStringExt};
 
 // `MIN_COMPOUND_PART_LEN` is imported rather than redeclared: this decomposition
 // and the dictionary's own must not disagree about what counts as an element.
@@ -32,247 +36,22 @@ const GERMAN_COMPOUND_INTERFIXES: &[&[char]] = &[
     ES_INTERFIX,
 ];
 
-/// Common German orthographic alternations.
-///
-/// These capture regular spelling correspondences that a plain edit distance
-/// counts as one or two arbitrary edits but that a writer treats as a single,
-/// very plausible swap: `ae`/`ä`, `ss`/`ß`, `i`/`ie`, silent `h` after vowels,
-/// `ee`/`e`, and `f`/`ph`. Consonant-devoicing pairs such as
-/// `d`/`t` and `ch`/`k` are deliberately omitted: they overmatch at arbitrary
-/// positions (a doubled-letter typo like `Hundd` must fix to `Hund`, not to a
-/// rare `d`→`t` variant such as `Hundt`).
-const GERMAN_ALTERNATIONS: &[(&[char], &[char])] = &[
-    (&['ä'], &['a', 'e']),
-    (&['ö'], &['o', 'e']),
-    (&['ü'], &['u', 'e']),
-    (&['ß'], &['s', 's']),
-    (&['i'], &['i', 'e']),
-    (&['e'], &['e', 'e']),
-    (&['e'], &['e', 'h']),
-    (&['o'], &['o', 'h']),
-    (&['a'], &['a', 'h']),
-    (&['f'], &['p', 'h']),
-    (&['t'], &['t', 'h']),
-    (&['r'], &['r', 'h']),
-];
-
-/// The kind of error that would turn a misspelled word into a candidate
-/// suggestion.
-///
-/// Harper's shared suggestion scorer is tuned for English. German suggestions
-/// are ranked by the *kind* of mistake the writer
-/// most likely made. Orthographic
-/// alternations (`geschriben` → `geschrieben`, `Baeume` → `Bäume`), doubled
-/// letters (`Worrt` → `Wort`) and transpositions (`flasch` → `falsch`,
-/// `Wrot` → `Wort`) are far more plausible than a wholesale letter
-/// substitution (`Worrt` → `Wirrt`), so candidates reachable by one of those
-/// errors outrank candidates that require a substitution.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-enum GermanEditType {
-    /// A German orthographic alternation such as `ss` ↔ `ß` or `i` ↔ `ie`.
-    Alternation,
-    /// Two adjacent characters were swapped.
-    Transposition,
-    /// The misspelled word contains one extra character.
-    Deletion,
-    /// The misspelled word is missing one character.
-    Insertion,
-    /// A single character was replaced with a different one.
-    Substitution,
-    /// Some other edit (or several edits).
-    Other,
-}
-
-impl GermanEditType {
-    /// Hunspell emits its simple heuristics in a fixed order, so a candidate
-    /// produced by an earlier (more plausible) heuristic always outranks one
-    /// produced by a later one. We mirror that by mapping each kind of edit to
-    /// a coarse "bucket"; the bucket dominates finer-grained similarity.
-    fn bucket(self) -> i32 {
-        match self {
-            GermanEditType::Alternation => 0,
-            GermanEditType::Transposition => 1,
-            GermanEditType::Deletion => 2,
-            GermanEditType::Insertion => 3,
-            GermanEditType::Substitution => 4,
-            GermanEditType::Other => 5,
-        }
-    }
-}
-
-/// Compare two characters, ignoring case.
-fn eq_ignore_case(a: char, b: char) -> bool {
-    let mut a_lower = a.to_lowercase();
-    let mut b_lower = b.to_lowercase();
-    loop {
-        match (a_lower.next(), b_lower.next()) {
-            (None, None) => return true,
-            (Some(a), Some(b)) if a == b => continue,
-            _ => return false,
-        }
-    }
-}
-
-/// Case-insensitive equality of two character slices.
-fn slices_eq_ignore_case(a: &[char], b: &[char]) -> bool {
-    a.len() == b.len() && a.iter().zip(b).all(|(x, y)| eq_ignore_case(*x, *y))
-}
-
-/// Returns true when one word differs from the other by a single German
-/// orthographic alternation (a `GERMAN_ALTERNATIONS` pair applied once).
-fn is_german_alternation(a: &[char], b: &[char]) -> bool {
-    GERMAN_ALTERNATIONS
-        .iter()
-        .any(|(from, to)| replaces_to_equal(a, from, to, b) || replaces_to_equal(b, from, to, a))
-}
-
-/// Returns true when replacing a single occurrence of `from` in `source` with
-/// `to` produces `target`.
-fn replaces_to_equal(source: &[char], from: &[char], to: &[char], target: &[char]) -> bool {
-    if source.len() < from.len() || source.len() - from.len() + to.len() != target.len() {
-        return false;
-    }
-
-    let last_start = source.len() - from.len();
-    for start in 0..=last_start {
-        if slices_eq_ignore_case(&source[start..start + from.len()], from)
-            && slices_eq_ignore_case(&source[..start], &target[..start])
-            && slices_eq_ignore_case(to, &target[start..start + to.len()])
-            && slices_eq_ignore_case(&source[start + from.len()..], &target[start + to.len()..])
-        {
-            return true;
-        }
-    }
-
-    false
-}
-
-/// Returns true when `longer` equals `shorter` with exactly one character
-/// removed.
-fn is_single_deletion(longer: &[char], shorter: &[char]) -> bool {
-    if longer.len() != shorter.len() + 1 {
-        return false;
-    }
-
-    let mut i = 0; // index into `longer`
-    let mut j = 0; // index into `shorter`
-    let mut skipped = false;
-
-    while i < longer.len() {
-        if j < shorter.len() && eq_ignore_case(longer[i], shorter[j]) {
-            i += 1;
-            j += 1;
-        } else if !skipped {
-            skipped = true;
-            i += 1;
-        } else {
-            return false;
-        }
-    }
-
-    skipped && j == shorter.len()
-}
-
-/// Classify the edit that most simply transforms `misspelled` into `candidate`.
-fn classify_german_edit(misspelled: &[char], candidate: &[char]) -> GermanEditType {
-    use GermanEditType::{Deletion, Insertion, Other, Substitution, Transposition};
-
-    // Orthographic alternations are checked first: they are the single most
-    // plausible class of German spelling fix.
-    if is_german_alternation(misspelled, candidate) {
-        return GermanEditType::Alternation;
-    }
-
-    if misspelled.len() == candidate.len() {
-        // Same length: exactly one differing position is a substitution, two
-        // adjacent swapped positions are a transposition.
-        let mut diff_positions = [0usize; 2];
-        let mut diff_count = 0usize;
-
-        for (i, (a, b)) in misspelled.iter().zip(candidate.iter()).enumerate() {
-            if !eq_ignore_case(*a, *b) {
-                if diff_count == 2 {
-                    return Other;
-                }
-                diff_positions[diff_count] = i;
-                diff_count += 1;
-            }
-        }
-
-        return match diff_count {
-            0 => Other, // exact match, filtered out upstream
-            1 => Substitution,
-            2 => {
-                let (first, second) = (diff_positions[0], diff_positions[1]);
-                if second == first + 1
-                    && eq_ignore_case(misspelled[first], candidate[second])
-                    && eq_ignore_case(misspelled[second], candidate[first])
-                {
-                    Transposition
-                } else {
-                    Other
-                }
-            }
-            _ => unreachable!(),
-        };
-    }
-
-    if misspelled.len() == candidate.len() + 1 {
-        return if is_single_deletion(misspelled, candidate) {
-            Deletion
-        } else {
-            Other
-        };
-    }
-
-    if misspelled.len() + 1 == candidate.len() {
-        return if is_single_deletion(candidate, misspelled) {
-            Insertion
-        } else {
-            Other
-        };
-    }
-
-    Other
-}
+/// How German misspellings come about, read once from the `suggestions`
+/// section of `annotations.json`: the alternations writers swap (`ae`/`ä`,
+/// `ss`/`ß`, `i`/`ie`, the silent `h`, `ph`), the QWERTZ keyboard, and letter
+/// frequency. Ranking by them is the core's
+/// [`suggest_correct_spelling_with_hints`]; the table is German data.
+static GERMAN_HINTS: LazyLock<SuggestionHints> = LazyLock::new(|| {
+    SuggestionHints::from_annotations_json(include_str!("../../data/annotations.json"))
+        .expect("the German annotations parse")
+});
 
 /// Do the two words start with the same letter, ignoring case?
 fn keeps_first_letter(misspelled: &[char], candidate: &[char]) -> bool {
     match (misspelled.first(), candidate.first()) {
-        (Some(a), Some(b)) => eq_ignore_case(*a, *b),
+        (Some(a), Some(b)) => a.to_lowercase().eq(b.to_lowercase()),
         _ => false,
     }
-}
-
-/// Score a candidate suggestion for a German misspelling.
-///
-/// Lower is better. The error *kind* dominates (mirroring hunspell's heuristic
-/// ordering); edit distance and character-level similarity then refine the
-/// ranking within each kind.
-fn score_german_candidate(misspelled: &[char], candidate: &[char], edit_distance: u8) -> i32 {
-    let kind = classify_german_edit(misspelled, candidate);
-    let mut score = kind.bucket() * 1000 + i32::from(edit_distance) * 10;
-
-    // Similarity bonuses: a shared prefix and matching character positions.
-    let misspelled_lower = misspelled.to_lower();
-    let candidate_lower = candidate.to_lower();
-
-    let common_len = misspelled_lower.len().min(candidate_lower.len());
-    let mut prefix = 0;
-    while prefix < common_len && misspelled_lower[prefix] == candidate_lower[prefix] {
-        prefix += 1;
-    }
-
-    let common_positions = misspelled_lower
-        .iter()
-        .zip(candidate_lower.iter())
-        .filter(|(a, b)| a == b)
-        .count();
-
-    score -= i32::try_from(prefix).unwrap_or(i32::MAX) * 2;
-    score -= i32::try_from(common_positions).unwrap_or(i32::MAX);
-
-    score
 }
 
 /// The longest run of letters still read as an initialism rather than a word.
@@ -580,54 +359,64 @@ impl<T: Dictionary> GermanSpellCheck<T> {
 
     /// Get spelling suggestions for a word.
     ///
-    /// Candidates come from the (FST-backed) dictionary's fuzzy match, which
-    /// keeps lookups fast even over a large word list. They are then ranked
-    /// with [`score_german_candidate`], which prefers the error kinds writers
-    /// actually make (transpositions, doubled letters) over arbitrary
-    /// substitutions — the same strategy hunspell uses for German.
+    /// The core ranks the candidates with [`GERMAN_HINTS`]: by the kind of
+    /// mistake first (an alternation, a neighbouring key, a transposition, a
+    /// letter too many or too few, a substitution), so that `Worrt` gives
+    /// `Wort` before `Wirrt`. What is German stays here: names go last, guesses
+    /// that are not close are dropped, and the capital is kept.
     fn get_suggestions(&self, word: &[char]) -> Vec<Vec<char>> {
-        // Pull a generous candidate set, then rank it ourselves. The default
-        // Harper ranking is tuned for English and ties are broken
-        // alphabetically, which produces poor results for German.
-        let mut scored: Vec<(i32, &[char])> = self
-            .dictionary
-            .fuzzy_match(word, 2, 100)
-            .into_iter()
-            .map(|result| {
-                // A name is the likelier guess only when nothing else is close: *Wrot* is *Wort*, not *Wroth*.
-                let name = self
-                    .dictionary
-                    .get_word_metadata(result.word)
-                    .is_some_and(|m| m.noun.as_ref().is_some_and(|n| n.is_proper == Some(true)));
-                (
-                    score_german_candidate(word, result.word, result.edit_distance)
-                        + if name { 1500 } else { 0 },
-                    result.word,
-                )
-            })
-            .collect();
+        let hints = &*GERMAN_HINTS;
+        let mut ranked: Vec<&[char]> =
+            suggest_correct_spelling_with_hints(word, 100, 2, &self.dictionary, hints);
 
-        scored.sort_by(|a, b| a.0.cmp(&b.0).then_with(|| a.1.cmp(b.1)));
+        // A name is the likelier guess only when nothing else is close: *Wrot* is *Wort*, not *Wroth*.
+        // A stable sort keeps the core's order within each group.
+        ranked.sort_by_key(|candidate| {
+            self.dictionary
+                .get_word_metadata(candidate)
+                .is_some_and(|m| m.noun.as_ref().is_some_and(|n| n.is_proper == Some(true)))
+        });
 
         // Writers rarely get the first letter wrong, and one edit is far likelier than two.
         // Once a candidate is one edit away and keeps the first letter, the guesses that need
         // two edits or a different first letter are noise: *Gaarten* is *Garten*, not
-        // *Haarten*, *Paarten* or *Gameten*; *Hauss* is not *Ahauss*.
+        // *Haarten*, *Paarten* or *Gameten*; *Hauss* is not *Ahauss*. An alternation from the
+        // table counts as one edit wherever it is.
         let is_close = |candidate: &[char]| {
-            classify_german_edit(word, candidate) != GermanEditType::Other
+            hints.classify(word, candidate) != EditKind::Other
                 && keeps_first_letter(word, candidate)
         };
-        if scored.iter().any(|(_, candidate)| is_close(candidate)) {
-            scored.retain(|(_, candidate)| {
+        if ranked.iter().any(|candidate| is_close(candidate)) {
+            ranked.retain(|candidate| {
                 is_close(candidate)
-                    || classify_german_edit(word, candidate) == GermanEditType::Alternation
+                    || matches!(
+                        hints.classify(word, candidate),
+                        EditKind::Map | EditKind::Rep
+                    )
             });
         }
 
-        let mut suggestions: Vec<Vec<char>> = scored
-            .into_iter()
-            .map(|(_, candidate)| candidate.to_vec())
-            .collect();
+        // *wichten* and *Wichten* are two words but one suggestion. Each keeps the
+        // place of its best-ranked spelling, and takes the lower-case spelling
+        // when the writer typed lower case.
+        let lower_initial = |w: &[char]| w.first().is_some_and(|c| c.is_lowercase());
+        let mut suggestions: Vec<Vec<char>> = Vec::new();
+        for candidate in ranked {
+            let folded: Vec<char> = candidate.iter().flat_map(|c| c.to_lowercase()).collect();
+            let same = suggestions.iter_mut().find(|kept| {
+                kept.iter()
+                    .flat_map(|c| c.to_lowercase())
+                    .eq(folded.iter().copied())
+            });
+            match same {
+                Some(kept) => {
+                    if lower_initial(word) && lower_initial(candidate) && !lower_initial(kept) {
+                        *kept = candidate.to_vec();
+                    }
+                }
+                None => suggestions.push(candidate.to_vec()),
+            }
+        }
 
         // Preserve the input's capitalization. German nouns and sentence-initial
         // words are capitalized, so a capitalized misspelling ("Worrt") implies a
@@ -640,6 +429,10 @@ impl<T: Dictionary> GermanSpellCheck<T> {
                 }
             }
         }
+        // *Garten* and *garten* are two words, and after the capital is kept they are one
+        // suggestion.
+        let mut seen = HashSet::new();
+        suggestions.retain(|suggestion| seen.insert(suggestion.clone()));
 
         // Also try a simple capitalization fix (common German error).
         if suggestions.is_empty() && word.len() > 1 {
@@ -935,6 +728,81 @@ mod tests {
         assert_eq!(hauss.first().map(String::as_str), Some("Haus"));
         assert!(!hauss.iter().any(|s| s == "Ahauss"), "{hauss:?}");
         assert!(hauss.iter().all(|s| s.starts_with('H')), "{hauss:?}");
+    }
+
+    /// How often the intended word is the first suggestion, and among the first
+    /// five, over a file of misspellings: one `kind<TAB>typo<TAB>intended` per line.
+    /// Prints one line per kind and one for all.
+    ///
+    /// ```bash
+    /// HARPER_TYPO_EVAL=typos.tsv cargo test --release --lib suggestion_accuracy -- --ignored --nocapture
+    /// ```
+    #[test]
+    #[ignore = "reads a file named by the environment"]
+    fn suggestion_accuracy() {
+        let Ok(path) = std::env::var("HARPER_TYPO_EVAL") else {
+            return;
+        };
+        let spellcheck = GermanSpellCheck::new(crate::spell::compound_aware_german_dictionary());
+        let mut stats: std::collections::BTreeMap<String, (usize, usize, usize)> =
+            std::collections::BTreeMap::new();
+        for line in std::fs::read_to_string(path).unwrap().lines() {
+            let mut fields = line.split('\t');
+            let (Some(kind), Some(typo), Some(intended)) =
+                (fields.next(), fields.next(), fields.next())
+            else {
+                continue;
+            };
+            let chars: Vec<char> = typo.chars().collect();
+            if spellcheck.dictionary.contains_word(&chars) {
+                continue;
+            }
+            let suggestions: Vec<String> = spellcheck
+                .get_suggestions(&chars)
+                .into_iter()
+                .map(|s| s.into_iter().collect())
+                .collect();
+            let top1 = suggestions.first().is_some_and(|s| s == intended);
+            let top5 = suggestions.iter().take(5).any(|s| s == intended);
+            for key in [kind, "ALL"] {
+                let entry = stats.entry(key.to_owned()).or_default();
+                entry.0 += 1;
+                entry.1 += usize::from(top1);
+                entry.2 += usize::from(top5);
+            }
+        }
+        for (kind, (n, top1, top5)) in stats {
+            println!(
+                "{kind:14} {n:5}  top1 {:5.1}%  top5 {:5.1}%",
+                100.0 * top1 as f64 / n as f64,
+                100.0 * top5 as f64 / n as f64
+            );
+        }
+    }
+
+    /// Slips of fast typing, from the hint table: a neighbouring key, a doubled
+    /// letter typed once, and the same word in two capitalizations offered once.
+    #[test]
+    fn ranks_the_slips_of_fast_typing() {
+        assert_eq!(
+            suggestions_for("Nebem").first().map(String::as_str),
+            Some("Neben")
+        );
+        assert_eq!(
+            suggestions_for("muste").first().map(String::as_str),
+            Some("musste")
+        );
+        assert_eq!(
+            suggestions_for("Ergebnise").first().map(String::as_str),
+            Some("Ergebnisse")
+        );
+        let wichtgen = suggestions_for("wichtgen");
+        let folded: Vec<String> = wichtgen.iter().map(|s| s.to_lowercase()).collect();
+        let mut unique = folded.clone();
+        unique.sort();
+        unique.dedup();
+        assert_eq!(folded.len(), unique.len(), "{wichtgen:?}");
+        assert!(wichtgen.iter().any(|s| s == "wichtigen"), "{wichtgen:?}");
     }
 
     /// These expectations mirror hunspell's de_DE suggestion ordering: the

@@ -143,6 +143,20 @@ impl Dictionary for CompoundAwareDictionary {
         self.base_dict.get_correct_capitalization_of(word)
     }
 
+    /// Every capitalization the base dictionary has. A compound has no stored spelling.
+    fn get_correct_capitalizations_of(
+        &self,
+        word: &[char],
+    ) -> Box<dyn Iterator<Item = &[char]> + Send + '_> {
+        self.base_dict.get_correct_capitalizations_of(word)
+    }
+
+    /// The metadata of exactly this spelling in the base dictionary. A compound's metadata is
+    /// built on demand and cannot be lent out, so compounds give `None` here.
+    fn get_word_metadata_exact(&self, word: &[char]) -> Option<&DictWordMetadata> {
+        self.base_dict.get_word_metadata_exact(word)
+    }
+
     /// Get the associated metadata for any capitalization of a given word.
     fn get_word_metadata(&self, word: &[char]) -> Option<Cow<'_, DictWordMetadata>> {
         // Check base dictionary first
@@ -188,7 +202,7 @@ impl Dictionary for CompoundAwareDictionary {
     }
 
     /// Returns the correct capitalization of the word with the given ID.
-    fn get_word_from_id(&self, id: &harper_core::spell::WordId) -> Option<&[char]> {
+    fn get_word_from_id(&self, id: &harper_core::spell::CanonicalWordId) -> Option<&[char]> {
         self.base_dict.get_word_from_id(id)
     }
 

@@ -301,13 +301,14 @@ pub(crate) fn can_head_a_lowercase_compound(
     let without_t = tail.strip_suffix(&['t']).unwrap_or(tail).to_vec();
 
     let mut infinitives: Vec<Vec<char>> = Vec::with_capacity(3);
-    if let Some(lemma) = metadata
-        .derived_from
-        .as_ref()
-        .and_then(|id| dictionary.get_word_from_id(id))
-    {
-        infinitives.push(lemma.to_vec());
-    }
+    // A form may record several lemmas; each is a candidate infinitive.
+    infinitives.extend(
+        metadata
+            .derived_from
+            .iter()
+            .filter_map(|id| dictionary.get_word_from_id(id))
+            .map(<[char]>::to_vec),
+    );
     stem.push('n');
     infinitives.push(stem);
     infinitives.push([without_t.as_slice(), &['e', 'n']].concat());
@@ -357,10 +358,10 @@ pub(crate) fn can_head_a_capitalized_compound(dictionary: &impl Dictionary, tail
 
     let lemma_is_verb = metadata
         .derived_from
-        .as_ref()
-        .and_then(|id| dictionary.get_word_from_id(id))
-        .and_then(|lemma| dictionary.get_word_metadata(lemma))
-        .is_some_and(|lemma| lemma.verb.is_some());
+        .iter()
+        .filter_map(|id| dictionary.get_word_from_id(id))
+        .filter_map(|lemma| dictionary.get_word_metadata(lemma))
+        .any(|lemma| lemma.verb.is_some());
 
     metadata.verb.is_none() && !lemma_is_verb
 }

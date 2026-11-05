@@ -12,8 +12,15 @@
 //!
 //! - every spelling in one `char` array, with offsets;
 //! - the metadata once per distinct value, and a `u32` per word pointing at it;
-//! - an open-addressed table from [`WordId`] to word, for the lookups;
+//! - an open-addressed table from [`CaseFoldedWordId`] to words, for the lookups
+//!   that ignore case;
+//! - one from [`CanonicalWordId`] to word, for the lemma a form records;
 //! - an FST from spelling to word, for fuzzy matching.
+//!
+//! Spellings that differ only in case are separate words, as in the core's
+//! [`WordMap`]: *Essen* and *essen*. A lookup that ignores case merges their
+//! metadata, which is what [`Dictionary::get_word_metadata`] promises and what
+//! the German rules were written against when the two were still one entry.
 //!
 //! It answers the [`Dictionary`] trait the way `FstDictionary` does; a test
 //! compares every word and its metadata against the expansion it was built from.
@@ -26,19 +33,32 @@ use hashbrown::HashMap;
 use harper_core::spell::fst_dictionary::{build_dfa, merge_best_distances, stream_distances_vec};
 use harper_core::spell::rune::{AttributeList, word_list::AnnotatedWord};
 use harper_core::spell::word_map::{WordMap, WordMapEntry};
-use harper_core::spell::{Dictionary, FuzzyMatchResult, MutableDictionary, WordId};
+use harper_core::spell::{
+    CanonicalWordId, CaseFoldedWordId, Dictionary, FuzzyMatchResult, MutableDictionary,
+};
 use harper_core::{CharString, CharStringExt, DictWordMetadata};
 
 const EMPTY: u32 = u32::MAX;
 
-/// The open-addressed table of word indices, probed by id. Half full at most, so probes stay short.
-fn build_slots(ids: &[u64]) -> Vec<u32> {
-    let mut slots = vec![EMPTY; (2 * ids.len()).next_power_of_two().max(2)];
+/// The id that every capitalization of `word` shares.
+fn case_folded_id(word: &[char]) -> u64 {
+    CaseFoldedWordId::from_word_chars(word).0.hash
+}
+
+/// The id of exactly this spelling.
+fn canonical_id(word: &[char]) -> u64 {
+    CanonicalWordId::from_word_chars(word).hash
+}
+
+/// An open-addressed table of word indices, probed by the id `id_of` gives each
+/// word. Half full at most, so probes stay short. Several words may share an
+/// id; a lookup walks the probe sequence until the first free slot.
+fn build_slots(n: usize, id_of: impl Fn(usize) -> u64) -> Vec<u32> {
+    let mut slots = vec![EMPTY; (2 * n).next_power_of_two().max(2)];
     let mask = slots.len() - 1;
-    for (index, &id) in ids.iter().enumerate() {
-        let mut slot = id as usize & mask;
+    for index in 0..n {
+        let mut slot = id_of(index) as usize & mask;
         while slots[slot] != EMPTY {
-            debug_assert_ne!(ids[slots[slot] as usize], id, "a word was added twice");
             slot = (slot + 1) & mask;
         }
         slots[slot] = index as u32;
@@ -53,18 +73,23 @@ pub struct CompactDictionary {
     /// `offsets[i]..offsets[i + 1]` is word `i` in `chars`. One longer than the
     /// number of words.
     offsets: Vec<u32>,
-    /// The [`WordId`] of word `i`, as its `u64`.
+    /// The [`CaseFoldedWordId`] of word `i`, as its `u64`.
     ids: Vec<u64>,
-    /// Open-addressed table of word indices, probed by id. `EMPTY` is a free slot.
+    /// Word indices, probed by case-folded id. `EMPTY` is a free slot.
     slots: Vec<u32>,
+    /// Word indices, probed by canonical id. The id is recomputed from the
+    /// spelling on a probe rather than stored: it is only needed to resolve the
+    /// lemma a form records.
+    canonical_slots: Vec<u32>,
     /// Index into `metas` for word `i`.
     meta_of: Vec<u32>,
     /// Each distinct metadata value once, without `derived_from`.
     metas: Vec<DictWordMetadata>,
-    /// `derived_from` of word `i`. It is a hash of another word, so it is
-    /// different for nearly every word and would stop the rest of the metadata
-    /// from being shared.
-    derived_from: Vec<Option<u64>>,
+    /// The lemmas of word `i` are `bases[base_offsets[i]..base_offsets[i + 1]]`,
+    /// as word indices. Kept apart from the metadata: they differ for nearly
+    /// every word and would stop the rest of it from being shared.
+    base_offsets: Vec<u32>,
+    bases: Vec<u32>,
     /// Spelling to word index, for fuzzy matching. The FST wants its keys
     /// sorted; the arrays above are not, so this is the only place that is.
     fst: FstMap<Vec<u8>>,
@@ -75,32 +100,79 @@ impl CompactDictionary {
         &self.chars[self.offsets[index] as usize..self.offsets[index + 1] as usize]
     }
 
+    fn bases_of(&self, index: usize) -> &[u32] {
+        &self.bases[self.base_offsets[index] as usize..self.base_offsets[index + 1] as usize]
+    }
+
     fn metadata(&self, index: usize) -> Cow<'_, DictWordMetadata> {
         let shared = &self.metas[self.meta_of[index] as usize];
-        match self.derived_from[index] {
-            None => Cow::Borrowed(shared),
-            Some(base) => {
-                let mut metadata = shared.clone();
-                metadata.derived_from = Some(WordId::from(base));
-                Cow::Owned(metadata)
+        let bases = self.bases_of(index);
+        if bases.is_empty() {
+            return Cow::Borrowed(shared);
+        }
+        let mut metadata = shared.clone();
+        metadata.derived_from = Default::default();
+        metadata.derived_from.extend(
+            bases
+                .iter()
+                .map(|&base| CanonicalWordId::from_word_chars(self.spelling(base as usize))),
+        );
+        Cow::Owned(metadata)
+    }
+
+    /// Every word that is `word` in some capitalization, in probe order.
+    fn indices_of(&self, word: &[char]) -> Vec<usize> {
+        let id = case_folded_id(word);
+        let mask = self.slots.len() - 1;
+        let mut slot = id as usize & mask;
+        let mut found = Vec::new();
+        loop {
+            match self.slots[slot] {
+                EMPTY => return found,
+                index => {
+                    if self.ids[index as usize] == id {
+                        found.push(index as usize);
+                    }
+                    slot = (slot + 1) & mask;
+                }
             }
         }
     }
 
-    fn index_of_id(&self, id: u64) -> Option<usize> {
-        let mask = self.slots.len() - 1;
+    /// The word spelled exactly `word`.
+    fn exact_index_of(&self, word: &[char]) -> Option<usize> {
+        self.indices_of(word)
+            .into_iter()
+            .find(|&index| self.spelling(index) == word)
+    }
+
+    fn index_of_canonical(&self, id: u64) -> Option<usize> {
+        let mask = self.canonical_slots.len() - 1;
         let mut slot = id as usize & mask;
         loop {
-            match self.slots[slot] {
+            match self.canonical_slots[slot] {
                 EMPTY => return None,
-                index if self.ids[index as usize] == id => return Some(index as usize),
+                index if canonical_id(self.spelling(index as usize)) == id => {
+                    return Some(index as usize);
+                }
                 _ => slot = (slot + 1) & mask,
             }
         }
     }
 
-    fn index_of(&self, word: &[char]) -> Option<usize> {
-        self.index_of_id(WordId::from_word_chars(word).into())
+    /// The metadata of every capitalization of `word`, merged.
+    fn merged_metadata(&self, word: &[char]) -> Option<Cow<'_, DictWordMetadata>> {
+        let mut indices = self.indices_of(word).into_iter();
+        let first = self.metadata(indices.next()?);
+        let rest: Vec<usize> = indices.collect();
+        if rest.is_empty() {
+            return Some(first);
+        }
+        let mut merged = first.into_owned();
+        for index in rest {
+            merged.merge(&self.metadata(index));
+        }
+        Some(Cow::Owned(merged))
     }
 
     /// Every word with its metadata.
@@ -127,17 +199,20 @@ impl CompactDictionary {
 ///
 /// Expanding the whole word list into one [`WordMap`] needs 190 MB at once, and
 /// the expansion cannot simply be cut into independent pieces: two headwords can
-/// produce the same form, and which one wins `derived_from` or the spelling
-/// depends on the code path that got there. [`expand_in_blocks`] therefore keeps
-/// the one map the expansion needs, but hands each word over to this builder as
-/// soon as no later block can touch it.
+/// produce the same form, and which one wins the spelling depends on the code
+/// path that got there. [`expand_in_blocks`] therefore keeps the one map the
+/// expansion needs, but hands each word over to this builder as soon as no later
+/// block can touch it.
 #[derive(Default)]
 pub struct CompactBuilder {
     chars: Vec<char>,
     offsets: Vec<u32>,
     ids: Vec<u64>,
     meta_of: Vec<u32>,
-    derived_from: Vec<Option<u64>>,
+    /// The canonical ids of each word's lemmas, resolved to word indices in
+    /// [`Self::finish`], when every word is known.
+    base_offsets: Vec<u32>,
+    base_ids: Vec<u64>,
     metas: Vec<DictWordMetadata>,
     interned: HashMap<DictWordMetadata, u32>,
 }
@@ -146,6 +221,7 @@ impl CompactBuilder {
     pub fn new() -> Self {
         Self {
             offsets: vec![0],
+            base_offsets: vec![0],
             ..Self::default()
         }
     }
@@ -160,12 +236,16 @@ impl CompactBuilder {
         index
     }
 
-    /// Add a finished word. Every word must be added once only.
+    /// Add a finished word. Every spelling must be added once only.
     pub fn push(&mut self, entry: WordMapEntry) {
-        let id: u64 = WordId::from_word_chars(&entry.canonical_spelling).into();
+        let id = case_folded_id(&entry.canonical_spelling);
         let mut metadata = entry.metadata;
-        self.derived_from
-            .push(metadata.derived_from.take().map(u64::from));
+        self.base_ids.extend(
+            std::mem::take(&mut metadata.derived_from)
+                .into_iter()
+                .map(u64::from),
+        );
+        self.base_offsets.push(self.base_ids.len() as u32);
         let meta = self.intern(metadata);
         self.chars.extend_from_slice(&entry.canonical_spelling);
         self.offsets.push(self.chars.len() as u32);
@@ -181,14 +261,14 @@ impl CompactBuilder {
             mut ids,
             mut meta_of,
             metas,
-            mut derived_from,
+            base_offsets: id_offsets,
+            base_ids,
             ..
         } = self;
         chars.shrink_to_fit();
         offsets.shrink_to_fit();
         ids.shrink_to_fit();
         meta_of.shrink_to_fit();
-        derived_from.shrink_to_fit();
         let n = ids.len();
         let spelling = |i: usize| &chars[offsets[i] as usize..offsets[i + 1] as usize];
 
@@ -206,19 +286,42 @@ impl CompactBuilder {
         }
         drop(order);
 
-        let slots = build_slots(&ids);
+        let slots = build_slots(n, |i| ids[i]);
+        let canonical_slots = build_slots(n, |i| canonical_id(spelling(i)));
 
-        CompactDictionary {
+        // A lemma that is not a word of its own, such as a bare stem, has
+        // nothing to point at and is dropped.
+        let mut dictionary = CompactDictionary {
             chars,
             offsets,
             ids,
             slots,
+            canonical_slots,
             meta_of,
             metas,
-            derived_from,
+            base_offsets: Vec::new(),
+            bases: Vec::new(),
             fst: FstMap::new(fst_builder.into_inner().expect("in-memory FST build"))
                 .expect("Unable to build FST map."),
+        };
+        let mut base_offsets = Vec::with_capacity(n + 1);
+        let mut bases = Vec::new();
+        base_offsets.push(0);
+        for word in id_offsets.windows(2) {
+            let mut resolved: Vec<u32> = base_ids[word[0] as usize..word[1] as usize]
+                .iter()
+                .filter_map(|&id| dictionary.index_of_canonical(id))
+                .map(|index| index as u32)
+                .collect();
+            resolved.sort_unstable();
+            resolved.dedup();
+            bases.extend(resolved);
+            base_offsets.push(bases.len() as u32);
         }
+        bases.shrink_to_fit();
+        dictionary.base_offsets = base_offsets;
+        dictionary.bases = bases;
+        dictionary
     }
 }
 
@@ -235,9 +338,9 @@ impl std::fmt::Display for PackError {
 impl std::error::Error for PackError {}
 
 const PACK_MAGIC: &[u8; 4] = b"HDPK";
-const PACK_FORMAT: u32 = 1;
-/// `derived_from` of a word that has none. A real id is a hash and never this.
-const NO_BASE: u64 = u64::MAX;
+/// 2: spellings that differ only in case are separate words, and a word may
+/// have several lemmas, stored as word indices.
+const PACK_FORMAT: u32 = 2;
 
 /// Cuts a byte slice into the pieces a pack is made of, without ever reading past its end.
 struct PackReader<'a>(&'a [u8]);
@@ -303,14 +406,9 @@ impl CompactDictionary {
             let meta = u16::try_from(meta).expect("fewer than 65 536 distinct metadata values");
             out.extend(meta.to_le_bytes());
         }
-        for base in &self.derived_from {
-            assert_ne!(
-                *base,
-                Some(NO_BASE),
-                "an id collides with the 'no base' marker"
-            );
-            out.extend(base.unwrap_or(NO_BASE).to_le_bytes());
-        }
+        out.extend((self.bases.len() as u64).to_le_bytes());
+        out.extend(self.base_offsets.iter().flat_map(|o| o.to_le_bytes()));
+        out.extend(self.bases.iter().flat_map(|b| b.to_le_bytes()));
         out.extend(text.as_bytes());
         out
     }
@@ -357,11 +455,23 @@ impl CompactDictionary {
         if meta_of.iter().any(|&m| m as usize >= metas.len()) {
             return Err(PackError("a word points at metadata that is not there"));
         }
-        let derived_from: Vec<Option<u64>> = reader
-            .records(n, 8)?
-            .map(|b| u64::from_le_bytes(b.try_into().expect("8 bytes")))
-            .map(|base| (base != NO_BASE).then_some(base))
+        let base_count = reader.length()?;
+        let base_offsets: Vec<u32> = reader
+            .records(n + 1, 4)?
+            .map(|b| u32::from_le_bytes(b.try_into().expect("4 bytes")))
             .collect();
+        let bases: Vec<u32> = reader
+            .records(base_count, 4)?
+            .map(|b| u32::from_le_bytes(b.try_into().expect("4 bytes")))
+            .collect();
+        let bases_in_order = base_offsets.windows(2).all(|w| w[0] <= w[1]);
+        if base_offsets.first() != Some(&0)
+            || base_offsets.last() != Some(&(base_count as u32))
+            || !bases_in_order
+            || bases.iter().any(|&b| b as usize >= n)
+        {
+            return Err(PackError("the lemmas are inconsistent"));
+        }
         let text = std::str::from_utf8(reader.take(text_len)?)
             .map_err(|_| PackError("the spellings are not UTF-8"))?;
         let chars: Vec<char> = text.chars().collect();
@@ -371,17 +481,22 @@ impl CompactDictionary {
 
         let ids: Vec<u64> = offsets
             .windows(2)
-            .map(|w| WordId::from_word_chars(&chars[w[0] as usize..w[1] as usize]).into())
+            .map(|w| case_folded_id(&chars[w[0] as usize..w[1] as usize]))
             .collect();
-        let slots = build_slots(&ids);
+        let slots = build_slots(n, |i| ids[i]);
+        let canonical_slots = build_slots(n, |i| {
+            canonical_id(&chars[offsets[i] as usize..offsets[i + 1] as usize])
+        });
         Ok(Self {
             chars,
             offsets,
             ids,
             slots,
+            canonical_slots,
             meta_of,
             metas,
-            derived_from,
+            base_offsets,
+            bases,
             fst,
         })
     }
@@ -414,18 +529,15 @@ pub fn expand_in_blocks(
         for index in range {
             let mut map = WordMap::default();
             attr_list.expand_annotated_words(blocks[index].iter().cloned(), &mut map);
-            seen.extend(map.iter().map(|entry| {
-                (
-                    u64::from(WordId::from_word_chars(&entry.canonical_spelling)),
-                    index as u32,
-                )
-            }));
-            seen.extend(blocks[index].iter().map(|word| {
-                (
-                    u64::from(WordId::from_word_chars(&word.letters)),
-                    index as u32,
-                )
-            }));
+            seen.extend(
+                map.iter()
+                    .map(|entry| (case_folded_id(&entry.canonical_spelling), index as u32)),
+            );
+            seen.extend(
+                blocks[index]
+                    .iter()
+                    .map(|word| (case_folded_id(&word.letters), index as u32)),
+            );
         }
         seen
     };
@@ -505,14 +617,18 @@ pub fn expand_in_blocks(
         // dictionary should not inherit that.
         let mut finished = Vec::new();
         for entry in std::mem::take(&mut working) {
-            let id: u64 = WordId::from_word_chars(&entry.canonical_spelling).into();
+            let id = case_folded_id(&entry.canonical_spelling);
             if last_block(id) == index {
                 finished.push((id, entry));
             } else {
                 working.insert(entry);
             }
         }
-        finished.sort_unstable_by_key(|&(id, _)| id);
+        // *Essen* and *essen* share an id; the spelling decides between them.
+        finished.sort_unstable_by(|(a, x), (b, y)| {
+            a.cmp(b)
+                .then_with(|| x.canonical_spelling.cmp(&y.canonical_spelling))
+        });
         for (_, entry) in finished {
             builder.push(entry);
         }
@@ -522,7 +638,7 @@ pub fn expand_in_blocks(
 
 impl Dictionary for CompactDictionary {
     fn contains_word(&self, word: &[char]) -> bool {
-        self.index_of(word).is_some()
+        !self.indices_of(word).is_empty()
     }
 
     fn contains_word_str(&self, word: &str) -> bool {
@@ -531,7 +647,14 @@ impl Dictionary for CompactDictionary {
     }
 
     fn get_word_metadata(&self, word: &[char]) -> Option<Cow<'_, DictWordMetadata>> {
-        self.index_of(word).map(|index| self.metadata(index))
+        self.merged_metadata(word)
+    }
+
+    /// The metadata of exactly this spelling, without its lemmas: they are
+    /// stored apart and cannot be lent out with it.
+    fn get_word_metadata_exact(&self, word: &[char]) -> Option<&DictWordMetadata> {
+        self.exact_index_of(word)
+            .map(|index| &self.metas[self.meta_of[index] as usize])
     }
 
     fn get_word_metadata_str(&self, word: &str) -> Option<Cow<'_, DictWordMetadata>> {
@@ -609,8 +732,7 @@ impl Dictionary for CompactDictionary {
     fn contains_exact_word(&self, word: &[char]) -> bool {
         let normalized = word.normalized();
 
-        self.index_of(normalized.as_ref())
-            .is_some_and(|index| self.spelling(index) == normalized.as_ref())
+        self.exact_index_of(normalized.as_ref()).is_some()
     }
 
     fn contains_exact_word_str(&self, word: &str) -> bool {
@@ -619,11 +741,25 @@ impl Dictionary for CompactDictionary {
     }
 
     fn get_correct_capitalization_of(&self, word: &[char]) -> Option<&'_ [char]> {
-        self.index_of(word).map(|index| self.spelling(index))
+        match self.indices_of(word).as_slice() {
+            [index] => Some(self.spelling(*index)),
+            _ => None,
+        }
     }
 
-    fn get_word_from_id(&self, id: &WordId) -> Option<&[char]> {
-        self.index_of_id((*id).into())
+    fn get_correct_capitalizations_of(
+        &self,
+        word: &[char],
+    ) -> Box<dyn Iterator<Item = &[char]> + Send + '_> {
+        Box::new(
+            self.indices_of(word)
+                .into_iter()
+                .map(|index| self.spelling(index)),
+        )
+    }
+
+    fn get_word_from_id(&self, id: &CanonicalWordId) -> Option<&[char]> {
+        self.index_of_canonical(id.hash)
             .map(|index| self.spelling(index))
     }
 
@@ -646,10 +782,7 @@ impl From<MutableDictionary> for CompactDictionary {
     fn from(dict: MutableDictionary) -> Self {
         let mut map = WordMap::default();
         for (word, metadata) in dict.iter() {
-            map.insert(WordMapEntry {
-                canonical_spelling: word.clone(),
-                metadata: metadata.clone(),
-            });
+            map.insert(WordMapEntry::new(word.clone()).with_md(metadata.clone()));
         }
         let mut builder = CompactBuilder::new();
         for entry in map {
@@ -684,23 +817,23 @@ mod tests {
         assert_eq!(compact.len(), expected.len());
         let mut differing = Vec::new();
         for entry in expected.iter() {
-            let id = WordId::from_word_chars(&entry.canonical_spelling);
-            let Some(spelling) = compact.get_word_from_id(&id) else {
+            let Some(index) = compact.exact_index_of(&entry.canonical_spelling) else {
                 differing.push(format!("missing {:?}", entry.canonical_spelling));
                 continue;
             };
-            let metadata = compact.get_word_metadata(spelling).unwrap();
-            // Two expansions, in two runs of a randomly ordered hash map, have to
-            // agree on the spelling too: `Lehrerinnen` and `LehrerInnen` are one
-            // entry, and which of them it is called must not depend on the run.
-            if *spelling != *entry.canonical_spelling {
-                differing.push(format!(
-                    "SPELL {:?}/{:?}",
-                    spelling.iter().collect::<String>(),
-                    entry.canonical_spelling.iter().collect::<String>()
-                ));
-            } else if *metadata != entry.metadata {
-                let (a, b) = (format!("{:?}", *metadata), format!("{:?}", entry.metadata));
+            let metadata = compact.metadata(index);
+            // A lemma that is no word of its own (a bare stem) is dropped.
+            let mut want = entry.metadata.clone();
+            want.derived_from = Default::default();
+            want.derived_from.extend(
+                entry
+                    .metadata
+                    .derived_from
+                    .iter()
+                    .filter(|id| compact.get_word_from_id(id).is_some()),
+            );
+            if *metadata != want {
+                let (a, b) = (format!("{:?}", *metadata), format!("{:?}", want));
                 let at = a
                     .chars()
                     .zip(b.chars())
@@ -708,7 +841,7 @@ mod tests {
                     .unwrap_or(0);
                 differing.push(format!(
                     "META {} ... got {:?} / want {:?}",
-                    spelling.iter().collect::<String>(),
+                    entry.canonical_spelling.iter().collect::<String>(),
                     &a[at.saturating_sub(40)..(at + 60).min(a.len())],
                     &b[at.saturating_sub(40)..(at + 60).min(b.len())]
                 ));
@@ -721,6 +854,26 @@ mod tests {
             expected.len(),
             &differing[..differing.len().min(8)]
         );
+    }
+
+    /// *Essen* and *essen* are two words; asked without regard to case, the
+    /// dictionary answers with both readings, as when they were one entry.
+    #[test]
+    fn a_lookup_ignoring_case_merges_the_capitalizations() {
+        let compact = mutable_german_dictionary();
+        let lower: Vec<char> = "essen".chars().collect();
+        let upper: Vec<char> = "Essen".chars().collect();
+        assert!(compact.contains_exact_word(&lower));
+        assert!(compact.contains_exact_word(&upper));
+        let merged = compact.get_word_metadata(&lower).unwrap();
+        assert!(merged.is_noun() && merged.is_verb(), "{merged:?}");
+        assert_eq!(compact.get_correct_capitalization_of(&lower), None);
+        let mut spellings: Vec<String> = compact
+            .get_correct_capitalizations_of(&lower)
+            .map(|w| w.iter().collect())
+            .collect();
+        spellings.sort();
+        assert_eq!(spellings, ["Essen", "essen"]);
     }
 
     #[test]

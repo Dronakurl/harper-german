@@ -7,6 +7,7 @@
 use hashbrown::HashSet;
 
 use harper_core::AdjectiveData;
+use harper_core::spell::CaseFoldedWordId;
 use harper_core::spell::rune::word_list::AnnotatedWord;
 use harper_core::spell::word_map::{WordMap, WordMapEntry};
 use harper_core::{CharString, DictWordMetadata, NounData};
@@ -133,12 +134,10 @@ pub fn generate_compound_words(words: &[AnnotatedWord], word_map: &mut WordMap) 
                 };
 
                 // Add to word map if not already present
-                let compound_str: String = compound_chars.iter().collect();
-                if !word_map.contains_str(&compound_str) {
-                    word_map.insert(WordMapEntry {
-                        canonical_spelling: compound_chars,
-                        metadata: compound_meta,
-                    });
+                if !word_map
+                    .contains_case_folded(CaseFoldedWordId::from_word_chars(&compound_chars).0)
+                {
+                    word_map.insert(WordMapEntry::new(compound_chars).with_md(compound_meta));
                 }
             }
             // For noun compounds: only when neither word has adjective flag
@@ -157,12 +156,10 @@ pub fn generate_compound_words(words: &[AnnotatedWord], word_map: &mut WordMap) 
                 };
 
                 // Add to word map if not already present
-                let compound_str: String = compound_chars.iter().collect();
-                if !word_map.contains_str(&compound_str) {
-                    word_map.insert(WordMapEntry {
-                        canonical_spelling: compound_chars,
-                        metadata: compound_meta,
-                    });
+                if !word_map
+                    .contains_case_folded(CaseFoldedWordId::from_word_chars(&compound_chars).0)
+                {
+                    word_map.insert(WordMapEntry::new(compound_chars).with_md(compound_meta));
                 }
             }
         }
@@ -252,7 +249,9 @@ mod tests {
         let mut word_map = WordMap::default();
         generate_compound_words(&words, &mut word_map);
 
-        assert!(word_map.contains_str("schuhhersteller"));
+        assert!(
+            word_map.contains_case_folded(CaseFoldedWordId::from_word_str("schuhhersteller").0)
+        );
     }
 
     #[test]
@@ -272,6 +271,6 @@ mod tests {
         generate_compound_words(&words, &mut word_map);
 
         // arbeit + s + geber = arbeitengeber (using s interfix)
-        assert!(word_map.contains_str("arbeitsgeber"));
+        assert!(word_map.contains_case_folded(CaseFoldedWordId::from_word_str("arbeitsgeber").0));
     }
 }

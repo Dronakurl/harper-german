@@ -19,7 +19,7 @@ use crate::parsers::PlainGerman;
 use crate::spell::compound_aware_german_dictionary;
 
 /// The `harper-core` this plugin is built against; kept in step with `Cargo.toml`.
-const HARPER_CORE_VERSION: &str = "2.12.0";
+const HARPER_CORE_VERSION: &str = "3.0.0";
 
 pub struct German {
     base: Arc<dyn Dictionary>,
@@ -91,6 +91,8 @@ impl LanguagePlugin for German {
             plugin_version: env!("CARGO_PKG_VERSION").into(),
             abi: ABI_VERSION,
             harper_core_version: HARPER_CORE_VERSION.into(),
+            // `dispatch` fills in what the API crate this plugin is built with supports.
+            features: Vec::new(),
             dialects: vec![
                 DialectInfo {
                     id: "Standard".into(),
