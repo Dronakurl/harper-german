@@ -65,10 +65,10 @@ fn weir_rules(out_dir: &Path) {
         ));
         code.push_str("    match linter.into_sentence_linter() {\n");
         code.push_str(&format!(
-            "        Ok(linter) => group.add_sentence_expr_linter(\"{name}\", linter),\n"
+            "        Ok(linter) => group.add_sentence_expr_linter(\"{name}\", Prioritized(linter)),\n"
         ));
         code.push_str(&format!(
-            "        Err(linter) => group.add_chunk_expr_linter(\n            \"{name}\",\n            linter.into_chunk_linter().unwrap_or_else(|_| unreachable!()),\n        ),\n"
+            "        Err(linter) => group.add_chunk_expr_linter(\n            \"{name}\",\n            Prioritized(linter.into_chunk_linter().unwrap_or_else(|_| unreachable!())),\n        ),\n"
         ));
         code.push_str("    };\n\n");
     }
