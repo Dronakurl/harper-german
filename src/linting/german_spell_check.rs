@@ -236,6 +236,14 @@ fn classify_german_edit(misspelled: &[char], candidate: &[char]) -> GermanEditTy
     Other
 }
 
+/// Do the two words start with the same letter, ignoring case?
+fn keeps_first_letter(misspelled: &[char], candidate: &[char]) -> bool {
+    match (misspelled.first(), candidate.first()) {
+        (Some(a), Some(b)) => eq_ignore_case(*a, *b),
+        _ => false,
+    }
+}
+
 /// Score a candidate suggestion for a German misspelling.
 ///
 /// Lower is better. The error *kind* dominates (mirroring hunspell's heuristic
@@ -601,6 +609,21 @@ impl<T: Dictionary> GermanSpellCheck<T> {
 
         scored.sort_by(|a, b| a.0.cmp(&b.0).then_with(|| a.1.cmp(b.1)));
 
+        // Writers rarely get the first letter wrong, and one edit is far likelier than two.
+        // Once a candidate is one edit away and keeps the first letter, the guesses that need
+        // two edits or a different first letter are noise: *Gaarten* is *Garten*, not
+        // *Haarten*, *Paarten* or *Gameten*; *Hauss* is not *Ahauss*.
+        let is_close = |candidate: &[char]| {
+            classify_german_edit(word, candidate) != GermanEditType::Other
+                && keeps_first_letter(word, candidate)
+        };
+        if scored.iter().any(|(_, candidate)| is_close(candidate)) {
+            scored.retain(|(_, candidate)| {
+                is_close(candidate)
+                    || classify_german_edit(word, candidate) == GermanEditType::Alternation
+            });
+        }
+
         let mut suggestions: Vec<Vec<char>> = scored
             .into_iter()
             .map(|(_, candidate)| candidate.to_vec())
@@ -902,6 +925,16 @@ mod tests {
             .into_iter()
             .map(|s| s.into_iter().collect())
             .collect()
+    }
+
+    /// One edit that keeps the first letter beats everything that does not.
+    #[test]
+    fn drops_far_fetched_suggestions() {
+        assert_eq!(suggestions_for("Gaarten"), vec!["Garten"]);
+        let hauss = suggestions_for("Hauss");
+        assert_eq!(hauss.first().map(String::as_str), Some("Haus"));
+        assert!(!hauss.iter().any(|s| s == "Ahauss"), "{hauss:?}");
+        assert!(hauss.iter().all(|s| s.starts_with('H')), "{hauss:?}");
     }
 
     /// These expectations mirror hunspell's de_DE suggestion ordering: the
