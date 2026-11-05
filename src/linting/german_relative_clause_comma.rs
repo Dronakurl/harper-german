@@ -144,7 +144,14 @@ impl GermanRelativeClauseComma {
         // run of verbs only the last member and the one before it decide
         // anything, so an adjective with a stray verb reading at the head of
         // the run does no harm.
+        //
+        // A bare adverb reading does count against it: *heute* is also the
+        // preterite of *heuen*, and read as a verb it ended the clause in
+        // *Dass Wetter ist heute schlecht* one word too late. Participles
+        // carry an adverb reading next to the adjective one (*gearbeitet*),
+        // so the adverb only counts when there is no adjective reading.
         metadata.is_verb()
+            && !(metadata.is_adverb() && !metadata.is_adjective())
             && !metadata.is_determiner()
             && !metadata.is_pronoun()
             && !metadata.preposition

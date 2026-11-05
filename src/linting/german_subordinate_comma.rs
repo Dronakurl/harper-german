@@ -692,6 +692,11 @@ mod tests {
         assert_eq!(lint_count("Als ich nach Hause kam war niemand da."), 1);
         assert_eq!(lint_count("Weil es regnet bleiben wir zu Hause."), 1);
         assert_eq!(lint_count("Dass er kommt freut mich."), 1);
+        assert_eq!(lint_count("Wenn du heute kommst bringe Brot mit."), 1);
+        assert_eq!(lint_count("Wenn es heute regnet bleiben wir zu Hause."), 1);
+        // *heute* is not the preterite of *heuen* here: the clause has no
+        // closing verb, it is a main clause with a misspelled article.
+        assert_eq!(lint_count("Dass Wetter ist heute schlecht."), 0);
         assert_eq!(lint_count("Wenn du kommst, bringe Brot mit."), 0);
         assert_eq!(lint_count("Wenn du kommen willst, bringe Brot mit."), 0);
         assert_eq!(lint_count("Als Kind spielte ich oft draußen."), 0);
