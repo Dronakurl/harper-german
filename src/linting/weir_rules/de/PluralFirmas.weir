@@ -1,0 +1,12 @@
+# A plural built with "-s" or "-e" where the noun has its own: "Firmen".
+expr main Firmas
+
+let message "Der Plural heißt »Firmen«."
+let description "Korrigiert den falsch gebildeten Plural »Firmas« zu »Firmen«."
+let kind "Grammar"
+let becomes "Firmen"
+let strategy "MatchCase"
+
+test "Zwei Firmas kamen." "Zwei Firmen kamen."
+
+allows "Zwei Firmen kamen."

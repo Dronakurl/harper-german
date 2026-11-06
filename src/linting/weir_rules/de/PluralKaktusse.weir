@@ -1,0 +1,12 @@
+# A plural built with "-s" or "-e" where the noun has its own: "Kakteen".
+expr main Kaktusse
+
+let message "Der Plural heißt »Kakteen«."
+let description "Korrigiert den falsch gebildeten Plural »Kaktusse« zu »Kakteen«."
+let kind "Grammar"
+let becomes "Kakteen"
+let strategy "MatchCase"
+
+test "Er sammelt Kaktusse." "Er sammelt Kakteen."
+
+allows "Er sammelt Kakteen."

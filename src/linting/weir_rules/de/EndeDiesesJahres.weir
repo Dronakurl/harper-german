@@ -1,0 +1,17 @@
+# "Ende dieses Jahres": the genitive of a neuter or masculine noun takes
+# "dieses", not "diesen" ("Ende diesen Jahres" is a common slip).
+expr zeit [Ende, Anfang, Mitte]
+expr nomen [Jahres, Monats, Jahrhunderts, Jahrzehnts, Sommers, Winters, Semesters]
+
+expr main <(@zeit diesen @nomen), diesen>
+
+let message "Im Genitiv heißt es »dieses«: »Ende dieses Jahres«."
+let description "Ersetzt »diesen« durch »dieses« vor einem Nomen im Genitiv."
+let kind "Grammar"
+let becomes "dieses"
+let strategy "MatchCase"
+
+test "Ende diesen Jahres ziehen wir um." "Ende dieses Jahres ziehen wir um."
+
+allows "Ende dieses Jahres ziehen wir um."
+allows "Wir sehen diesen Monat nichts."

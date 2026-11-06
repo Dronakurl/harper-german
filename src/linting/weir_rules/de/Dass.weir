@@ -1,0 +1,13 @@
+# "daß" is the spelling before the 1996 reform; after a short vowel "ß" became
+# "ss". It is in almost every paragraph of an older text.
+expr main daß
+
+let message "Seit der Rechtschreibreform schreibt man »dass« mit Doppel-s."
+let description "Ersetzt die alte Schreibung »daß« durch »dass«."
+let kind "Spelling"
+let becomes "dass"
+let strategy "MatchCase"
+
+test "Ich weiß, daß du recht hast." "Ich weiß, dass du recht hast."
+
+allows "Ich weiß, dass du recht hast."

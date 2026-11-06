@@ -1,0 +1,12 @@
+# A plural built with "-s" or "-e" where the noun has its own: "Praktika".
+expr main Praktikas
+
+let message "Der Plural heißt »Praktika«."
+let description "Korrigiert den falsch gebildeten Plural »Praktikas« zu »Praktika«."
+let kind "Grammar"
+let becomes "Praktika"
+let strategy "MatchCase"
+
+test "Sie machte zwei Praktikas." "Sie machte zwei Praktika."
+
+allows "Sie machte zwei Praktika."

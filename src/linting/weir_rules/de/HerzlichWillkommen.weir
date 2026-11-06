@@ -1,0 +1,14 @@
+# "herzlich willkommen": after "herzlich" the word is the adjective and stays
+# small. The noun ("ein herzliches Willkommen") takes the article.
+expr main <(herzlich Willkommen), Willkommen>
+
+let message "Nach »herzlich« ist »willkommen« ein Adjektiv und wird kleingeschrieben."
+let description "Schreibt »willkommen« nach »herzlich« klein."
+let kind "Capitalization"
+let becomes "willkommen"
+let strategy "Exact"
+
+test "Sie sind herzlich Willkommen." "Sie sind herzlich willkommen."
+
+allows "Sie sind herzlich willkommen."
+allows "Ein herzliches Willkommen allen Gästen."

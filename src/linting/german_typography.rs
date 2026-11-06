@@ -163,9 +163,14 @@ impl Linter for GermanNumberFormat {
                 "seiten",
                 "punkte",
             ];
+            // *1000 mal gesagt* → *1000 Mal*; *2 mal 3* is the multiplication.
+            let times = text(document, next) == "mal"
+                && !tokens
+                    .get(index + 2)
+                    .is_some_and(|t| matches!(t.kind, TokenKind::Number(_)));
             if !Self::glued(token, next)
                 && matches!(next.kind, TokenKind::Word(_))
-                && MEASURE_NOUNS.contains(&text(document, next).as_str())
+                && (MEASURE_NOUNS.contains(&text(document, next).as_str()) || times)
             {
                 let written = text(document, next);
                 let mut fixed: Vec<char> = written.chars().collect();
@@ -348,6 +353,34 @@ const COUPLED_HEADS: &[&str] = &[
     "Dialog",
 ];
 
+/// *geht´s*, *hab`s*: an accent typed for the apostrophe between two letters.
+#[derive(Default)]
+pub struct GermanApostrophe;
+
+impl Linter for GermanApostrophe {
+    fn lint(&mut self, document: &Document) -> Vec<Lint> {
+        let source = document.get_source();
+        (1..source.len().saturating_sub(1))
+            .filter(|&at| {
+                matches!(source[at], '´' | '`')
+                    && source[at - 1].is_alphabetic()
+                    && source[at + 1].is_alphabetic()
+            })
+            .map(|at| Lint {
+                span: harper_core::Span::new(at, at + 1),
+                lint_kind: LintKind::Punctuation,
+                suggestions: vec![Suggestion::ReplaceWith(vec!['\''])],
+                priority: 40,
+                message: "Das Auslassungszeichen ist der Apostroph »'«, kein Akzent.".to_owned(),
+            })
+            .collect()
+    }
+
+    fn description(&self) -> &str {
+        "Ersetzt einen Akzent (´ oder `) zwischen Buchstaben durch den Apostroph: »geht's«."
+    }
+}
+
 /// *U Bahn*, *S Bahn*, *T Shirt*: a single capital letter and a noun are one
 /// word with a hyphen. Only a closed list, so that *Gruppe B Spiele* or
 /// *Vitamin C Mangel* is not touched.
@@ -439,7 +472,7 @@ impl Linter for GermanCoupling {
 
 #[cfg(test)]
 mod tests {
-    use super::{GermanCoupling, GermanNumberFormat, GermanQuotationMarks};
+    use super::{GermanApostrophe, GermanCoupling, GermanNumberFormat, GermanQuotationMarks};
     use crate::parsers::PlainGerman;
     use crate::spell::combined_german_dictionary;
     use harper_core::Document;
@@ -481,6 +514,13 @@ mod tests {
     }
 
     #[test]
+    fn an_accent_is_no_apostrophe() {
+        assert_eq!(count(GermanApostrophe, "Wie geht´s dir?"), 1);
+        assert_eq!(count(GermanApostrophe, "Wie geht's dir?"), 0);
+        assert_eq!(count(GermanApostrophe, "Der Code `x` läuft."), 0);
+    }
+
+    #[test]
     fn a_unit_is_written_apart() {
         for text in [
             "Das kostet 5€.",
@@ -492,6 +532,7 @@ mod tests {
             "Der Anteil beträgt 50%.",
             "Wir treffen uns um 10 uhr.",
             "Das kostet 20 euro.",
+            "Ich habe es schon 1000 mal gesagt.",
         ] {
             assert_eq!(count(GermanNumberFormat, text), 1, "{text}");
         }
@@ -508,6 +549,7 @@ mod tests {
             "Der Anteil beträgt 50 %.",
             "Er ist 1,80 m groß.",
             "Er lief 5m weit.",
+            "Zwei mal drei ist sechs, und 2 mal 3 auch.",
         ] {
             assert_eq!(count(GermanNumberFormat, text), 0, "{text}");
         }

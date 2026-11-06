@@ -1052,6 +1052,16 @@ impl<T: Dictionary> Linter for GermanNounCapitalization<T> {
                     {
                         continue;
                     }
+                    // *Ich hab grad keine Zeit*: the adverb *gerade*, cut short.
+                    // The noun *Grad* has a number or an article in front of it
+                    // (*20 Grad*, *ein Grad*).
+                    if word_chars == ['g', 'r', 'a', 'd']
+                        && !prev.is_some_and(|p| {
+                            matches!(p.kind, TokenKind::Number(_)) || p.kind.is_determiner()
+                        })
+                    {
+                        continue;
+                    }
 
                     let already_capitalized = word_chars
                         .first()

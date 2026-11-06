@@ -2,6 +2,7 @@
 
 pub mod german_absolute_superlative;
 pub mod german_adjective_form;
+pub mod german_colloquial;
 pub mod german_common_typos;
 pub mod german_compound_adjective_capitalization;
 pub mod german_coordinating_comma;

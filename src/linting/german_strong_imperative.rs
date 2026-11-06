@@ -28,8 +28,28 @@ pub struct GermanStrongImperative;
 
 impl GermanStrongImperative {
     /// The imperative of the strong verb whose regular-looking form `word` is.
-    fn strong_imperative(word: &str) -> Option<String> {
-        raised_stem(word.strip_suffix('e')?)
+    /// *Nehm*, *Sprech*, *Helf*: the bare stem, which is no form of these verbs
+    /// at all, counts too.
+    pub(crate) fn strong_imperative(word: &str) -> Option<String> {
+        raised_stem(word.strip_suffix('e').unwrap_or(word))
+    }
+
+    /// Does the sentence open with the bare stem of an e/i verb (*Nehm doch*,
+    /// *Helf mir*)? A lower-case word has to follow: *Les Crosets ist …* is a
+    /// name.
+    pub(crate) fn bare_stem_opens(sentence: &[&Token], document: &Document) -> bool {
+        let mut words = sentence.iter().filter(|t| !t.kind.is_whitespace());
+        let (Some(first), Some(next)) = (words.next(), words.next()) else {
+            return false;
+        };
+        let word = lowercase_of(first, document);
+        first.kind.is_word()
+            && !word.ends_with('e')
+            && Self::strong_imperative(&word).is_some()
+            && document
+                .get_span_content(&next.span)
+                .first()
+                .is_some_and(|c| c.is_lowercase())
     }
 
     fn is_request(sentence: &[&Token], document: &Document) -> bool {
@@ -39,9 +59,13 @@ impl GermanStrongImperative {
             .find(|token| !token.kind.is_whitespace())
             .is_some_and(|token| document.get_span_content(&token.span) == ['!']);
         exclaimed
-            || sentence
-                .iter()
-                .any(|token| token.kind.is_word() && lowercase_of(token, document) == "bitte")
+            || sentence.iter().any(|token| {
+                token.kind.is_word()
+                    && matches!(
+                        lowercase_of(token, document).as_str(),
+                        "bitte" | "doch" | "mal"
+                    )
+            })
     }
 
     fn check(words: &[&Token], at: usize, document: &Document) -> Option<Lint> {
@@ -67,7 +91,7 @@ impl GermanStrongImperative {
             )],
             message: format!(
                 "Der Imperativ von »{}en« hebt das e zu i: »{fixed}«, nicht »{word}«.",
-                &word[..word.len() - 1]
+                word.strip_suffix('e').unwrap_or(&word)
             ),
             priority: 31,
         })
@@ -80,7 +104,10 @@ impl Linter for GermanStrongImperative {
 
         for sentence in document.iter_sentences() {
             let tokens: Vec<&Token> = sentence.iter().collect();
-            if !Self::is_request(&tokens, document) {
+            // The bare stem (*Nehm*, *Helf*) is no first person and no
+            // subjunctive, so it needs no sign of a request.
+            let bare_stem = Self::bare_stem_opens(&tokens, document);
+            if !bare_stem && !Self::is_request(&tokens, document) {
                 continue;
             }
             let words: Vec<&Token> = tokens
@@ -149,6 +176,9 @@ mod tests {
             ("Esse deinen Teller leer!", "Iss"),
             ("Sehe dir das an!", "Sieh"),
             ("Bitte gebe mir Bescheid.", "gib"),
+            ("Sprech bitte lauter.", "Sprich"),
+            ("Nehm doch einfach den Bus.", "Nimm"),
+            ("Helf mir mal kurz.", "Hilf"),
             ("Bitte, empfehle mich weiter.", "empfiehl"),
             ("Werfe den Ball!", "Wirf"),
             ("Trete bitte ein.", "Tritt"),

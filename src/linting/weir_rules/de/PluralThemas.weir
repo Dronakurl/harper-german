@@ -1,0 +1,15 @@
+# A plural built with "-s" or "-e" where the noun has its own: "Themen".
+# "des Themas" is the genitive singular and correct.
+expr gen [des, eines, dieses, jenes, seines, ihres, meines, unseres]
+expr main <[(!@gen Themas)], Themas>
+
+let message "Der Plural heißt »Themen«."
+let description "Korrigiert den falsch gebildeten Plural »Themas« zu »Themen«."
+let kind "Grammar"
+let becomes "Themen"
+let strategy "MatchCase"
+
+test "Die Themas sind spannend." "Die Themen sind spannend."
+
+allows "Die Themen sind spannend."
+allows "Eine Variante des Themas folgt."

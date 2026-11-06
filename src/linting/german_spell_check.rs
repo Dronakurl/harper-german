@@ -195,6 +195,15 @@ impl<T: Dictionary> GermanSpellCheck<T> {
         const HOSTS: &[&str] = &[
             "wie", "wenn", "ob", "so", "da", "was", "als", "weil", "dass",
         ];
+        // The impersonal ones the Duden lists without the apostrophe, and that
+        // no second person shares: *gehts*, *gibts*, *stimmts*.
+        const WITHOUT_APOSTROPHE: &[&str] = &[
+            "gehts", "gibts", "stimmts", "klappts", "passts", "reichts", "regnets", "lohnts",
+        ];
+        let lower_word: String = word.iter().flat_map(|c| c.to_lowercase()).collect();
+        if WITHOUT_APOSTROPHE.contains(&lower_word.as_str()) {
+            return true;
+        }
         let [host @ .., apostrophe, 's'] = word else {
             return false;
         };
@@ -880,6 +889,23 @@ impl<T: Dictionary> Linter for GermanSpellCheck<T> {
                     // onto a verb or a conjunction. The tokenizer keeps it on
                     // the word, so the host is what has to be a word.
                     if self.is_cliticized_es(word_chars) {
+                        continue;
+                    }
+
+                    // *Nehm doch den Bus*: the bare stem of an e/i verb opening the
+                    // sentence is `GermanStrongImperative`'s (*Nimm*).
+                    if index == 0
+                        && crate::linting::german_strong_imperative::GermanStrongImperative::bare_stem_opens(
+                            &tokens, document,
+                        )
+                    {
+                        continue;
+                    }
+
+                    // *is*, *nen*, *kannste*: `GermanColloquial` gives the standard form.
+                    if crate::linting::german_colloquial::is_colloquial(
+                        &word_chars.iter().collect::<String>(),
+                    ) {
                         continue;
                     }
 
