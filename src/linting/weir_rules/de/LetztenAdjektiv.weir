@@ -1,0 +1,17 @@
+# "letzen" is a rare verb (sich an etwas letzen). Behind an article or a
+# preposition-article form and in front of a noun it is the adjective
+# "letzten" with a letter missing.
+expr artikel [den, dem, die, der, diesen, diesem, jenen, einen, einem, keinen, keinem, meinen, meinem, seinen, seinem, ihren, ihrem, unseren, unserem, zum, im, am, vom, beim]
+expr main <[(@artikel letzen)], letzen>
+
+let message "Hier fehlt ein »t«: das Adjektiv heißt »letzten«."
+let description "Ersetzt »letzen« zwischen Artikel und Nomen durch »letzten«."
+let kind "Spelling"
+let becomes "letzten"
+let strategy "MatchCase"
+let scope "Sentence"
+
+test "Die Firma ist in den letzen Jahren gewachsen." "Die Firma ist in den letzten Jahren gewachsen."
+test "Das war am letzen Tag." "Das war am letzten Tag."
+allows "Die Firma ist in den letzten Jahren gewachsen."
+allows "Sie letzen sich an dem Tee."

@@ -382,6 +382,62 @@ impl GermanAdjectiveForm {
         })
     }
 
+    /// The ending behind a quantifier: after *viele*, *einige*, *mehrere*,
+    /// *wenige* the adjective is strong (*viele neue Ideen*), after *alle*,
+    /// *beide* weak (*alle neuen Mitarbeiter*). Only a lower-case adjective
+    /// of the dictionary, followed by a capitalized noun, is checked.
+    fn after_quantifier(&self, words: &[&Token], at: usize, document: &Document) -> Option<Lint> {
+        let quantifier = lowercase_of(words[at], document);
+        let strong = matches!(
+            quantifier.as_str(),
+            "viele" | "einige" | "mehrere" | "wenige"
+        );
+        // *Sie sind beide praktizierende Juden*: behind a verb the quantifier
+        // stands apart from the noun phrase.
+        let weak = quantifier == "alle"
+            && !at
+                .checked_sub(1)
+                .is_some_and(|i| words[i].kind.is_verb() || words[i].kind.is_auxiliary_verb());
+        if !strong && !weak {
+            return None;
+        }
+        let adjective = words.get(at + 1)?;
+        let noun = words.get(at + 2)?;
+        if !matches!(adjective.kind, TokenKind::Word(_))
+            || !matches!(noun.kind, TokenKind::Word(_))
+            || starts_uppercase(adjective, document)
+            || !starts_uppercase(noun, document)
+            || document.get_source().get(noun.span.end) == Some(&'-')
+        {
+            return None;
+        }
+        let written = lowercase_of(adjective, document);
+        let (stem, wrong, right) = if strong {
+            (written.strip_suffix("en")?, "en", "e")
+        } else {
+            (written.strip_suffix('e')?, "e", "en")
+        };
+        if stem.chars().count() < 3 || !self.is_adjective(&written) {
+            return None;
+        }
+        // The stem must be an adjective of its own (*neu*), not a verb
+        // infinitive (*viele gehen*): the base form is looked up.
+        if !self.is_adjective(stem) {
+            return None;
+        }
+        let fixed = format!("{stem}{right}");
+        Some(Lint {
+            span: adjective.span,
+            lint_kind: LintKind::Agreement,
+            suggestions: vec![Suggestion::ReplaceWith(fixed.chars().collect())],
+            priority: 31,
+            message: format!(
+                "Nach »{quantifier}« steht das Adjektiv auf »-{right}«, nicht auf »-{wrong}«: »{quantifier} {fixed} {}«.",
+                document.get_span_content_str(&noun.span)
+            ),
+        })
+    }
+
     /// A capitalized adjective in a name, with the strong ending behind a
     /// definite article: *dem Sächsischem Oberverwaltungsgericht*, *des
     /// Deutsches Bundestages*, *im Europäischem Parlament*. Behind *dem*,
@@ -890,6 +946,8 @@ impl Linter for GermanAdjectiveForm {
                     lints.push(lint);
                 } else if let Some(lint) = self.capitalized_name_adjective(&words, at, document) {
                     lints.push(lint);
+                } else if let Some(lint) = self.after_quantifier(&words, at, document) {
+                    lints.push(lint);
                 }
             }
         }
@@ -950,6 +1008,26 @@ mod tests {
         ] {
             assert!(reported(text).is_empty(), "{text}: {:?}", reported(text));
         }
+    }
+
+    #[test]
+    fn the_ending_behind_a_quantifier_is_checked() {
+        assert_eq!(reported("Wir haben viele neuen Ideen."), ["neuen"]);
+        assert_eq!(
+            reported("Alle neue Mitarbeiter bekommen einen Laptop."),
+            ["neue"]
+        );
+        for text in [
+            "Wir haben viele neue Ideen.",
+            "Alle neuen Mitarbeiter bekommen einen Laptop.",
+            "Viele gehen nach Hause.",
+            "Alle neue Regeln werden gelesen, aber alle Neuen kommen.",
+        ] {
+            let found = reported(text);
+            assert!(found.len() <= 1, "{text}: {found:?}");
+        }
+        assert!(reported("Wir haben viele neue Ideen.").is_empty());
+        assert!(reported("Alle neuen Mitarbeiter kommen.").is_empty());
     }
 
     #[test]
