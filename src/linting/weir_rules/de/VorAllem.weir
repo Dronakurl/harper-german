@@ -1,0 +1,15 @@
+# "vor allem" is two words; closed up, "vorallem" is a common slip like
+# "garnicht". At the start of a sentence the fix keeps "allem" small.
+expr main vorallem
+
+let message "»vor allem« wird getrennt geschrieben."
+let description "Trennt das fälschlich zusammengeschriebene »vorallem« zu »vor allem«."
+let kind "Spelling"
+let becomes "vor allem"
+let strategy "MatchCase"
+
+test "Das Wetter war vorallem kalt." "Das Wetter war vor allem kalt."
+test "Vorallem das Wetter war schlecht." "Vor allem das Wetter war schlecht."
+
+allows "Vor allem das Wetter war schlecht."
+allows "Das Wetter war vor allem kalt."

@@ -1,0 +1,16 @@
+# "E-Mail" is a noun and starts with a capital E: "e-mail" written small is
+# wrong in every position. Weir matches regardless of case, and a lint whose
+# fix only repeats the text is dropped, so "E-Mail" itself stays quiet.
+expr main (e-mail)
+
+let message "»E-Mail« ist ein Nomen und wird großgeschrieben."
+let description "Ersetzt »e-mail« durch »E-Mail«."
+let kind "Capitalization"
+let becomes "E-Mail"
+let strategy "Exact"
+
+test "Bitte schicken Sie mir eine e-mail." "Bitte schicken Sie mir eine E-Mail."
+test "Die e-Mail kam gestern." "Die E-Mail kam gestern."
+
+allows "Bitte schicken Sie mir eine E-Mail."
+allows "Die E-Mail-Adresse stimmt."

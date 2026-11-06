@@ -46,7 +46,7 @@ pub fn rust_lint_group(
         german_subordinate_comma::GermanSubordinateComma,
         german_subordinate_word_order::GermanSubordinateWordOrder,
         german_suspended_hyphen::GermanSuspendedHyphen,
-        german_typography::{GermanNumberFormat, GermanQuotationMarks},
+        german_typography::{GermanCoupling, GermanNumberFormat, GermanQuotationMarks},
         german_verb_case::GermanVerbCase,
         german_verb_cluster::GermanVerbCluster,
         german_verb_preposition::GermanVerbPreposition,
@@ -113,6 +113,7 @@ pub fn rust_lint_group(
     group.add("GermanCoordinatingComma", GermanCoordinatingComma);
     group.add("GermanVorfeldComma", GermanVorfeldComma);
     group.add("GermanNumberFormat", GermanNumberFormat);
+    group.add("GermanCoupling", GermanCoupling);
     group.add("GermanQuotationMarks", GermanQuotationMarks);
     group.add("GermanReasonIsBecause", GermanReasonIsBecause);
     group.add(

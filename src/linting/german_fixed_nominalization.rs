@@ -68,6 +68,9 @@ const FIXED_NOMINALIZATIONS: &[(&[&str], &str, &str, &[&str])] = &[
     (&["im"], "voraus", "Voraus", &[]),
     (&["als"], "letztes", "Letztes", &[]),
     (&["als"], "erstes", "Erstes", &[]),
+    // *aufs Wiedersehen*, *auf Wiedersehen*: the noun of the greeting.
+    (&["aufs"], "wiedersehen", "Wiedersehen", &[]),
+    (&["auf"], "wiedersehen", "Wiedersehen", &[]),
     (&["als"], "nächstes", "Nächstes", &[]),
     (&["zum"], "schluss", "Schluss", &[]),
     // *zu Hause* and *nach Hause*: the old dative of *Haus*, still a noun.
@@ -513,6 +516,8 @@ mod tests {
             ("Danke im voraus!", "voraus"),
             ("Er kam als letztes.", "letztes"),
             ("Als erstes gehen wir einkaufen.", "erstes"),
+            ("Wir freuen uns aufs wiedersehen.", "wiedersehen"),
+            ("Sie sagte auf wiedersehen.", "wiedersehen"),
             ("Gestern nachmittag war es kalt.", "nachmittag"),
             ("Zum ersten mal war ich dort.", "mal"),
             ("Das nächste mal komme ich früher.", "mal"),

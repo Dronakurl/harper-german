@@ -7,7 +7,12 @@ expr praedikat [zufrieden, da, dort, hier, bereit, fertig, müde, krank, wach, g
 # A question word puts the verb in front of its subject: "Wo seit ihr?"
 expr frage [wo, wie, wer, was, wann, warum, wieso, weshalb, woher, wohin, alt, Wo, Wie, Wer, Was, Wann, Warum, Wieso, Weshalb, Woher, Wohin]
 
-expr main <[(ihr seit @praedikat), (Ihr seit @praedikat), (@frage seit ihr)], seit>
+# "Ihr seit heute sehr nett": an adverb of time between "seit" and the
+# predicate. "seit heute" alone is a time ("ihr seit heute geöffnetes Café"),
+# so the predicate behind it decides.
+expr zeit [heute, gestern, jetzt, nun, gerade, wieder, eigentlich, total, momentan]
+
+expr main <[(ihr seit @praedikat), (Ihr seit @praedikat), (ihr seit @zeit @praedikat), (Ihr seit @zeit @praedikat), (@frage seit ihr)], seit>
 
 let message "»seit« ist die Präposition der Zeit. Das Verb heißt »ihr seid«."
 let description "Ersetzt »seit« durch das Verb »seid« nach »ihr«."
@@ -30,6 +35,8 @@ test "Wie alt seit ihr?" "Wie alt seid ihr?"
 test "Ihr seit mir willkommen." "Ihr seid mir willkommen."
 test "Ihr seit gut vorbereitet." "Ihr seid gut vorbereitet."
 test "Ihr seit hier richtig." "Ihr seid hier richtig."
+test "Ihr seit heute sehr nett." "Ihr seid heute sehr nett."
+test "Ihr seit jetzt fertig." "Ihr seid jetzt fertig."
 
 allows "Ihr seid zufrieden?"
 allows "Ihr seit Jahren bestehender Betrieb."
@@ -38,3 +45,4 @@ allows "Ihr seit langem geplantes Fest."
 allows "Ihr seit der Gründung erfolgreicher Betrieb."
 allows "Ihr seit einem Jahr leerstehendes Haus."
 allows "Wo seid ihr?"
+allows "Ihr seit heute geöffnetes Café."

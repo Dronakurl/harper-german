@@ -246,6 +246,26 @@ impl GermanQuestionMark {
     }
 }
 
+impl GermanQuestionMark {
+    /// *Das hat er nicht gewusst, oder.*: a question tag behind a comma at the
+    /// end of the sentence asks for agreement, and takes a question mark.
+    fn full_stop_of_tag_question<'a>(
+        words: &[&'a Token],
+        document: &Document,
+    ) -> Option<&'a Token> {
+        let [.., comma, tag, stop] = words else {
+            return None;
+        };
+        // *nicht* and *ja* close plenty of statements (*…, ich glaube nicht.*);
+        // *oder*, *gell* and *ne* alone behind a comma are always the tag.
+        let is_tag = matches!(lowercase_of(tag, document).as_str(), "oder" | "gell" | "ne");
+        (matches!(comma.kind, TokenKind::Punctuation(Punctuation::Comma))
+            && is_tag
+            && matches!(stop.kind, TokenKind::Punctuation(Punctuation::Period)))
+        .then_some(*stop)
+    }
+}
+
 impl Linter for GermanQuestionMark {
     fn lint(&mut self, document: &Document) -> Vec<Lint> {
         let mut lints = Vec::new();
@@ -257,6 +277,7 @@ impl Linter for GermanQuestionMark {
                 .collect();
             if let Some(stop) = Self::full_stop_of_question(&words, document)
                 .or_else(|| Self::full_stop_of_yes_no_question(&words, document))
+                .or_else(|| Self::full_stop_of_tag_question(&words, document))
             {
                 lints.push(Lint {
                     span: stop.span,
@@ -301,6 +322,24 @@ mod tests {
             }
         }
         chars.into_iter().collect()
+    }
+
+    #[test]
+    fn a_question_tag_takes_a_question_mark() {
+        assert_eq!(
+            fixed("Das hat er wahrscheinlich nicht gewusst, oder."),
+            "Das hat er wahrscheinlich nicht gewusst, oder?"
+        );
+        assert_eq!(fixed("Das war gut, gell."), "Das war gut, gell?");
+        for text in [
+            "Kommst du mit, oder bleibst du hier?",
+            "Wir gehen jetzt, oder?",
+            "Ich glaube, ja.",
+            "Er kommt, ich glaube nicht.",
+            "Tee oder Kaffee.",
+        ] {
+            assert_eq!(fixed(text), text, "{text}");
+        }
     }
 
     #[test]

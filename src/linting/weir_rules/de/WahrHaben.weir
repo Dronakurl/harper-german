@@ -1,0 +1,17 @@
+# "wahrhaben" is one verb, used with "nicht ... wollen": "Er wollte es nicht
+# wahrhaben." Only behind "nicht", where "wahr haben" cannot be the adjective
+# and the verb "haben" of a sentence of its own.
+expr main <(nicht wahr haben), (wahr haben)>
+
+let message "»wahrhaben« wird zusammengeschrieben."
+let description "Ersetzt »nicht wahr haben« durch »nicht wahrhaben«."
+let kind "Spelling"
+let becomes "wahrhaben"
+let strategy "MatchCase"
+
+test "Er wollte es nicht wahr haben." "Er wollte es nicht wahrhaben."
+test "Sie will das nicht wahr haben." "Sie will das nicht wahrhaben."
+
+allows "Er wollte es nicht wahrhaben."
+allows "Das ist wahr, haben wir gesagt."
+allows "Ist das nicht wahr? Haben wir recht?"

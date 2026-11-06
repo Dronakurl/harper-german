@@ -84,16 +84,44 @@ impl Linter for GermanNumberFormat {
 
             if Self::glued(token, next) {
                 let unit = lower(document, next);
+                // *1,80m*: behind a decimal number a single letter is a unit too.
+                let decimal = index >= 2
+                    && matches!(
+                        tokens[index - 1].kind,
+                        TokenKind::Punctuation(Punctuation::Comma)
+                    )
+                    && Self::glued(tokens[index - 1], token)
+                    && matches!(tokens[index - 2].kind, TokenKind::Number(_))
+                    && Self::glued(tokens[index - 2], tokens[index - 1]);
+                let after = tokens.get(index + 2);
                 let is_unit = match &next.kind {
-                    TokenKind::Word(_) => UNITS.contains(&unit.as_str()),
+                    TokenKind::Word(_) => {
+                        UNITS.contains(&unit.as_str())
+                            || (decimal && ["m", "g", "l", "t"].contains(&unit.as_str()))
+                    }
                     TokenKind::Punctuation(Punctuation::Currency(_)) => unit == "€",
+                    // *50%*
+                    TokenKind::Punctuation(Punctuation::Percent) => true,
+                    // *20°C*; *20°* alone is an angle.
+                    TokenKind::Punctuation(Punctuation::Degree) => after.is_some_and(|c| {
+                        Self::glued(next, c) && matches!(lower(document, c).as_str(), "c" | "f")
+                    }),
                     _ => false,
                 };
                 // *1990er*, *3D*, *5kg-Packung* are different things: a hyphen after the unit
-                // makes it part of a compound.
-                let compound = tokens
-                    .get(index + 2)
-                    .is_some_and(|after| Self::glued(next, after) && after.kind.is_hyphen());
+                // makes it part of a compound, and so do letters glued to a sign (*50%ige*).
+                let compound = after.is_some_and(|after| {
+                    Self::glued(next, after)
+                        && (after.kind.is_hyphen()
+                            || (matches!(next.kind, TokenKind::Punctuation(Punctuation::Percent))
+                                && matches!(after.kind, TokenKind::Word(_))))
+                });
+                let unit_text = match &next.kind {
+                    TokenKind::Punctuation(Punctuation::Degree) => {
+                        format!("°{}", after.map(|c| text(document, c)).unwrap_or_default())
+                    }
+                    _ => text(document, next),
+                };
                 if is_unit && !compound {
                     lints.push(Lint {
                         span: token.span,
@@ -101,9 +129,8 @@ impl Linter for GermanNumberFormat {
                         suggestions: vec![Suggestion::InsertAfter(vec![' '])],
                         priority: 40,
                         message: format!(
-                            "Zwischen Zahl und Einheit steht ein Leerzeichen: »{} {}«.",
+                            "Zwischen Zahl und Einheit steht ein Leerzeichen: »{} {unit_text}«.",
                             text(document, token),
-                            text(document, next)
                         ),
                     });
                 }
@@ -222,9 +249,110 @@ impl Linter for GermanQuotationMarks {
     }
 }
 
+/// The nouns that close a name joined with hyphens: *Max-Planck-Institut*,
+/// *Konrad-Adenauer-Straße*, *Hans-Böckler-Stiftung*. A closed list, so that a
+/// double first name before a family name (*Hans-Peter Müller*) is never read
+/// as one.
+const COUPLED_HEADS: &[&str] = &[
+    "Institut",
+    "Gesellschaft",
+    "Stiftung",
+    "Universität",
+    "Hochschule",
+    "Straße",
+    "Platz",
+    "Allee",
+    "Weg",
+    "Ring",
+    "Preis",
+    "Medaille",
+    "Schule",
+    "Gymnasium",
+    "Realschule",
+    "Gesamtschule",
+    "Grundschule",
+    "Haus",
+    "Museum",
+    "Zentrum",
+    "Klinik",
+    "Krankenhaus",
+    "Bibliothek",
+    "Halle",
+    "Stadion",
+    "Kaserne",
+    "Denkmal",
+    "Brücke",
+    "Kirche",
+    "Park",
+    "Programm",
+    "Plan",
+    "Ausstellung",
+];
+
+/// *Max-Planck Institut*: a name joined with hyphens and the noun behind it are
+/// one word, and the hyphen runs through to the end (Durchkopplung, Amtliche
+/// Regelung § 50).
+#[derive(Default)]
+pub struct GermanCoupling;
+
+impl Linter for GermanCoupling {
+    fn lint(&mut self, document: &Document) -> Vec<Lint> {
+        let tokens = document.get_tokens();
+        let mut lints = Vec::new();
+        for at in 2..tokens.len().saturating_sub(2) {
+            let (first, hyphen, last, space, head) = (
+                &tokens[at - 2],
+                &tokens[at - 1],
+                &tokens[at],
+                &tokens[at + 1],
+                &tokens[at + 2],
+            );
+            let capitalized = |t: &Token| {
+                matches!(t.kind, TokenKind::Word(_))
+                    && document
+                        .get_span_content(&t.span)
+                        .first()
+                        .is_some_and(|c| c.is_uppercase())
+            };
+            if !hyphen.kind.is_hyphen()
+                || first.span.end != hyphen.span.start
+                || hyphen.span.end != last.span.start
+                || !capitalized(first)
+                || !capitalized(last)
+                || !matches!(space.kind, TokenKind::Space(1))
+                || !COUPLED_HEADS.contains(&text(document, head).as_str())
+            {
+                continue;
+            }
+            // The head itself must not run on into another hyphen (*Max-Planck
+            // Institut-Gebäude* is past saving by a single fix).
+            if tokens.get(at + 3).is_some_and(|t| t.kind.is_hyphen()) {
+                continue;
+            }
+            lints.push(Lint {
+                span: space.span,
+                lint_kind: LintKind::Punctuation,
+                suggestions: vec![Suggestion::ReplaceWith(vec!['-'])],
+                priority: 40,
+                message: format!(
+                    "Durchkopplung: »{}-{}-{}« wird ganz mit Bindestrichen geschrieben.",
+                    text(document, first),
+                    text(document, last),
+                    text(document, head)
+                ),
+            });
+        }
+        lints
+    }
+
+    fn description(&self) -> &str {
+        "Koppelt einen Namen mit Bindestrich und das Nomen dahinter durch: »Max-Planck-Institut«."
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{GermanNumberFormat, GermanQuotationMarks};
+    use super::{GermanCoupling, GermanNumberFormat, GermanQuotationMarks};
     use crate::parsers::PlainGerman;
     use crate::spell::combined_german_dictionary;
     use harper_core::Document;
@@ -237,12 +365,38 @@ mod tests {
     }
 
     #[test]
+    fn a_hyphenated_name_is_coupled_to_its_noun() {
+        assert_eq!(
+            count(
+                GermanCoupling,
+                "Das Treffen findet im Max-Planck Institut statt."
+            ),
+            1
+        );
+        assert_eq!(
+            count(GermanCoupling, "Er wohnt in der Konrad-Adenauer Straße."),
+            1
+        );
+        for text in [
+            "Das Treffen findet im Max-Planck-Institut statt.",
+            "Hans-Peter Müller kommt.",
+            "Die Baden-Württemberg Tour beginnt.",
+            "Er ging in das Max-Planck Institut-Gebäude.",
+        ] {
+            assert_eq!(count(GermanCoupling, text), 0, "{text}");
+        }
+    }
+
+    #[test]
     fn a_unit_is_written_apart() {
         for text in [
             "Das kostet 5€.",
             "Es wiegt 3kg.",
             "Die Datei hat 10MB.",
             "Bis zu 100km entfernt.",
+            "Er ist 1,80m groß.",
+            "Die Temperatur liegt bei 20°C.",
+            "Der Anteil beträgt 50%.",
         ] {
             assert_eq!(count(GermanNumberFormat, text), 1, "{text}");
         }
@@ -254,6 +408,11 @@ mod tests {
             "Version v1.5kg",
             "Die 1990er Jahre.",
             "Es gibt 3D-Drucker.",
+            "Eine 50%ige Lösung.",
+            "Der Winkel beträgt 20°.",
+            "Der Anteil beträgt 50 %.",
+            "Er ist 1,80 m groß.",
+            "Er lief 5m weit.",
         ] {
             assert_eq!(count(GermanNumberFormat, text), 0, "{text}");
         }
