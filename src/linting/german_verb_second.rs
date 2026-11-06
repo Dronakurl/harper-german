@@ -70,43 +70,75 @@ impl<T: Dictionary> Linter for GermanVerbSecond<T> {
                 .iter()
                 .filter(|token| !token.kind.is_whitespace())
                 .collect();
-            let [opener, pronoun, verb, ..] = tokens.as_slice() else {
-                continue;
-            };
-            let text = |token: &Token| -> String {
-                document.get_span_content(&token.span).iter().collect()
-            };
-            if !matches!(opener.kind, harper_core::TokenKind::Word(_))
-                || !matches!(pronoun.kind, harper_core::TokenKind::Word(_))
-                || !matches!(verb.kind, harper_core::TokenKind::Word(_))
-                || !OPENERS.contains(&text(opener).to_lowercase().as_str())
-            {
-                continue;
+            // The start of the sentence, and behind a comma a second main clause
+            // opened by a conjunctional adverb: *…, deshalb wir sind früh
+            // gefahren*. These adverbs are no conjunctions, and the verb has to
+            // follow them. (*weil* with the verb second is left alone on purpose.)
+            const SECOND_CLAUSE_OPENERS: &[&str] = &[
+                "deshalb",
+                "deswegen",
+                "daher",
+                "darum",
+                "trotzdem",
+                "dennoch",
+                "dann",
+                "danach",
+                "außerdem",
+                "sonst",
+                "anschließend",
+                "folglich",
+                "somit",
+            ];
+            let starts = std::iter::once(0).chain((1..tokens.len()).filter(|&i| {
+                matches!(
+                    tokens[i - 1].kind,
+                    harper_core::TokenKind::Punctuation(harper_core::Punctuation::Comma)
+                ) && SECOND_CLAUSE_OPENERS.contains(
+                    &document
+                        .get_span_content_str(&tokens[i].span)
+                        .to_lowercase()
+                        .as_str(),
+                )
+            }));
+            for start in starts.collect::<Vec<_>>() {
+                let [opener, pronoun, verb, ..] = &tokens[start..] else {
+                    continue;
+                };
+                let text = |token: &Token| -> String {
+                    document.get_span_content(&token.span).iter().collect()
+                };
+                if !matches!(opener.kind, harper_core::TokenKind::Word(_))
+                    || !matches!(pronoun.kind, harper_core::TokenKind::Word(_))
+                    || !matches!(verb.kind, harper_core::TokenKind::Word(_))
+                    || !OPENERS.contains(&text(opener).to_lowercase().as_str()) && start == 0
+                {
+                    continue;
+                }
+                // Capitalized, as at the start of a sentence; a lower-case opener is a fragment.
+                if start == 0 && !text(opener).chars().next().is_some_and(char::is_uppercase) {
+                    continue;
+                }
+                let Some(subject) = subject_pronoun(&text(pronoun)) else {
+                    continue;
+                };
+                let verb_text = text(verb);
+                let readings = self.agreement.verb_features(&verb_text, verb);
+                if readings.is_empty() || !readings.iter().any(|r| subject.agrees_with(r)) {
+                    continue;
+                }
+                let swapped: Vec<char> = format!("{verb_text} {}", text(pronoun)).chars().collect();
+                lints.push(Lint {
+                    span: harper_core::Span::new(pronoun.span.start, verb.span.end),
+                    lint_kind: LintKind::Grammar,
+                    suggestions: vec![Suggestion::ReplaceWith(swapped)],
+                    priority: 29,
+                    message: format!(
+                        "Im Hauptsatz steht das Verb an zweiter Stelle: »{} {verb_text} {}«.",
+                        text(opener),
+                        text(pronoun)
+                    ),
+                });
             }
-            // Capitalized, as at the start of a sentence; a lower-case opener is a fragment.
-            if !text(opener).chars().next().is_some_and(char::is_uppercase) {
-                continue;
-            }
-            let Some(subject) = subject_pronoun(&text(pronoun)) else {
-                continue;
-            };
-            let verb_text = text(verb);
-            let readings = self.agreement.verb_features(&verb_text, verb);
-            if readings.is_empty() || !readings.iter().any(|r| subject.agrees_with(r)) {
-                continue;
-            }
-            let swapped: Vec<char> = format!("{verb_text} {}", text(pronoun)).chars().collect();
-            lints.push(Lint {
-                span: harper_core::Span::new(pronoun.span.start, verb.span.end),
-                lint_kind: LintKind::Grammar,
-                suggestions: vec![Suggestion::ReplaceWith(swapped)],
-                priority: 29,
-                message: format!(
-                    "Im Hauptsatz steht das Verb an zweiter Stelle: »{} {verb_text} {}«.",
-                    text(opener),
-                    text(pronoun)
-                ),
-            });
         }
         lints
     }
@@ -137,6 +169,8 @@ mod tests {
             "Gestern wir haben Fußball gespielt.",
             "Dann er kommt nach Hause.",
             "Leider ich habe keine Zeit.",
+            "Das Wetter war schlecht, deshalb wir sind früh gefahren.",
+            "Es regnet, trotzdem wir gehen raus.",
         ] {
             assert_eq!(count(text), 1, "{text}");
         }
@@ -145,6 +179,9 @@ mod tests {
     #[test]
     fn the_right_order_and_the_other_cases_are_quiet() {
         for text in [
+            "Das Wetter war schlecht, deshalb sind wir früh gefahren.",
+            "Er kam, weil er Zeit hatte.",
+            "Er sagte, dann komme er.",
             "Heute gehe ich ins Kino.",
             "Gestern haben wir Fußball gespielt.",
             "Heute, ich weiß, ist es kalt.",

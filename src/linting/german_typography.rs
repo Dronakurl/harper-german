@@ -136,6 +136,54 @@ impl Linter for GermanNumberFormat {
                 }
             }
 
+            // *um 10 uhr*, *20 euro*: a noun of measure behind a number, written
+            // small. Behind a digit these words are always the noun.
+            const MEASURE_NOUNS: &[&str] = &[
+                "uhr",
+                "euro",
+                "cent",
+                "prozent",
+                "jahre",
+                "jahren",
+                "monate",
+                "monaten",
+                "wochen",
+                "tage",
+                "tagen",
+                "stunden",
+                "minuten",
+                "sekunden",
+                "kilometer",
+                "meter",
+                "zentimeter",
+                "kilo",
+                "gramm",
+                "liter",
+                "personen",
+                "seiten",
+                "punkte",
+            ];
+            if !Self::glued(token, next)
+                && matches!(next.kind, TokenKind::Word(_))
+                && MEASURE_NOUNS.contains(&text(document, next).as_str())
+            {
+                let written = text(document, next);
+                let mut fixed: Vec<char> = written.chars().collect();
+                if let Some(first) = fixed.first_mut() {
+                    *first = first.to_uppercase().next().unwrap_or(*first);
+                }
+                lints.push(Lint {
+                    span: next.span,
+                    lint_kind: LintKind::Capitalization,
+                    suggestions: vec![Suggestion::ReplaceWith(fixed.clone())],
+                    priority: 40,
+                    message: format!(
+                        "»{}« ist ein Nomen und wird großgeschrieben.",
+                        fixed.iter().collect::<String>()
+                    ),
+                });
+            }
+
             // *am 5 Mai*: a whole number from 1 to 31, a month behind it, a preposition or an
             // article in front.
             let is_a_day = number.suffix.is_none()
@@ -397,6 +445,8 @@ mod tests {
             "Er ist 1,80m groß.",
             "Die Temperatur liegt bei 20°C.",
             "Der Anteil beträgt 50%.",
+            "Wir treffen uns um 10 uhr.",
+            "Das kostet 20 euro.",
         ] {
             assert_eq!(count(GermanNumberFormat, text), 1, "{text}");
         }
