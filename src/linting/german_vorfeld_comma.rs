@@ -237,18 +237,133 @@ impl GermanVorfeldComma {
     }
 }
 
+impl GermanVorfeldComma {
+    /// *Leider, kann ich nicht kommen*: a sentence adverb alone in front of
+    /// the verb is the whole first phrase, and takes no comma. Interjections
+    /// and answers (*Ja, ich komme*, *Oh, das wusste ich nicht*) put a whole
+    /// clause behind them, with a first phrase of its own, and are not here.
+    fn adverb_comma(words: &[&Token], document: &Document) -> Option<Lint> {
+        const SENTENCE_ADVERBS: &[&str] = &[
+            "leider",
+            "natürlich",
+            "trotzdem",
+            "deshalb",
+            "deswegen",
+            "daher",
+            "vielleicht",
+            "hoffentlich",
+            "eigentlich",
+            "heute",
+            "gestern",
+            "morgen",
+            "jetzt",
+            "dann",
+            "danach",
+            "außerdem",
+            "selbstverständlich",
+            "glücklicherweise",
+            "wahrscheinlich",
+            "sicherlich",
+            "bestimmt",
+            "anschließend",
+            "schließlich",
+            "zuerst",
+            "manchmal",
+            "oft",
+        ];
+        let [adverb, comma, verb, subject, ..] = words else {
+            return None;
+        };
+        if !SENTENCE_ADVERBS.contains(&Self::lower(adverb, document).as_str())
+            || !matches!(comma.kind, TokenKind::Punctuation(Punctuation::Comma))
+            || Self::capitalized(verb, document)
+            || !Self::verb_only(verb, document)
+            || !PRONOUNS.contains(&Self::lower(subject, document).as_str())
+        {
+            return None;
+        }
+        Some(Lint {
+            span: comma.span,
+            lint_kind: LintKind::Punctuation,
+            suggestions: vec![Suggestion::Remove],
+            priority: 28,
+            message: format!(
+                "»{}« ist der ganze erste Satzteil. Zwischen ihm und dem Verb steht kein Komma.",
+                document.get_span_content_str(&adverb.span)
+            ),
+        })
+    }
+
+    /// *Brot, Butter, und Käse*: in a list of single nouns the last two are
+    /// joined by *und* alone.
+    fn list_comma(words: &[&Token], document: &Document) -> Vec<Lint> {
+        let mut lints = Vec::new();
+        for at in 3..words.len().saturating_sub(2) {
+            let (first, comma1, second, comma2, und, last) = (
+                words[at - 3],
+                words[at - 2],
+                words[at - 1],
+                words[at],
+                words[at + 1],
+                words[at + 2],
+            );
+            let noun = |t: &Token| {
+                matches!(t.kind, TokenKind::Word(_))
+                    && Self::capitalized(t, document)
+                    && !t.kind.is_pronoun()
+                    && !t.kind.is_determiner()
+                    && !PRONOUNS.contains(&Self::lower(t, document).as_str())
+            };
+            let comma = |t: &Token| matches!(t.kind, TokenKind::Punctuation(Punctuation::Comma));
+            // The list ends the sentence: nothing but its last noun behind *und*.
+            let ends = words.get(at + 3).is_none_or(|t| {
+                matches!(
+                    t.kind,
+                    TokenKind::Punctuation(
+                        Punctuation::Period | Punctuation::Bang | Punctuation::Question
+                    )
+                )
+            });
+            if noun(first)
+                && comma(comma1)
+                && noun(second)
+                && comma(comma2)
+                && matches!(
+                    Self::lower(und, document).as_str(),
+                    "und" | "oder" | "sowie"
+                )
+                && noun(last)
+                && ends
+            {
+                lints.push(Lint {
+                    span: comma2.span,
+                    lint_kind: LintKind::Punctuation,
+                    suggestions: vec![Suggestion::Remove],
+                    priority: 28,
+                    message: format!(
+                        "Vor dem »{}« am Ende einer Aufzählung steht kein Komma.",
+                        document.get_span_content_str(&und.span)
+                    ),
+                });
+            }
+        }
+        lints
+    }
+}
+
 impl Linter for GermanVorfeldComma {
     fn lint(&mut self, document: &Document) -> Vec<Lint> {
-        document
-            .iter_sentences()
-            .filter_map(|sentence| {
-                let words: Vec<&Token> = sentence
-                    .iter()
-                    .filter(|t| !t.kind.is_whitespace())
-                    .collect();
-                Self::check(&words, document)
-            })
-            .collect()
+        let mut lints = Vec::new();
+        for sentence in document.iter_sentences() {
+            let words: Vec<&Token> = sentence
+                .iter()
+                .filter(|t| !t.kind.is_whitespace())
+                .collect();
+            lints.extend(Self::check(&words, document));
+            lints.extend(Self::adverb_comma(&words, document));
+            lints.extend(Self::list_comma(&words, document));
+        }
+        lints
     }
 
     fn description(&self) -> &str {
@@ -277,6 +392,9 @@ mod tests {
             "Mit zwei elften Plätzen als bestem Ergebnis und 16 Punkten am Saisonende, konnte er sich halten.",
             "Das Fachwerkhaus, erinnerte ihn an das Haus der sieben Zwerge.",
             "Im Jahr 2020, wurde er Meister.",
+            "Leider, kann ich nicht kommen.",
+            "Natürlich, helfe ich dir.",
+            "Sie kaufte Brot, Butter, und Käse.",
             "Nach seinem ersten öffentlichen Auftritt 1955, entschied er sich für das Santurspiel.",
             "Aufgrund antiker Fundstücke während der Bauarbeiten, kam es zu Unterbrechungen.",
             "Meine Schwester, wohnt in Berlin.",
@@ -310,6 +428,12 @@ mod tests {
             "Gerber absolvierte 22 Spiele, hatte eine erstklassige Fangquote.",
             "Selbst der geringste Bauer, schrieb der Professor, wusste das.",
             "Herr Müller, kommen Sie bitte herein.",
+            "Ja, ich komme gerne.",
+            "Nein danke, ich habe keinen Hunger.",
+            "Oh, das wusste ich nicht.",
+            "Sie kaufte Brot, Butter und Käse.",
+            "Er sagte, dass er kommt, und dass er Wein mitbringt.",
+            "Peter, Anna, und ich gehen.",
             "Mein Bruder, Peter und ich gehen.",
             "Bei der Meisterschaft erreichte Chetri das Finale, verlor dort aber gegen die Malediven.",
             "Seit 1943 wieder im Stadtparlament, war er Mitglied der Delegation.",
