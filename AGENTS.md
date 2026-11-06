@@ -22,7 +22,6 @@ Issue https://github.com/Dronakurl/harper/issues/14.
 - `src/tests/` – unit tests (they use crate internals) and `batteries/*.tsv`.
 - `tests/plugin_host.rs` – loads the built `.wasm` through `harper-plugin-host`; includes the
   wasm-equals-native check on `test_sources/`.
-- `docs/` – historical notes from when German lived inside `harper-core`.
 
 ## Commands
 
