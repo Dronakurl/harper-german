@@ -1,0 +1,13 @@
+# The salutation of a letter: "Sehr geehrte Frau". See SehrGeehrterHerr.weir.
+expr main <(sehr geehrter Frau), geehrter>
+
+let message "In der Anrede richtet sich »geehrt« nach dem Titel: »Sehr geehrte Frau«."
+let description "Korrigiert »Sehr geehrter Frau« zu »Sehr geehrte Frau«."
+let kind "Agreement"
+let becomes "geehrte"
+let strategy "MatchCase"
+
+test "Sehr geehrter Frau Müller, wir schreiben Ihnen." "Sehr geehrte Frau Müller, wir schreiben Ihnen."
+
+allows "Sehr geehrte Frau Müller, wir schreiben Ihnen."
+allows "Sehr geehrter Herr Müller, wir schreiben Ihnen."

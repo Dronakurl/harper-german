@@ -1,0 +1,16 @@
+# The salutation of a letter: "Sehr geehrter Herr". The adjective takes the
+# gender of the title, and a letter written for a woman and sent to a man keeps
+# the wrong one. "Sehr geehrte Herren" is the plural and stays.
+expr main <(sehr geehrte Herr), geehrte>
+
+let message "In der Anrede richtet sich »geehrt« nach dem Titel: »Sehr geehrter Herr«."
+let description "Korrigiert »Sehr geehrte Herr« zu »Sehr geehrter Herr«."
+let kind "Agreement"
+let becomes "geehrter"
+let strategy "MatchCase"
+
+test "Sehr geehrte Herr Müller, wir schreiben Ihnen." "Sehr geehrter Herr Müller, wir schreiben Ihnen."
+
+allows "Sehr geehrter Herr Müller, wir schreiben Ihnen."
+allows "Sehr geehrte Damen und Herren, wir schreiben Ihnen."
+allows "Sehr geehrte Herren, wir schreiben Ihnen."

@@ -487,6 +487,23 @@ impl GermanVerbCase {
             if !next_to_verb {
                 continue;
             }
+            // *Ich danke Sie*: the polite *Sie* behind the verb is the object
+            // when a subject stands in front of it; *Danken Sie ihm* has it as
+            // the subject.
+            if written == "Sie"
+                && at.checked_sub(1).is_some_and(|i| is_dative_verb(clause[i]))
+                && at.checked_sub(2).is_some_and(|i| {
+                    ["ich", "wir", "er", "sie", "man"]
+                        .contains(&lowercase_of(clause[i], document).as_str())
+                })
+            {
+                lints.extend(Self::report(
+                    token,
+                    vec!["Ihnen".to_owned()],
+                    format!("»{verb}« verlangt den Dativ: »Ihnen«, nicht »Sie«."),
+                ));
+                continue;
+            }
             if let Some(&(dative, accusative)) =
                 DATIVE_TO_ACCUSATIVE.iter().find(|(_, a)| written == *a)
             {
@@ -498,6 +515,51 @@ impl GermanVerbCase {
             }
             // A determiner is not checked: after the verb the subject may stand
             // too, *dazu gehören das Sieb und …*, *es folgt eine Übersicht*.
+        }
+        lints
+    }
+
+    /// The accusative object of *fragen* written in the dative: *er fragt mir
+    /// nach dem Weg* → *mich*. Only the pronouns that show the case, and only
+    /// next to the verb.
+    fn accusative_object(
+        &self,
+        clause: &[&Token],
+        verbs: &[String],
+        document: &Document,
+    ) -> Vec<Lint> {
+        const ACCUSATIVE_VERBS: &[&str] = &["fragen", "besuchen", "anrufen", "unterstützen"];
+        let Some(verb) = verbs
+            .iter()
+            .find(|v| ACCUSATIVE_VERBS.contains(&v.as_str()))
+        else {
+            return Vec::new();
+        };
+        let is_verb = |t: &Token| {
+            t.kind.is_word()
+                && document
+                    .get_span_content(&t.span)
+                    .first()
+                    .is_some_and(|c| c.is_lowercase())
+                && self.lemmas(&lowercase_of(t, document)).contains(verb)
+        };
+        let mut lints = Vec::new();
+        for (at, token) in clause.iter().enumerate() {
+            let written = document.get_span_content_str(&token.span);
+            let Some(&(dative, accusative)) = [("mir", "mich"), ("dir", "dich")]
+                .iter()
+                .find(|(d, _)| written == *d)
+            else {
+                continue;
+            };
+            if !at.checked_sub(1).is_some_and(|i| is_verb(clause[i])) {
+                continue;
+            }
+            lints.extend(Self::report(
+                token,
+                vec![accusative.to_owned()],
+                format!("»{verb}« verlangt den Akkusativ: »{accusative}«, nicht »{dative}«."),
+            ));
         }
         lints
     }
@@ -534,13 +596,22 @@ impl GermanVerbCase {
             let Some(object) = clause.get(at + 1).filter(|t| t.kind.is_word()) else {
                 continue;
             };
-            lints.extend(self.wrong_determiner(
-                object,
-                clause.get(at + 2),
-                Case::Dative,
-                document,
-                || format!("Nach »{verb}« steht der Ort im Dativ: »{preposition}« mit Dativ."),
-            ));
+            // *in eine kleine Wohnung*: the noun may stand behind adjectives.
+            let noun = clause[at + 2..]
+                .iter()
+                .take(3)
+                .find(|t| {
+                    document
+                        .get_span_content(&t.span)
+                        .first()
+                        .is_some_and(|c| c.is_uppercase())
+                })
+                .or(clause.get(at + 2));
+            lints.extend(
+                self.wrong_determiner(object, noun, Case::Dative, document, || {
+                    format!("Nach »{verb}« steht der Ort im Dativ: »{preposition}« mit Dativ.")
+                }),
+            );
         }
         lints
     }
@@ -584,6 +655,7 @@ impl Linter for GermanVerbCase {
                 }
                 lints.extend(self.prepositional_object(&clause, &verbs, document));
                 lints.extend(self.dative_object(&clause, &verbs, document));
+                lints.extend(self.accusative_object(&clause, &verbs, document));
                 lints.extend(self.position(&clause, &verbs, document));
             }
         }
@@ -655,6 +727,9 @@ mod tests {
         );
         assert_eq!(fixed("Er wollte niemanden schaden."), ["niemanden"]);
         assert_eq!(fixed("Sie hat jemanden geholfen."), ["jemanden"]);
+        assert_eq!(fixed("Er wohnt in eine kleine Wohnung."), ["eine"]);
+        assert_eq!(fixed("Ich danke Sie für Ihre Hilfe."), ["Sie"]);
+        assert_eq!(fixed("Er fragt mir nach dem Weg."), ["mir"]);
         assert_eq!(fixed("Ich nehme an den Kurs teil."), ["den"]);
         assert_eq!(fixed("Er fürchtet sich vor den Hund."), ["den"]);
         assert_eq!(fixed("Die Brille liegt auf den Tisch."), ["den"]);
@@ -678,6 +753,11 @@ mod tests {
             "Er hat niemandem geholfen.",
             "Er sah jemanden helfen.",
             "Jemanden zu finden, der hilft, ist schwer.",
+            "Danken Sie ihm.",
+            "Er wohnt in einer kleinen Wohnung.",
+            "Er fragt mich nach dem Weg.",
+            "Kannst du mir sagen, was er fragt?",
+            "Er fragt sich, ob es stimmt.",
             "Ich nehme an dem Kurs teil.",
             "Die Brille liegt auf dem Tisch.",
             "Er legt die Brille auf den Tisch.",
