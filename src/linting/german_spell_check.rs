@@ -836,12 +836,44 @@ impl<T: Dictionary> Linter for GermanSpellCheck<T> {
                     // the stop separately, and the dictionary lists the
                     // abbreviation with its stop, so the bare letters stay a
                     // misspelling and never act as a compound element.
-                    if tokens.get(index + 1).is_some_and(|next| {
-                        matches!(next.kind, TokenKind::Punctuation(Punctuation::Period))
-                            && next.span.start == word.span.end
-                    }) && self.is_abbreviation_with_stop(word_chars)
-                    {
-                        continue;
+                    // The source is read, not the next token: in *usw..* the stops
+                    // may come as one token.
+                    let stop_follows = document.get_full_content().get(word.span.end) == Some(&'.');
+                    if self.is_abbreviation_with_stop(word_chars) {
+                        // Only the everyday ones, and only in German text: *mind*
+                        // in an English title and *La* in *La Malfa* are words of
+                        // their own.
+                        const EVERYDAY: &[&str] = &[
+                            "ca", "bzw", "usw", "evtl", "ggf", "vgl", "inkl", "zzgl", "bzgl",
+                            "sog", "Nr", "Str", "Tel", "Mio", "Mrd", "Jh", "Abs", "Std", "Min",
+                            "Hr", "Prof", "Dr",
+                        ];
+                        let written_word: String = word_chars.iter().collect();
+                        if !stop_follows
+                            && EVERYDAY.contains(&written_word.as_str())
+                            && !german_foreign_stretch::in_foreign_stretch(
+                                &tokens,
+                                index,
+                                document,
+                                |token| token.kind.is_determiner(),
+                            )
+                        {
+                            // *ca 20 Euro*: the abbreviation without its stop.
+                            let written: String = word_chars.iter().collect();
+                            lints.push(Lint {
+                                span: word.span,
+                                lint_kind: LintKind::Punctuation,
+                                suggestions: vec![Suggestion::InsertAfter(vec!['.'])],
+                                priority: 20,
+                                message: format!(
+                                    "Die Abkürzung »{written}.« schreibt man mit Punkt."
+                                ),
+                            });
+                            continue;
+                        }
+                        if stop_follows {
+                            continue;
+                        }
                     }
 
                     // *geht's*, *gibt's*, *wie's*: the pronoun *es* cliticized
@@ -1127,6 +1159,20 @@ mod tests {
     }
 
     /// One edit that keeps the first letter beats everything that does not.
+    #[test]
+    fn an_abbreviation_without_its_stop_gets_one() {
+        let dict = crate::spell::combined_german_dictionary();
+        for (text, expected) in [
+            ("Das kostet ca 20 Euro.", 1),
+            ("Das kostet ca. 20 Euro.", 0),
+            ("Wir brauchen Stifte, Papier usw..", 0),
+        ] {
+            let document = Document::new(text, &PlainGerman, &dict);
+            let lints = GermanSpellCheck::new(dict.clone()).lint(&document);
+            assert_eq!(lints.len(), expected, "{text}: {lints:?}");
+        }
+    }
+
     #[test]
     fn a_weak_participle_of_a_strong_verb_gets_the_strong_one() {
         assert_eq!(

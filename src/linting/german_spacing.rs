@@ -153,14 +153,38 @@ impl GermanSpaces {
                 .last()
                 .map_or(dot + 1, |i| i + 1);
             let (left, right) = (&source[start..dot], &source[dot + 1..end]);
-            if left.is_empty() || right.len() < 3 {
-                continue;
-            }
-            // Something glued to either side makes it an address or a path.
+            // Something glued to either side makes it an address or a path. A
+            // full stop behind the second half that ends the sentence does not
+            // (*am 3.Mai.*).
             let glued = |i: Option<&char>| {
                 i.is_some_and(|c| matches!(c, '.' | '/' | '@' | '_' | ':' | '-'))
             };
-            if glued(start.checked_sub(1).and_then(|i| source.get(i))) || glued(source.get(end)) {
+            let sentence_stop = source.get(end) == Some(&'.')
+                && source.get(end + 1).is_none_or(|c| c.is_whitespace());
+            if left.is_empty()
+                || glued(start.checked_sub(1).and_then(|i| source.get(i)))
+                || (glued(source.get(end)) && !sentence_stop)
+            {
+                continue;
+            }
+            // *Nr.5*, *S.12*, *Abs.3*: an abbreviation and its number.
+            let left_text: String = left.iter().collect();
+            if matches!(
+                left_text.as_str(),
+                "Nr" | "S" | "Abs" | "Art" | "Kap" | "Bd" | "Tel"
+            ) && right.iter().all(char::is_ascii_digit)
+                && !right.is_empty()
+            {
+                lints.push(Lint {
+                    span: Span::new(dot, dot + 1),
+                    lint_kind: LintKind::Formatting,
+                    suggestions: vec![Suggestion::ReplaceWith(vec!['.', ' '])],
+                    message: "Nach dem Punkt der Abkürzung fehlt ein Leerzeichen.".to_owned(),
+                    priority: 15,
+                });
+                continue;
+            }
+            if right.len() < 3 {
                 continue;
             }
             let capitalized =
@@ -379,6 +403,8 @@ mod tests {
             ("Am 3.Oktober ist Feiertag.", "3. Oktober"),
             ("Er lebte im 19.Jahrhundert in Wien.", "19. Jahrhundert"),
             ("Ich telefonierte.Ich war müde.", "telefonierte. Ich"),
+            ("Wir treffen uns am 3.Mai.", "3. Mai"),
+            ("Er wohnt in der Goethestraße Nr.5.", "Nr. 5"),
         ] {
             let lints = lint(text, &mut GermanSpaces::default());
             assert_eq!(lints.len(), 1, "{text}");

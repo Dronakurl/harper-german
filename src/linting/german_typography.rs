@@ -335,6 +335,25 @@ const COUPLED_HEADS: &[&str] = &[
     "Programm",
     "Plan",
     "Ausstellung",
+    "Konflikt",
+    "Beziehung",
+    "Beziehungen",
+    "Verbindung",
+    "Achse",
+    "Grenze",
+    "Gefälle",
+    "Vertrag",
+    "Abkommen",
+    "Verhältnis",
+    "Dialog",
+];
+
+/// *U Bahn*, *S Bahn*, *T Shirt*: a single capital letter and a noun are one
+/// word with a hyphen. Only a closed list, so that *Gruppe B Spiele* or
+/// *Vitamin C Mangel* is not touched.
+const LETTER_COMPOUNDS: &[&str] = &[
+    "U-Bahn", "S-Bahn", "T-Shirt", "T-Shirts", "U-Boot", "U-Boote", "A-Klasse", "B-Klasse",
+    "C-Klasse", "E-Auto", "E-Autos", "E-Bike", "E-Bikes", "X-Achse", "Y-Achse",
 ];
 
 /// *Max-Planck Institut*: a name joined with hyphens and the noun behind it are
@@ -347,6 +366,26 @@ impl Linter for GermanCoupling {
     fn lint(&mut self, document: &Document) -> Vec<Lint> {
         let tokens = document.get_tokens();
         let mut lints = Vec::new();
+        for at in 0..tokens.len().saturating_sub(2) {
+            let (letter, space, noun) = (&tokens[at], &tokens[at + 1], &tokens[at + 2]);
+            if !matches!(space.kind, TokenKind::Space(1))
+                || !matches!(noun.kind, TokenKind::Word(_))
+            {
+                continue;
+            }
+            let joined = format!("{}-{}", text(document, letter), text(document, noun));
+            if text(document, letter).chars().count() == 1
+                && LETTER_COMPOUNDS.contains(&joined.as_str())
+            {
+                lints.push(Lint {
+                    span: space.span,
+                    lint_kind: LintKind::Punctuation,
+                    suggestions: vec![Suggestion::ReplaceWith(vec!['-'])],
+                    priority: 40,
+                    message: format!("»{joined}« schreibt man mit Bindestrich."),
+                });
+            }
+        }
         for at in 2..tokens.len().saturating_sub(2) {
             let (first, hyphen, last, space, head) = (
                 &tokens[at - 2],
@@ -425,6 +464,12 @@ mod tests {
             count(GermanCoupling, "Er wohnt in der Konrad-Adenauer Straße."),
             1
         );
+        assert_eq!(count(GermanCoupling, "Wir fahren mit der U Bahn."), 1);
+        assert_eq!(
+            count(GermanCoupling, "Der Ost-West Konflikt prägte die Zeit."),
+            1
+        );
+        assert_eq!(count(GermanCoupling, "In Gruppe B Spiele gab es."), 0);
         for text in [
             "Das Treffen findet im Max-Planck-Institut statt.",
             "Hans-Peter Müller kommt.",
