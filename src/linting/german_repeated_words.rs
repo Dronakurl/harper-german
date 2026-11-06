@@ -1,6 +1,8 @@
 use harper_core::linting::{Lint, LintKind, Linter, Suggestion};
 use harper_core::{CharStringExt, Document, Span, TokenKind, TokenStringExt};
 
+use crate::grammar::determiners::determiner_readings;
+
 /// Words German legitimately writes twice in a row.
 ///
 /// Each is a form that is both an article or pronoun and a relative or
@@ -60,19 +62,69 @@ impl Linter for GermanRepeatedWords {
                 }
 
                 let lower: String = lower.iter().collect();
-                if LEGITIMATE_REPEATS.contains(&lower.as_str()) {
-                    continue;
-                }
-
                 let capitalized = |w: &[char]| w.first().is_some_and(|c| c.is_uppercase());
-                if capitalized(a) && capitalized(b) {
-                    continue;
+                let previous = chunk[..*idx_a]
+                    .iter()
+                    .rev()
+                    .find(|t| !t.kind.is_whitespace());
+                let previous_lower = previous
+                    .filter(|t| t.kind.is_word())
+                    .map(|t| document.get_span_content_str(&t.span).to_lowercase());
+                let next_capitalized = chunk[idx_b + 1..]
+                    .iter()
+                    .find(|t| !t.kind.is_whitespace())
+                    .is_some_and(|t| {
+                        t.kind.is_word() && capitalized(document.get_span_content(&t.span))
+                    });
+
+                if LEGITIMATE_REPEATS.contains(&lower.as_str()) {
+                    // *Ich habe das das Buch gelesen*: behind a form of *haben*
+                    // and before a noun, the pair can only be one article typed
+                    // twice. Behind a comma or *dass* it is a pronoun and an
+                    // article (*die die Tür öffnete*), and behind a verb of saying
+                    // it may be a *dass* written *das* (*Ich glaube das das …*).
+                    let behind_haben = previous_lower.as_deref().is_some_and(|w| {
+                        matches!(
+                            w,
+                            "habe"
+                                | "hast"
+                                | "hat"
+                                | "haben"
+                                | "habt"
+                                | "hatte"
+                                | "hattest"
+                                | "hatten"
+                                | "hattet"
+                        )
+                    });
+                    if !(matches!(lower.as_str(), "der" | "die" | "das")
+                        && behind_haben
+                        && next_capitalized)
+                    {
+                        continue;
+                    }
+                } else if capitalized(a) && capitalized(b) {
+                    // *Wir fahren nach Bora Bora*: a name. Behind an article or a
+                    // possessive the pair is a noun typed twice (*das Auto Auto*).
+                    let behind_determiner = previous_lower.as_deref().is_some_and(|w| {
+                        determiner_readings(w).is_some()
+                            || ["mein", "dein", "sein", "ihr", "unser", "euer", "eur"]
+                                .iter()
+                                .any(|stem| {
+                                    w.strip_prefix(stem).is_some_and(|ending| {
+                                        ["", "e", "en", "em", "er", "es"].contains(&ending)
+                                    })
+                                })
+                    });
+                    if !behind_determiner {
+                        continue;
+                    }
                 }
 
                 // A capital on the first copy alone is a sentence start (*Ich
                 // ich*) or a different word: *Reden reden*, *das Lernen
                 // lernen*, *einen Weg weg*.
-                if capitalized(a) && !sentence_initial(*idx_a) {
+                if capitalized(a) && !capitalized(b) && !sentence_initial(*idx_a) {
                     continue;
                 }
 
@@ -157,6 +209,10 @@ mod tests {
             "Er kauft sich einen einen neuen Schuh.",
             "Wir waren im im Schuhgeschäft.",
             "Sie werden gespeichert, um um Aufmerksamkeit zu erhalten.",
+            "Das Auto Auto steht vor der Tür.",
+            "Ich habe das das Buch gelesen.",
+            "Er hat die die Tür geöffnet.",
+            "Wir sahen sein Haus Haus am See.",
         ] {
             assert_eq!(lint_count(text), 1, "should fire on {text:?}");
         }
@@ -187,6 +243,12 @@ mod tests {
             "Er geht einen Weg weg von der Straße.",
             "Die Kosten sind u. U. höher.",
             "Man nimmt 1,3 g/kg KG auf.",
+            "Wir fahren nach Baden Baden.",
+            "Ich weiß, dass das das Beste ist.",
+            "Die Frau, die die Tür öffnete, war freundlich.",
+            "Ich glaube das das stimmt.",
+            "Wurst Wurst ist doppelt.",
+            "Er hat das, das er wollte.",
         ] {
             assert_eq!(lint_count(text), 0, "should not fire on {text:?}");
         }
