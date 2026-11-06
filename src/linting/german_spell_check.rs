@@ -6,9 +6,11 @@ use crate::linting::german_foreign_stretch;
 use crate::linting::german_relative_clause_comma::GermanRelativeClauseComma;
 use crate::spell::compound_checker::{
     MIN_COMPOUND_PART_LEN, can_head_a_capitalized_compound, can_head_a_lowercase_compound,
-    has_content_reading, interfix_fits, interfix_matches_known_begin, is_derivational_suffix,
-    lowercase, may_be_compound_element, may_open_a_compound, may_take_an_interfix,
+    has_content_reading, has_inner_capital, interfix_fits, interfix_matches_known_begin,
+    is_derivational_suffix, lowercase, may_be_compound_element, may_open_a_compound,
+    may_open_the_word, may_take_an_interfix,
 };
+use crate::spell::curated_german_dictionary;
 use crate::spell::german_dict::{
     GERMAN_BARRED_ELEMENTS, GERMAN_FUNCTION_WORDS, GERMAN_STEMS, GERMAN_SUFFIXED_ELEMENTS,
 };
@@ -23,6 +25,11 @@ use harper_core::{Document, Punctuation, Token, TokenKind, TokenStringExt};
 const MAX_COMPOUND_PARTS: usize = 5;
 const EMPTY_INTERFIX: &[char] = &[];
 const S_INTERFIX: &[char] = &['s'];
+
+/// The articles, which end no compound: *aufdem* is *auf dem*.
+const ARTICLES: &[&str] = &[
+    "der", "die", "das", "den", "dem", "des", "ein", "eine", "einen", "einem", "einer", "eines",
+];
 const N_INTERFIX: &[char] = &['n'];
 const EN_INTERFIX: &[char] = &['e', 'n'];
 const ER_INTERFIX: &[char] = &['e', 'r'];
@@ -208,6 +215,13 @@ impl<T: Dictionary> GermanSpellCheck<T> {
         remainder: &'a [char],
         interfix: &[char],
     ) -> Option<&'a [char]> {
+        // A function word takes no linking element; see `function_word_set`.
+        if !interfix.is_empty()
+            && GERMAN_FUNCTION_WORDS.contains(element)
+            && !has_content_reading(&self.dictionary, element)
+        {
+            return None;
+        }
         if !interfix_fits(element, interfix)
             || !interfix_matches_known_begin(element, interfix)
             || (!interfix.is_empty() && !may_take_an_interfix(&self.dictionary, element))
@@ -287,6 +301,7 @@ impl<T: Dictionary> GermanSpellCheck<T> {
             if !self.is_element(first_part)
                 || !may_open_a_compound(&self.dictionary, &GERMAN_STEMS, first_part)
                 || (depth > 0 && !self.may_close_a_compound(first_part))
+                || (depth == 0 && !may_open_the_word(first_part, lowercase_whole.is_some()))
             {
                 continue;
             }
@@ -349,12 +364,54 @@ impl<T: Dictionary> GermanSpellCheck<T> {
     /// German freely combines nouns and often inserts linking morphemes such as
     /// `s`, `n`, `en`, `er`, `e`, or `es` between parts.
     fn try_compound_word_check(&self, word: &[char]) -> bool {
-        if word.len() < MIN_COMPOUND_PART_LEN * 2 {
+        if word.len() < MIN_COMPOUND_PART_LEN * 2 || has_inner_capital(word) {
             return false;
         }
 
         let mut memo = HashMap::new();
         self.is_valid_compound_segment(word, 0, &mut memo, lowercase(word).then_some(word))
+    }
+
+    /// `word` as two words with a space between, if both halves are words as
+    /// written, and whether the seam is a sure one: a capital right behind it
+    /// (*imKönigreich*) or a function word or finite verb in front of it
+    /// (*sindschmal*) or an article behind it (*aufdem*), none of which a compound
+    /// has.
+    ///
+    /// The first half needs two letters and the second three, and the split
+    /// with the longer first half wins, so *dieselbe* is not offered as *die
+    /// selbe*. Only reached for a word the dictionary has already rejected.
+    fn two_words(&self, word: &[char]) -> Option<(Vec<char>, bool)> {
+        if word.len() < 5 {
+            return None;
+        }
+        // The base dictionary, so that neither half is itself a guess of the
+        // compound splitter: *understanding* is not *und* + *erstanding*.
+        let base = curated_german_dictionary();
+        (2..=word.len() - 3).rev().find_map(|at| {
+            let (left, right) = word.split_at(at);
+            if !base.contains_exact_word(left) || !base.contains_exact_word(right) {
+                return None;
+            }
+            let capital_seam = left.last().is_some_and(|c| c.is_lowercase())
+                && right.first().is_some_and(|c| c.is_uppercase());
+            // *sindschmal*: a conjunction or a finite *sein* opens no compound.
+            // A preposition does, as the particle of a verb (*umcodiert*), so it
+            // does not count here.
+            let lower_left: Vec<char> = left.iter().flat_map(|c| c.to_lowercase()).collect();
+            let function_left = !may_open_the_word(&lower_left, true);
+            // *aufdem*: an article cannot end a compound either.
+            let right_text: String = right.iter().collect();
+            let article_right = ARTICLES.contains(&right_text.as_str());
+            let sure = capital_seam || function_left || article_right;
+            // Without a sure seam, only a capitalized second half is worth offering:
+            // two lower-case words glued together is how most real compounds look.
+            if !sure && !right.first().is_some_and(|c| c.is_uppercase()) {
+                return None;
+            }
+            let joined: Vec<char> = left.iter().chain(&[' ']).chain(right).copied().collect();
+            Some((joined, sure))
+        })
     }
 
     /// Get spelling suggestions for a word.
@@ -433,6 +490,16 @@ impl<T: Dictionary> GermanSpellCheck<T> {
         // suggestion.
         let mut seen = HashSet::new();
         suggestions.retain(|suggestion| seen.insert(suggestion.clone()));
+
+        // Two words that lost the space between them: *sindschmal*, *imKönigreich*.
+        // Ahead of the edits when the seam shows it — a capital in the middle, or a
+        // function word in front, which no compound begins with — and behind the
+        // best edit otherwise, so *Kunstoff* still offers *Kunststoff* first.
+        if let Some((split, sure)) = self.two_words(word) {
+            suggestions.retain(|suggestion| *suggestion != split);
+            let at = if sure { 0 } else { suggestions.len().min(1) };
+            suggestions.insert(at, split);
+        }
 
         // Also try a simple capitalization fix (common German error).
         if suggestions.is_empty() && word.len() > 1 {

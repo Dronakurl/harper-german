@@ -1,5 +1,8 @@
 use harper_core::linting::{Lint, LintKind, Linter, Suggestion};
+use harper_core::spell::Dictionary;
 use harper_core::{Document, TokenStringExt};
+
+use crate::spell::curated_german_dictionary;
 
 /// Misspellings that Harper's German spell check cannot see, and their
 /// corrections.
@@ -165,6 +168,22 @@ const COMMON_TYPOS: &[(&str, &str)] = &[
     ("überlicherweise", "üblicherweise"),
 ];
 
+/// Misspellings that do not come from the source list below, written down by
+/// hand from everyday writing. The ones with a space in the correction are
+/// adverbs written closed up: *schon mal* and *nicht mal* are two words, while
+/// *nochmal* is a word of its own and stays out. Same order rule as
+/// [`COMMON_TYPOS`].
+const HAND_PICKED_TYPOS: &[(&str, &str)] = &[
+    ("bischen", "bisschen"),
+    ("nichtmal", "nicht mal"),
+    ("nocheinmal", "noch einmal"),
+    ("packet", "Paket"),
+    ("schoneinmal", "schon einmal"),
+    ("schonmal", "schon mal"),
+    ("wiedereinmal", "wieder einmal"),
+    ("wiedermal", "wieder mal"),
+];
+
 /// Corrects the misspellings people actually make, which the spell checker
 /// lets through.
 ///
@@ -200,10 +219,89 @@ impl GermanCommonTypos {
     fn correction(word: &[char]) -> Option<&'static str> {
         let lower: String = word.iter().flat_map(|c| c.to_lowercase()).collect();
 
-        COMMON_TYPOS
-            .binary_search_by_key(&lower.as_str(), |(wrong, _)| wrong)
-            .ok()
-            .map(|index| COMMON_TYPOS[index].1)
+        [COMMON_TYPOS, HAND_PICKED_TYPOS]
+            .into_iter()
+            .find_map(|table| {
+                table
+                    .binary_search_by_key(&lower.as_str(), |(wrong, _)| wrong)
+                    .ok()
+                    .map(|index| table[index].1)
+            })
+    }
+}
+
+impl GermanCommonTypos {
+    /// The correction of a compound that *opens* with a misspelling from the
+    /// table: *Kunstoffeimer* is *Kunststoff* + *Eimer*, and the compound
+    /// splitter accepts it as *Kunst* + *off* + *eimer*, exactly as it accepts
+    /// *Kunstoff* on its own.
+    ///
+    /// Only entries of five letters or more open a compound here, and the rest
+    /// has to be a dictionary word of at least three letters by itself, written
+    /// small as the compound writes it or capitalized as the noun is. Five
+    /// letters keep short entries like *eingen* from matching the start of a
+    /// word that merely begins the same way. Linking elements are not tried: an
+    /// entry is a whole word, and a writer who knows the seam of *Kunststoffs*
+    /// knows the word.
+    fn compound_correction(word: &[char]) -> Option<String> {
+        let lower: String = word.iter().flat_map(|c| c.to_lowercase()).collect();
+        let dictionary = curated_german_dictionary();
+        [COMMON_TYPOS, HAND_PICKED_TYPOS]
+            .into_iter()
+            .flatten()
+            .filter(|(wrong, right)| {
+                wrong.chars().count() >= 5
+                    && !right.contains(' ')
+                    && lower.starts_with(wrong)
+                    && lower.chars().count() >= wrong.chars().count() + 3
+            })
+            .max_by_key(|(wrong, _)| wrong.len())
+            // The entry may merely be how a correct compound begins: *Kenntnis* +
+            // *Stand* starts with *kenntniss*, *hoch* + *ausgebildeten* with
+            // *hochaus*. When the word splits into two dictionary words at a seam
+            // inside the entry, it is that compound and not the typo.
+            .filter(|(wrong, _)| !Self::splits_inside(&lower, wrong.chars().count()))
+            .and_then(|(wrong, right)| {
+                let rest: Vec<char> = lower[wrong.len()..].chars().collect();
+                let mut capitalized = rest.clone();
+                capitalized[0] = capitalized[0].to_uppercase().next()?;
+                let is_word = |w: &[char]| {
+                    dictionary.contains_exact_word(w)
+                        && dictionary
+                            .get_word_metadata(w)
+                            .is_some_and(|m| !m.is_proper_noun())
+                };
+                (is_word(&rest) || is_word(&capitalized)).then(|| {
+                    let rest: String = rest.into_iter().collect();
+                    format!("{}{rest}", right.to_lowercase())
+                })
+            })
+    }
+}
+
+impl GermanCommonTypos {
+    /// Does `word` split into two dictionary words, with or without a linking
+    /// element, at a seam before character `limit`?
+    fn splits_inside(word: &str, limit: usize) -> bool {
+        let dictionary = curated_german_dictionary();
+        let chars: Vec<char> = word.chars().collect();
+        let is_word = |part: &[char]| {
+            let mut capitalized = part.to_vec();
+            if let Some(first) = capitalized.first_mut() {
+                *first = first.to_uppercase().next().unwrap_or(*first);
+            }
+            part.len() >= 3
+                && (dictionary.contains_exact_word(part)
+                    || dictionary.contains_exact_word(&capitalized))
+        };
+        (3..limit.min(chars.len())).any(|seam| {
+            let (head, rest) = chars.split_at(seam);
+            is_word(head)
+                && ["", "s", "n", "en", "es", "er", "e"].iter().any(|link| {
+                    let link: Vec<char> = link.chars().collect();
+                    rest.strip_prefix(link.as_slice()).is_some_and(is_word)
+                })
+        })
     }
 }
 
@@ -213,16 +311,27 @@ impl Linter for GermanCommonTypos {
 
         for word in document.iter_words() {
             let chars = document.get_span_content(&word.span);
-            let Some(correction) = Self::correction(chars) else {
-                continue;
+            let (correction, in_compound) = match Self::correction(chars) {
+                Some(correction) => (correction.to_string(), false),
+                None => match Self::compound_correction(chars) {
+                    Some(correction) => (correction, true),
+                    None => continue,
+                },
             };
 
             let original: String = chars.iter().collect();
+            let message = if in_compound {
+                format!("»{original}« beginnt mit einem häufigen Tippfehler.")
+            } else if correction.contains(' ') {
+                format!("»{correction}« schreibt man getrennt.")
+            } else {
+                format!("»{original}« ist ein häufiger Tippfehler.")
+            };
             lints.push(Lint {
                 span: word.span,
                 lint_kind: LintKind::Spelling,
-                suggestions: vec![Suggestion::replace_with_match_case_str(correction, chars)],
-                message: format!("»{original}« ist ein häufiger Tippfehler."),
+                suggestions: vec![Suggestion::replace_with_match_case_str(&correction, chars)],
+                message,
                 priority: 19,
             });
         }
@@ -237,7 +346,7 @@ impl Linter for GermanCommonTypos {
 
 #[cfg(test)]
 mod tests {
-    use super::{COMMON_TYPOS, GermanCommonTypos};
+    use super::{COMMON_TYPOS, GermanCommonTypos, HAND_PICKED_TYPOS};
     use crate::parsers::PlainGerman;
     use crate::spell::combined_german_dictionary;
     use harper_core::Document;
@@ -267,7 +376,7 @@ mod tests {
     /// entries.
     #[test]
     fn the_table_is_in_the_order_the_search_assumes() {
-        for pair in COMMON_TYPOS.windows(2) {
+        for pair in COMMON_TYPOS.windows(2).chain(HAND_PICKED_TYPOS.windows(2)) {
             assert!(
                 pair[0].0 < pair[1].0,
                 "{:?} must sort before {:?}",
@@ -281,8 +390,13 @@ mod tests {
     /// same word forever.
     #[test]
     fn no_correction_is_itself_a_typo() {
-        for (wrong, right) in COMMON_TYPOS {
+        for (wrong, right) in COMMON_TYPOS.iter().chain(HAND_PICKED_TYPOS) {
             assert_eq!(correction(right), None, "{wrong} -> {right} loops");
+            assert!(
+                !COMMON_TYPOS.iter().any(|(other, _)| other == wrong)
+                    || !HAND_PICKED_TYPOS.iter().any(|(other, _)| other == wrong),
+                "{wrong} is in both tables"
+            );
         }
     }
 
@@ -303,6 +417,66 @@ mod tests {
                 flagged(&format!("Hier steht {wrong} im Satz.")),
                 vec![wrong]
             );
+        }
+    }
+
+    #[test]
+    fn catches_a_typo_at_the_start_of_a_compound() {
+        for (text, right) in [
+            ("Das ist ein Kunstoffeimer.", "Kunststoffeimer"),
+            ("Die Kunstoffmodelle sind leicht.", "Kunststoffmodelle"),
+        ] {
+            let document = document(text);
+            let lints = GermanCommonTypos.lint(&document);
+            assert_eq!(lints.len(), 1, "{text}");
+            assert!(
+                format!("{:?}", lints[0].suggestions).contains(right),
+                "{text}: {:?}",
+                lints[0].suggestions
+            );
+        }
+        for text in [
+            "Das ist ein Kunststoffeimer.",
+            "Die Kunst offenbart sich.",
+            "Nach heutigem Kenntnisstand ist das so.",
+            "Sie sind hochausgebildete Fachkräfte.",
+            "Reize gehen auf die aufsteigende Bahn.",
+        ] {
+            assert!(flagged(text).is_empty(), "{text}");
+        }
+    }
+
+    #[test]
+    fn splits_adverbs_written_closed_up() {
+        for (text, wrong, right) in [
+            ("Ich habe es dir schonmal gesagt.", "schonmal", "schon mal"),
+            ("Das ist nichtmal schlimm.", "nichtmal", "nicht mal"),
+            ("Er hat das wiedermal vergessen.", "wiedermal", "wieder mal"),
+            (
+                "Ich bin wiedereinmal zu spät.",
+                "wiedereinmal",
+                "wieder einmal",
+            ),
+            ("Schonmal davon gehört?", "Schonmal", "Schon mal"),
+            ("Das ist ein bischen viel.", "bischen", "bisschen"),
+            ("Wir haben das Packet bekommen.", "Packet", "Paket"),
+        ] {
+            let document = document(text);
+            let lints = GermanCommonTypos.lint(&document);
+            assert_eq!(lints.len(), 1, "{text}");
+            assert_eq!(document.get_span_content_str(&lints[0].span), wrong);
+            assert!(
+                format!("{:?}", lints[0].suggestions).contains(right),
+                "{text}: {:?}",
+                lints[0].suggestions
+            );
+        }
+        for text in [
+            "Sag es noch mal.",
+            "Sag es nochmal.",
+            "Ich war schon mal da.",
+        ] {
+            assert!(flagged(text).is_empty(), "{text}");
         }
     }
 
