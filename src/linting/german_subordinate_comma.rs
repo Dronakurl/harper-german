@@ -479,6 +479,150 @@ impl GermanSubordinateComma {
         lints
     }
 
+    /// *Das Ziel diese Werte zu erreichen*: an infinitive group that depends on
+    /// a noun takes a comma (Amtliche Regelung § 75 (2)).
+    ///
+    /// Only the nouns that take an infinitive, only a group of more than the
+    /// bare infinitive (*keine Lust zu arbeiten* may go without), and only when
+    /// nothing in between could end the noun's clause: a comma, a finite verb
+    /// or a conjunction sends the walk home empty.
+    fn missing_comma_after_noun_with_infinitive(
+        tokens: &[&Token],
+        document: &Document,
+    ) -> Vec<Lint> {
+        const NOUNS: &[&str] = &[
+            "ziel",
+            "absicht",
+            "aufgabe",
+            "möglichkeit",
+            "versuch",
+            "plan",
+            "idee",
+            "wunsch",
+            "gelegenheit",
+            "fähigkeit",
+            "pflicht",
+            "mut",
+            "lust",
+            "chance",
+            "entscheidung",
+            "bereitschaft",
+            "auftrag",
+            "befehl",
+            "erlaubnis",
+            "gefahr",
+            "angebot",
+            "vorschlag",
+            "forderung",
+            "bitte",
+            "hoffnung",
+            "kraft",
+            "methode",
+            "versprechen",
+            "vorhaben",
+        ];
+        let mut lints = Vec::new();
+        for (at, token) in tokens.iter().enumerate() {
+            let is_zu_infinitive = Self::word_in(token, document, &["zu"])
+                && tokens.get(at + 1).is_some_and(|verb| {
+                    let text = document.get_span_content_str(&verb.span);
+                    text.chars().next().is_some_and(char::is_lowercase)
+                        && text.ends_with('n')
+                        && GermanRelativeClauseComma::is_verb_token(verb, document)
+                })
+                && tokens
+                    .get(at + 2)
+                    .is_none_or(|after| !matches!(after.kind, TokenKind::Word(_)));
+            if !is_zu_infinitive {
+                continue;
+            }
+            // Walk left over the group to the noun.
+            let mut cursor = at;
+            let mut words_between = 0;
+            let noun_at = loop {
+                let Some(previous) = cursor.checked_sub(1) else {
+                    break None;
+                };
+                let t = tokens[previous];
+                if !matches!(t.kind, TokenKind::Word(_)) {
+                    break None;
+                }
+                if Self::word_in(t, document, NOUNS)
+                    && document
+                        .get_span_content(&t.span)
+                        .first()
+                        .is_some_and(|c| c.is_uppercase())
+                {
+                    break Some(previous);
+                }
+                let lower = document.get_span_content_str(&t.span).to_lowercase();
+                let finite = GermanRelativeClauseComma::is_verb_token(t, document)
+                    && document
+                        .get_span_content(&t.span)
+                        .first()
+                        .is_some_and(|c| c.is_lowercase());
+                if finite
+                    || Self::word_in(t, document, CLAUSE_COORDINATORS)
+                    || Self::word_in(t, document, SUBORDINATORS)
+                    || matches!(lower.as_str(), "zu" | "um" | "ohne" | "statt" | "anstatt")
+                {
+                    break None;
+                }
+                words_between += 1;
+                cursor = previous;
+            };
+            let Some(noun_at) = noun_at else {
+                continue;
+            };
+            if words_between == 0 {
+                continue;
+            }
+            // *aus einer Absicht heraus*: the noun belongs to a circumposition,
+            // and the infinitive to the verb before it.
+            const CIRCUMPOSITIONS: &[&str] = &[
+                "heraus",
+                "hinaus",
+                "herum",
+                "zufolge",
+                "entgegen",
+                "gegenüber",
+            ];
+            if tokens
+                .get(noun_at + 1)
+                .is_some_and(|after| Self::word_in(after, document, CIRCUMPOSITIONS))
+            {
+                continue;
+            }
+            // *um über die Möglichkeit zu diskutieren*, *ohne Gefahr eines
+            // Irrtums zu entscheiden*: the infinitive belongs to *um* or *ohne*
+            // further left in the clause.
+            let clause_start = tokens[..noun_at]
+                .iter()
+                .rposition(|t| !matches!(t.kind, TokenKind::Word(_)))
+                .map_or(0, |i| i + 1);
+            if tokens[clause_start..noun_at]
+                .iter()
+                .any(|t| Self::word_in(t, document, &["um", "ohne", "statt", "anstatt"]))
+            {
+                continue;
+            }
+            let noun: String = document
+                .get_span_content(&tokens[noun_at].span)
+                .iter()
+                .collect();
+            lints.push(Lint {
+                span: tokens[noun_at].span,
+                lint_kind: LintKind::Punctuation,
+                suggestions: vec![Suggestion::InsertAfter(vec![','])],
+                priority: 28,
+                message: format!(
+                    "Die Infinitivgruppe hängt von »{noun}« ab und wird mit Komma abgetrennt."
+                ),
+            });
+        }
+        lints
+    }
+
     /// *am Montag den 3. Mai*: the date is an apposition to the weekday and
     /// takes a comma in front (*am Montag, dem 3. Mai* or *am Montag, den 3.
     /// Mai*).
@@ -815,6 +959,9 @@ impl Linter for GermanSubordinateComma {
             ));
             lints.extend(Self::missing_comma_before_concessive(&tokens, document));
             lints.extend(Self::missing_comma_before_date(&tokens, document));
+            lints.extend(Self::missing_comma_after_noun_with_infinitive(
+                &tokens, document,
+            ));
 
             for (index, token) in tokens.iter().enumerate() {
                 if let Some(lint) =
@@ -937,6 +1084,29 @@ mod tests {
             "Er macht es so wie immer.",
             "Ich frage dich wie immer.",
             "Das ist der Ort, wo er wohnt.",
+        ] {
+            assert_eq!(lint_count(text), 0, "{text}");
+        }
+    }
+
+    #[test]
+    fn an_infinitive_group_after_its_noun_needs_a_comma() {
+        for text in [
+            "Ziel der Regelung ist das Ziel diese Sollwerte zu erreichen.",
+            "Er hatte die Absicht nach Berlin zu fahren.",
+            "Wir haben die Möglichkeit das Haus günstig zu kaufen.",
+        ] {
+            assert_eq!(lint_count(text), 1, "{text}");
+        }
+        for text in [
+            "Er hatte die Absicht, nach Berlin zu fahren.",
+            "Ich habe keine Lust zu arbeiten.",
+            "Das Ziel ist schwer zu erreichen.",
+            "Sie gab ihm die Möglichkeit und versuchte zu helfen.",
+            "Der Plan war gut zu verstehen.",
+            "Sie trafen sich, um über die Möglichkeit einer Synthese zu diskutieren.",
+            "Das heißt, aus einer Absicht heraus eine Lehre zu vermitteln.",
+            "Es ist möglich, ohne Gefahr eines Irrtums zu entscheiden.",
         ] {
             assert_eq!(lint_count(text), 0, "{text}");
         }
