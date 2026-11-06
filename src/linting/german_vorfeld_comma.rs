@@ -145,10 +145,31 @@ impl GermanVorfeldComma {
                     // A verb that also reads as an adjective counts only as an
                     // attribute, in front of its noun (*andauernden Pause*); else
                     // the phrase is a clause of its own (*Rabin gefährdet das …*).
+                    // It has to stand inside a noun phrase that an article opened,
+                    // with no noun between the two: *einer seit 2015 andauernden
+                    // Pause*, but not *der Meisterschaft erreichte Chetri*.
                     || (GermanRelativeClauseComma::is_verb_token(t, document)
-                        && !vorfeld
+                        && !(vorfeld
                             .get(i + 1)
-                            .is_some_and(|next| Self::capitalized(next, document)))
+                            .is_some_and(|next| Self::capitalized(next, document))
+                            && vorfeld[..i]
+                                .iter()
+                                .rposition(|w| {
+                                    determiner_readings(&Self::lower(w, document)).is_some()
+                                })
+                                .is_some_and(|d| {
+                                    !vorfeld[d + 1..i]
+                                        .iter()
+                                        .any(|w| Self::capitalized(w, document))
+                                })))
+                    // *Seit 1943 wieder im Stadtparlament, war er …*: an adverb
+                    // makes the phrase a predicate of its own, without its
+                    // participle, and the comma may stand.
+                    || matches!(
+                        Self::lower(t, document).as_str(),
+                        "wieder" | "noch" | "schon" | "bereits" | "erst" | "nur" | "kaum" | "fast"
+                            | "einst" | "später" | "zuvor" | "inzwischen"
+                    )
                     // *Um zu gewinnen*: an infinitive group. The preposition *zu*
                     // has its noun behind it (*zu Beginn der Saison*).
                     || (Self::lower(t, document) == "zu"
@@ -176,11 +197,32 @@ impl GermanVorfeldComma {
         let pronoun_follows = PRONOUNS.contains(&after_lower.as_str());
         // A weak preterite reads as a participle adjective too (*erinnerte*);
         // then only a pronoun behind it settles the verb.
-        let main_clause_goes_on = pronoun_follows
-            || (Self::verb_only(verb, document)
-                && (determiner_readings(&after_lower).is_some()
-                    || (matches!(after.kind, TokenKind::Word(_))
-                        && Self::capitalized(after, document))));
+        // *Herr Müller, kommen Sie bitte*: a vocative and the polite imperative.
+        let polite_imperative = document.get_span_content_str(&after.span) == "Sie"
+            && Self::lower(verb, document).ends_with("en");
+        // A verb with no other reading (*wohnt*, *fährt*, *hat*) is finite
+        // whatever follows it, short of a coordination or another comma:
+        // *Meine Schwester, wohnt in Berlin*.
+        // *…, verlor dort aber mit 0:1*, *…, diente aber auch als …*: a second
+        // predicate of the same subject, joined by *aber*.
+        if words[comma_at + 1..]
+            .iter()
+            .take(4)
+            .any(|t| matches!(Self::lower(t, document).as_str(), "aber" | "jedoch"))
+        {
+            return None;
+        }
+        let surely_finite = Self::verb_only(verb, document)
+            && !verb.kind.is_noun()
+            && matches!(after.kind, TokenKind::Word(_))
+            && !matches!(after_lower.as_str(), "und" | "oder" | "sowie");
+        let main_clause_goes_on = !polite_imperative
+            && (pronoun_follows
+                || surely_finite
+                || (Self::verb_only(verb, document)
+                    && (determiner_readings(&after_lower).is_some()
+                        || (matches!(after.kind, TokenKind::Word(_))
+                            && Self::capitalized(after, document)))));
         if !main_clause_goes_on {
             return None;
         }
@@ -237,6 +279,9 @@ mod tests {
             "Im Jahr 2020, wurde er Meister.",
             "Nach seinem ersten öffentlichen Auftritt 1955, entschied er sich für das Santurspiel.",
             "Aufgrund antiker Fundstücke während der Bauarbeiten, kam es zu Unterbrechungen.",
+            "Meine Schwester, wohnt in Berlin.",
+            "Der Zug, fährt um acht ab.",
+            "Mein Bruder, arbeitet viel.",
         ] {
             assert_eq!(count(text), 1, "{text}");
         }
@@ -264,6 +309,10 @@ mod tests {
             "Fällt die Entlassung auf ein Wochenende, kann der Termin vorgezogen werden.",
             "Gerber absolvierte 22 Spiele, hatte eine erstklassige Fangquote.",
             "Selbst der geringste Bauer, schrieb der Professor, wusste das.",
+            "Herr Müller, kommen Sie bitte herein.",
+            "Mein Bruder, Peter und ich gehen.",
+            "Bei der Meisterschaft erreichte Chetri das Finale, verlor dort aber gegen die Malediven.",
+            "Seit 1943 wieder im Stadtparlament, war er Mitglied der Delegation.",
         ] {
             assert_eq!(count(text), 0, "{text}");
         }

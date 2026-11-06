@@ -2,6 +2,7 @@ use harper_core::linting::{Lint, LintKind, Linter, Suggestion};
 use harper_core::{CharStringExt, Document, Span, TokenKind, TokenStringExt};
 
 use crate::grammar::determiners::determiner_readings;
+use crate::linting::german_relative_clause_comma::GermanRelativeClauseComma;
 
 /// Words German legitimately writes twice in a row.
 ///
@@ -97,8 +98,26 @@ impl Linter for GermanRepeatedWords {
                                 | "hattet"
                         )
                     });
-                    if !(matches!(lower.as_str(), "der" | "die" | "das")
-                        && behind_haben
+                    // Behind any finite verb too (*Sie sah den den Hund*, *Das ist
+                    // der der Mann*), except a verb of saying or thinking before
+                    // *das das*, which may be a *dass* written *das*.
+                    let behind_verb = previous.is_some_and(|p| {
+                        GermanRelativeClauseComma::is_verb_token(p, document)
+                            && document
+                                .get_span_content(&p.span)
+                                .first()
+                                .is_some_and(|c| c.is_lowercase())
+                    });
+                    let saying = previous_lower.as_deref().is_some_and(|w| {
+                        [
+                            "glaube", "glaubt", "denke", "denkt", "weiß", "meine", "meint", "sage",
+                            "sagt", "hoffe", "hofft", "finde", "findet", "sagte", "dachte",
+                            "wusste",
+                        ]
+                        .contains(&w)
+                    });
+                    if !(matches!(lower.as_str(), "der" | "die" | "das" | "den" | "dem")
+                        && (behind_haben || (behind_verb && !(saying && lower == "das")))
                         && next_capitalized)
                     {
                         continue;
@@ -213,6 +232,8 @@ mod tests {
             "Ich habe das das Buch gelesen.",
             "Er hat die die Tür geöffnet.",
             "Wir sahen sein Haus Haus am See.",
+            "Sie sah den den Hund.",
+            "Das ist der der Mann, der kam.",
         ] {
             assert_eq!(lint_count(text), 1, "should fire on {text:?}");
         }
@@ -247,6 +268,8 @@ mod tests {
             "Ich weiß, dass das das Beste ist.",
             "Die Frau, die die Tür öffnete, war freundlich.",
             "Ich glaube das das stimmt.",
+            "Ich glaube das das Wetter schön wird.",
+            "Ich kenne den, den du meinst.",
             "Wurst Wurst ist doppelt.",
             "Er hat das, das er wollte.",
         ] {

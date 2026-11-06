@@ -625,7 +625,9 @@ LOWERCASE_ONLY = [
 ]
 
 # Noun lexemes whose letters are a verb form first (*Schrieb* is colloquial; *schrieb* is the preterite).
-NOT_NOUNS = {"Schrieb"}
+# *Falsch* ("ohne Falsch") is so rare that its noun reading only turns "Ist das
+# falsch?" into a capitalization error.
+NOT_NOUNS = {"Schrieb", "Falsch"}
 
 # Well-known people by the name they are known under: artists, composers, writers, thinkers, scientists.
 PERSONS = """

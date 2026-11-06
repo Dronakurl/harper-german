@@ -328,6 +328,63 @@ impl Linter for GermanRelativeClauseComma {
                         // attribute (*der in Berlin lebenden Familie*), which ends on
                         // a noun and not on the verb `clause_end` looks for.
                         || (next.kind.is_preposition() && !Self::is_capitalized(next, document)));
+                // *ein Haus das am See liegt*, *eine Frau die in Rom lebt*, *ein Auto
+                // das sehr schnell fährt*: *das* and *die* with a preposition or an
+                // adverb behind them. Both are demonstratives too (*Ich habe dem
+                // Kind das gestern erklärt*), so not when an auxiliary or a modal
+                // in front of the noun keeps a verb bracket open: then the verb at
+                // the end is the main clause's.
+                let bracket_open = words[..noun_at.unwrap_or(0)].iter().any(|t| {
+                    matches!(
+                        Self::text(t, document).to_lowercase().as_str(),
+                        "habe"
+                            | "hast"
+                            | "hat"
+                            | "haben"
+                            | "habt"
+                            | "hatte"
+                            | "hatten"
+                            | "werde"
+                            | "wirst"
+                            | "wird"
+                            | "werden"
+                            | "werdet"
+                            | "wurde"
+                            | "wurden"
+                            | "kann"
+                            | "kannst"
+                            | "können"
+                            | "konnte"
+                            | "muss"
+                            | "musst"
+                            | "müssen"
+                            | "musste"
+                            | "will"
+                            | "willst"
+                            | "wollen"
+                            | "wollte"
+                            | "soll"
+                            | "sollst"
+                            | "sollen"
+                            | "sollte"
+                            | "darf"
+                            | "dürfen"
+                            | "durfte"
+                            | "mag"
+                            | "möchte"
+                            | "möchten"
+                            | "würde"
+                            | "würden"
+                            | "lass"
+                            | "lässt"
+                            | "ließ"
+                    )
+                });
+                let neuter_or_feminine_subject = !behind_preposition
+                    && !bracket_open
+                    && matches!(pronoun.as_str(), "das" | "die")
+                    && (next.kind.is_preposition() || Self::is_adverb(next, document))
+                    && !Self::is_capitalized(next, document);
                 // Behind a comma the pronoun reading is settled unless an
                 // adjective or a noun follows, which would make it an article
                 // opening a clause of its own (*…, die neuen Kinder schliefen*).
@@ -335,7 +392,11 @@ impl Linter for GermanRelativeClauseComma {
                     && matches!(next.kind, TokenKind::Word(_))
                     && !Self::is_capitalized(next, document)
                     && !next.kind.is_adjective();
-                if !(opens_with_subject || masculine_subject || after_comma_reading) {
+                if !(opens_with_subject
+                    || masculine_subject
+                    || neuter_or_feminine_subject
+                    || after_comma_reading)
+                {
                     continue;
                 }
 
@@ -415,6 +476,22 @@ mod tests {
             "Der Margelchopf ist ein mächtiger Berg, der im Rheintal thront.",
             "Er stieg auf den Berg der Götter.",
             "Er sah den Berg der Nachbarn.",
+        ] {
+            assert_eq!(lint_count(text), 0, "{text}");
+        }
+    }
+
+    #[test]
+    fn das_and_die_with_a_preposition_or_an_adverb_open_the_clause() {
+        assert_eq!(lint_count("Das ist ein Haus das am See liegt."), 1);
+        assert_eq!(lint_count("Ich kenne eine Frau die in Rom lebt."), 1);
+        assert_eq!(lint_count("Er kaufte ein Auto das sehr schnell fährt."), 1);
+        for text in [
+            "Ich habe dem Kind das gestern erklärt.",
+            "Ich habe dem Kind das in der Schule erklärt.",
+            "Wir besuchten den Berg der Götter.",
+            "Er will der Frau die in Rom gekauften Schuhe geben.",
+            "Das ist ein Haus, das am See liegt.",
         ] {
             assert_eq!(lint_count(text), 0, "{text}");
         }
