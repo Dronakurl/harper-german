@@ -146,6 +146,60 @@ mod tests {
         }
     }
 
+    /// Lints the files named by `HARPER_LINT_FILE` (a file, or a directory whose
+    /// files are all linted) with the curated German rules, and prints one
+    /// `LINTJSON` line per lint: file, rule, char span, text and suggestions. It
+    /// uses the plugin's dictionary and removes overlaps the way the plugin does,
+    /// so it gives what `harper-cli --format json` gives for the built module,
+    /// without a wasm build in between.
+    #[test]
+    #[ignore = "reads the files from the environment"]
+    fn lint_file_as_json() {
+        use crate::dialects::GermanDialect;
+        use crate::linting::new_curated_german;
+        use crate::parsers::PlainGerman;
+        use harper_core::Document;
+
+        let Ok(path) = std::env::var("HARPER_LINT_FILE") else {
+            return;
+        };
+        let path = std::path::PathBuf::from(path);
+        let mut files: Vec<_> = if path.is_dir() {
+            std::fs::read_dir(&path)
+                .unwrap()
+                .map(|entry| entry.unwrap().path())
+                .collect()
+        } else {
+            vec![path]
+        };
+        files.sort();
+
+        let dict = crate::spell::compound_aware_german_dictionary();
+        let mut linter = new_curated_german(GermanDialect::Standard, dict.clone());
+        for file in files {
+            let text = std::fs::read_to_string(&file).unwrap();
+            let document = Document::new(&text, &PlainGerman, &*dict);
+            let mut organized = linter.organized_lints(&document);
+            harper_core::remove_overlaps_map(&mut organized);
+            for (rule, lints) in organized {
+                for lint in lints {
+                    let suggestions: Vec<String> =
+                        lint.suggestions.iter().map(|s| s.to_string()).collect();
+                    println!(
+                        "LINTJSON {}",
+                        serde_json::json!({
+                            "file": file.display().to_string(),
+                            "rule": rule,
+                            "span": {"char_start": lint.span.start, "char_end": lint.span.end},
+                            "matched_text": document.get_span_content_str(&lint.span),
+                            "suggestions": suggestions,
+                        })
+                    );
+                }
+            }
+        }
+    }
+
     /// Prints how the compound checker takes the words of `HARPER_DEBUG_WORDS` apart.
     #[test]
     #[ignore = "reads the words from the environment"]
