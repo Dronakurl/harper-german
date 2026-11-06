@@ -32,6 +32,7 @@ pub fn rust_lint_group(
         german_noun_capitalization::GermanNounCapitalization,
         german_perfect_auxiliary::GermanPerfectAuxiliary,
         german_preposition_case::GermanPrepositionCase,
+        german_preposition_pronoun::GermanPrepositionPronoun,
         german_question_mark::GermanQuestionMark,
         german_recommended_fusion::GermanRecommendedFusion,
         german_relative_clause_comma::GermanRelativeClauseComma,
@@ -137,6 +138,7 @@ pub fn rust_lint_group(
         GermanRelativeClauseComma::new(),
     );
     group.add("GermanRelativePronoun", GermanRelativePronoun::default());
+    group.add("GermanPrepositionPronoun", GermanPrepositionPronoun);
     group.add("GermanYearPreposition", GermanYearPreposition);
     group.add("GermanPerfectAuxiliary", GermanPerfectAuxiliary);
     group.add("GermanModalZuInfinitive", GermanModalZuInfinitive);

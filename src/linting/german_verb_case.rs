@@ -4,7 +4,7 @@
 use std::sync::Arc;
 
 use harper_core::{
-    Document, Token, TokenKind, TokenStringExt,
+    Document, Punctuation, Token, TokenKind, TokenStringExt,
     linting::{Lint, LintKind, Linter, Suggestion},
     spell::Dictionary,
 };
@@ -190,6 +190,10 @@ const STRONG_FORMS: &[(&str, &[&str])] = &[
     ("verlassen", &["verlässt", "verließ", "verließen"]),
     ("streiten", &["stritt", "stritten", "gestritten"]),
     ("schützen", &["geschützt"]),
+    (
+        "werfen",
+        &["wirf", "wirfst", "wirft", "warf", "warfen", "geworfen"],
+    ),
     ("vertrauen", &["vertraut"]),
 ];
 
@@ -564,6 +568,163 @@ impl GermanVerbCase {
         lints
     }
 
+    /// A direction after a verb of putting, in the dative: *Ich lege das Buch
+    /// auf dem Tisch* → *auf den Tisch*. *hängen* and *stecken* are left out,
+    /// for they are verbs of position too (*Das Bild hängt an der Wand*). A
+    /// separable particle at the end of the clause makes it another verb
+    /// (*Er stellt sich in dem Raum vor*), and the place is then a place.
+    fn direction(&self, clause: &[&Token], verbs: &[String], document: &Document) -> Vec<Lint> {
+        const DIRECTION_VERBS: &[&str] = &["legen", "stellen", "setzen", "werfen"];
+        const PARTICLES: &[&str] = &[
+            "vor", "ab", "an", "fest", "ein", "aus", "um", "dar", "her", "hin", "zusammen", "auf",
+            "zu", "nach", "bei", "mit", "fort", "weg", "zurück", "bereit", "dazu", "nahe", "frei",
+            "instand", "wieder",
+        ];
+        let Some(verb) = verbs.iter().find(|v| DIRECTION_VERBS.contains(&v.as_str())) else {
+            return Vec::new();
+        };
+        // The last word before the next punctuation in the document: the
+        // clause may have been cut at a conjunction or an article before it.
+        let last_word = clause.first().and_then(|first| {
+            document
+                .get_tokens()
+                .iter()
+                .skip_while(|t| t.span.start < first.span.start)
+                .take_while(|t| {
+                    !matches!(
+                        t.kind,
+                        TokenKind::Punctuation(
+                            Punctuation::Comma
+                                | Punctuation::Period
+                                | Punctuation::Semicolon
+                                | Punctuation::Colon
+                                | Punctuation::Question
+                                | Punctuation::Bang
+                        )
+                    )
+                })
+                .filter(|t| t.kind.is_word())
+                .last()
+        });
+        if last_word.is_some_and(|t| PARTICLES.contains(&lowercase_of(t, document).as_str())) {
+            return Vec::new();
+        }
+        let is_direction_verb = |t: &Token| {
+            t.kind.is_word()
+                && document
+                    .get_span_content(&t.span)
+                    .first()
+                    .is_some_and(|c| c.is_lowercase())
+                && self.lemmas(&lowercase_of(t, document)).contains(verb)
+        };
+        let mut lints = Vec::new();
+        for (at, token) in clause.iter().enumerate() {
+            let preposition = lowercase_of(token, document);
+            if !TWO_WAY_PREPOSITIONS.contains(&preposition.as_str()) {
+                continue;
+            }
+            // The object between verb and preposition: *lege das Buch auf*.
+            if !(1..=4).any(|back| {
+                at.checked_sub(back)
+                    .is_some_and(|i| is_direction_verb(clause[i]))
+            }) {
+                continue;
+            }
+            // *vor allem*: a fixed phrase, not a direction.
+            let Some(object) = clause
+                .get(at + 1)
+                .filter(|t| t.kind.is_word())
+                .filter(|t| !matches!(lowercase_of(t, document).as_str(), "allem" | "allen"))
+            else {
+                continue;
+            };
+            let noun = clause[at + 2..]
+                .iter()
+                .take(3)
+                .find(|t| {
+                    document
+                        .get_span_content(&t.span)
+                        .first()
+                        .is_some_and(|c| c.is_uppercase())
+                })
+                .or(clause.get(at + 2));
+            lints.extend(self.wrong_determiner(
+                object,
+                noun,
+                Case::Accusative,
+                document,
+                || format!("Nach »{verb}« steht die Richtung im Akkusativ: »{preposition}« mit Akkusativ."),
+            ));
+        }
+        lints
+    }
+
+    /// *Ich freue mir* → *mich*: verbs whose reflexive pronoun is accusative.
+    /// And *Ich habe mich die Hände gewaschen* → *mir*: with a body part as the
+    /// accusative object, the reflexive is the dative.
+    fn reflexive(clause: &[&Token], verbs: &[String], document: &Document) -> Vec<Lint> {
+        const ACCUSATIVE_REFLEXIVES: &[&str] = &[
+            "freuen",
+            "beeilen",
+            "erinnern",
+            "kümmern",
+            "verlieben",
+            "schämen",
+            "wundern",
+            "bedanken",
+            "entschuldigen",
+            "verabschieden",
+            "konzentrieren",
+            "gewöhnen",
+            "beschweren",
+            "bewerben",
+            "verlassen",
+            "fürchten",
+        ];
+        const BODY_PARTS: &[&str] = &[
+            "Hände", "Hand", "Zähne", "Haare", "Bein", "Arm", "Gesicht", "Fuß", "Füße", "Kopf",
+            "Nase", "Finger", "Knie", "Rücken", "Augen", "Ohren",
+        ];
+        let mut lints = Vec::new();
+        let has = |w: &str| clause.iter().any(|t| lowercase_of(t, document) == w);
+        let accusative_verb = verbs
+            .iter()
+            .any(|v| ACCUSATIVE_REFLEXIVES.contains(&v.as_str()));
+        for (at, token) in clause.iter().enumerate() {
+            let written = document.get_span_content_str(&token.span);
+            let body_part_follows = clause.get(at + 1).is_some_and(|t| {
+                matches!(lowercase_of(t, document).as_str(), "die" | "den" | "das")
+            }) && clause.get(at + 2).is_some_and(|t| {
+                BODY_PARTS.contains(&document.get_span_content_str(&t.span).as_str())
+            });
+            let (fix, why) = match written.as_str() {
+                "mir" if accusative_verb && has("ich") && !body_part_follows => {
+                    ("mich", "den Akkusativ")
+                }
+                "dir" if accusative_verb && has("du") && !body_part_follows => {
+                    ("dich", "den Akkusativ")
+                }
+                "mich" if has("ich") && body_part_follows => (
+                    "mir",
+                    "den Dativ, weil der Körperteil das Akkusativobjekt ist",
+                ),
+                "dich" if has("du") && body_part_follows => (
+                    "dir",
+                    "den Dativ, weil der Körperteil das Akkusativobjekt ist",
+                ),
+                _ => continue,
+            };
+            lints.extend(Self::report(
+                token,
+                vec![fix.to_owned()],
+                format!(
+                    "Das Reflexivpronomen steht hier im Fall {why}: »{fix}«, nicht »{written}«."
+                ),
+            ));
+        }
+        lints
+    }
+
     /// A place after a verb of position, in the accusative: *die Brille liegt
     /// auf den Tisch*.
     fn position(&self, clause: &[&Token], verbs: &[String], document: &Document) -> Vec<Lint> {
@@ -657,6 +818,8 @@ impl Linter for GermanVerbCase {
                 lints.extend(self.dative_object(&clause, &verbs, document));
                 lints.extend(self.accusative_object(&clause, &verbs, document));
                 lints.extend(self.position(&clause, &verbs, document));
+                lints.extend(self.direction(&clause, &verbs, document));
+                lints.extend(Self::reflexive(&clause, &verbs, document));
             }
         }
         lints.sort_by_key(|lint| lint.span.start);
@@ -730,6 +893,10 @@ mod tests {
         assert_eq!(fixed("Er wohnt in eine kleine Wohnung."), ["eine"]);
         assert_eq!(fixed("Ich danke Sie für Ihre Hilfe."), ["Sie"]);
         assert_eq!(fixed("Er fragt mir nach dem Weg."), ["mir"]);
+        assert_eq!(fixed("Ich lege das Buch auf dem Tisch."), ["dem"]);
+        assert_eq!(fixed("Er stellt die Vase in dem Schrank."), ["dem"]);
+        assert_eq!(fixed("Ich freue mir auf den Urlaub."), ["mir"]);
+        assert_eq!(fixed("Ich habe mich die Hände gewaschen."), ["mich"]);
         assert_eq!(fixed("Ich nehme an den Kurs teil."), ["den"]);
         assert_eq!(fixed("Er fürchtet sich vor den Hund."), ["den"]);
         assert_eq!(fixed("Die Brille liegt auf den Tisch."), ["den"]);
@@ -758,6 +925,16 @@ mod tests {
             "Er fragt mich nach dem Weg.",
             "Kannst du mir sagen, was er fragt?",
             "Er fragt sich, ob es stimmt.",
+            "Sie hängt das Bild an die Wand.",
+            "Das Bild hängt an der Wand.",
+            "Ich lege das Buch auf den Tisch.",
+            "Er stellt sich in dem Raum vor.",
+            "Der Kaiser legte ihm in einem Gespräch den Rücktritt nahe.",
+            "Man setzte es vor allem während des Krieges ein.",
+            "Ich freue mich auf den Urlaub.",
+            "Ich habe mir die Hände gewaschen.",
+            "Ich kaufe mir ein Auto.",
+            "Kannst du mir sagen, ob ich mich freuen soll?",
             "Ich nehme an dem Kurs teil.",
             "Die Brille liegt auf dem Tisch.",
             "Er legt die Brille auf den Tisch.",
