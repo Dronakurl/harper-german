@@ -533,7 +533,13 @@ impl GermanSubordinateComma {
                 && tokens
                     .get(at + 2)
                     .is_none_or(|after| !matches!(after.kind, TokenKind::Word(_)));
-            if !is_zu_infinitive {
+            // *den Iran anzugreifen*: the *zu* inside a separable verb.
+            let is_infix_infinitive = matches!(token.kind, TokenKind::Word(_))
+                && has_zu_infix(&document.get_span_content_str(&token.span))
+                && tokens
+                    .get(at + 1)
+                    .is_none_or(|after| !matches!(after.kind, TokenKind::Word(_)));
+            if !is_zu_infinitive && !is_infix_infinitive {
                 continue;
             }
             // Walk left over the group to the noun.
@@ -547,7 +553,7 @@ impl GermanSubordinateComma {
                 if !matches!(t.kind, TokenKind::Word(_)) {
                     break None;
                 }
-                if Self::word_in(t, document, NOUNS)
+                if Self::takes_infinitive(t, document, NOUNS)
                     && document
                         .get_span_content(&t.span)
                         .first()
@@ -604,6 +610,27 @@ impl GermanSubordinateComma {
                 .iter()
                 .any(|t| Self::word_in(t, document, &["um", "ohne", "statt", "anstatt"]))
             {
+                continue;
+            }
+            // *…, die Entscheidung für die Schreibweise nachzuvollziehen*: the
+            // noun is the object inside a group a comma has already opened.
+            let behind_comma = clause_start.checked_sub(1).is_some_and(|i| {
+                matches!(tokens[i].kind, TokenKind::Punctuation(Punctuation::Comma))
+            });
+            if behind_comma
+                && !tokens[clause_start..noun_at]
+                    .iter()
+                    .any(|t| GermanRelativeClauseComma::is_verb_token(t, document))
+            {
+                continue;
+            }
+            // *Pläne des Magistrates der Stadt Betriebe anzusiedeln*, *der Versuch
+            // der Erfolgsqualifikation abzugrenzen*: a genitive behind the noun.
+            // The comma would go behind the genitive, if the group is the noun's
+            // at all.
+            if tokens.get(noun_at + 1).is_some_and(|after| {
+                Self::word_in(after, document, &["des", "der", "eines", "einer"])
+            }) {
                 continue;
             }
             let noun: String = document
@@ -676,6 +703,115 @@ impl GermanSubordinateComma {
                         .to_owned(),
                 });
             }
+        }
+        lints
+    }
+
+    /// *Er gab an, der NSDAP angehört zu haben und ersuchte um …*: an
+    /// infinitive group opened with a comma is closed with one when the main
+    /// clause carries on behind it with *und* and a finite verb of its own.
+    /// *… zu essen und zu trinken* joins two infinitives and stays as it is.
+    fn missing_comma_closing_infinitive_group(tokens: &[&Token], document: &Document) -> Vec<Lint> {
+        let lower = |t: &Token| -> String {
+            document
+                .get_span_content(&t.span)
+                .iter()
+                .flat_map(|c| c.to_lowercase())
+                .collect()
+        };
+        let mut lints = Vec::new();
+        for at in 1..tokens.len().saturating_sub(2) {
+            let verb = tokens[at];
+            let ends_group = (lower(tokens[at - 1]) == "zu" && verb.kind.is_word())
+                || (verb.kind.is_word() && has_zu_infix(&lower(verb)));
+            if !ends_group
+                || !GermanRelativeClauseComma::is_verb_token(verb, document)
+                || lower(tokens[at + 1]) != "und"
+            {
+                continue;
+            }
+            let next = tokens[at + 2];
+            let next_text = document.get_span_content_str(&next.span);
+            // A finite verb: lower case, not an infinitive in *-n*, not *zu*.
+            let finite = next.kind.is_word()
+                && next_text.chars().next().is_some_and(char::is_lowercase)
+                && !next_text.ends_with('n')
+                && GermanRelativeClauseComma::is_verb_token(next, document)
+                && !next.kind.is_noun()
+                && !next.kind.is_adverb()
+                // A weak preterite reads as an adjective too (*ersuchte*); as one
+                // it would stand before its noun.
+                && !(next.kind.is_adjective()
+                    && tokens.get(at + 3).is_some_and(|t| {
+                        document
+                            .get_span_content(&t.span)
+                            .first()
+                            .is_some_and(|c| c.is_uppercase())
+                    }));
+            if !finite {
+                continue;
+            }
+            // The group was opened with a comma, and the clause behind that
+            // comma is the group itself, not a relative or subordinate clause.
+            let Some(comma) = tokens[..at]
+                .iter()
+                .rposition(|t| !matches!(t.kind, TokenKind::Word(_) | TokenKind::Number(_)))
+            else {
+                continue;
+            };
+            if !matches!(
+                tokens[comma].kind,
+                TokenKind::Punctuation(Punctuation::Comma)
+            ) {
+                continue;
+            }
+            let group = &tokens[comma + 1..at];
+            let opens_clause = group.first().is_some_and(|first| {
+                let first = lower(first);
+                SUBORDINATORS.contains(&first.as_str())
+                    || matches!(
+                        first.as_str(),
+                        "der"
+                            | "die"
+                            | "das"
+                            | "dem"
+                            | "den"
+                            | "deren"
+                            | "dessen"
+                            | "welche"
+                            | "welcher"
+                            | "welches"
+                            | "wo"
+                            | "wie"
+                            | "was"
+                            | "wer"
+                            | "ob"
+                    ) && group.len() > 1
+                        && !group[1].kind.is_word()
+            });
+            // A relative pronoun opens a clause when a verb ends it before *zu*:
+            // *…, die er versprach zu halten und …*. Any finite verb in the group
+            // other than the participle before *zu haben* rules the group out.
+            let finite_inside = group.iter().take(group.len().saturating_sub(2)).any(|t| {
+                GermanRelativeClauseComma::is_verb_token(t, document)
+                    && document
+                        .get_span_content(&t.span)
+                        .first()
+                        .is_some_and(|c| c.is_lowercase())
+                    && !t.kind.is_adjective()
+            });
+            if opens_clause || finite_inside || group.is_empty() {
+                continue;
+            }
+            lints.push(Lint {
+                span: verb.span,
+                lint_kind: LintKind::Punctuation,
+                suggestions: vec![Suggestion::InsertAfter(vec![','])],
+                priority: 28,
+                message:
+                    "Die Infinitivgruppe endet hier und wird auch hinten mit Komma abgeschlossen."
+                        .to_owned(),
+            });
         }
         lints
     }
@@ -953,6 +1089,37 @@ impl GermanSubordinateComma {
         })
     }
 
+    /// One of `nouns` in any of its forms: *Absichten*, *Möglichkeiten*,
+    /// *Versuche*, *des Ziels*. The umlaut plurals are spelled out.
+    fn takes_infinitive(token: &Token, document: &Document, nouns: &[&str]) -> bool {
+        const UMLAUT_PLURALS: &[&str] = &[
+            "pläne",
+            "plänen",
+            "wünsche",
+            "wünschen",
+            "aufträge",
+            "aufträgen",
+            "kräfte",
+            "kräften",
+            "vorschläge",
+            "vorschlägen",
+        ];
+        let word: String = document
+            .get_span_content(&token.span)
+            .iter()
+            .flat_map(|c| c.to_lowercase())
+            .collect();
+        // *Plane* and *Planen* are the tarpaulin.
+        if matches!(word.as_str(), "plane" | "planen") {
+            return false;
+        }
+        UMLAUT_PLURALS.contains(&word.as_str())
+            || nouns.iter().any(|noun| {
+                word.strip_prefix(noun)
+                    .is_some_and(|ending| ["", "s", "es", "e", "n", "en", "er"].contains(&ending))
+            })
+    }
+
     /// The next word in the document behind `token`, across a sentence end: the
     /// full stop of an ordinal (*26. Mai*) ends the sentence for the tokenizer.
     fn word_after<'a>(token: &Token, document: &'a Document) -> Option<&'a Token> {
@@ -994,6 +1161,9 @@ impl Linter for GermanSubordinateComma {
             ));
             lints.extend(Self::missing_comma_before_concessive(&tokens, document));
             lints.extend(Self::missing_comma_before_date(&tokens, document));
+            lints.extend(Self::missing_comma_closing_infinitive_group(
+                &tokens, document,
+            ));
             lints.extend(Self::missing_comma_after_noun_with_infinitive(
                 &tokens, document,
             ));
@@ -1165,6 +1335,10 @@ mod tests {
             "Ziel der Regelung ist das Ziel diese Sollwerte zu erreichen.",
             "Er hatte die Absicht nach Berlin zu fahren.",
             "Wir haben die Möglichkeit das Haus günstig zu kaufen.",
+            "Trump dementierte Absichten den Iran nach den Zwischenwahlen anzugreifen.",
+            "Es gab viele Möglichkeiten das Problem zu lösen.",
+            "Er gab an, der NSDAP angehört zu haben und ersuchte gleichzeitig um Aufnahme.",
+            "Raja nutzt die Chance, sich an Renu zu rächen und gibt bei der Polizei an.",
         ] {
             assert_eq!(lint_count(text), 1, "{text}");
         }
@@ -1177,6 +1351,15 @@ mod tests {
             "Sie trafen sich, um über die Möglichkeit einer Synthese zu diskutieren.",
             "Das heißt, aus einer Absicht heraus eine Lehre zu vermitteln.",
             "Es ist möglich, ohne Gefahr eines Irrtums zu entscheiden.",
+            "Trump dementierte Absichten, den Iran anzugreifen.",
+            "Er versuchte, etwas zu essen und zu trinken.",
+            "Er versuchte, etwas zu essen und trinken.",
+            "Er gab an, der NSDAP angehört zu haben, und ersuchte um Aufnahme.",
+            "Er bat sie zu kommen und ging.",
+            "Die Planen zu öffnen dauert.",
+            "So ist es möglich, die Entscheidung für die Schreibweise nachzuvollziehen.",
+            "Der Versuch ist streng von dem Versuch der Erfolgsqualifikation abzugrenzen.",
+            "Sie bieten die Möglichkeit, auf den Weg zu wechseln und umgekehrt.",
         ] {
             assert_eq!(lint_count(text), 0, "{text}");
         }
