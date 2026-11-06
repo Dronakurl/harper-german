@@ -33,16 +33,9 @@ const NOT_PLACES: &[&str] = &[
 /// that ends the clause (the same test the comma rule uses). A capitalized
 /// word behind the pronoun makes it an article (*Das Mädchen, der Hund und die
 /// Katze*), and a plural or an unknown gender is never checked.
+#[derive(Default)]
 pub struct GermanRelativePronoun {
     nouns: NounGender,
-}
-
-impl Default for GermanRelativePronoun {
-    fn default() -> Self {
-        Self {
-            nouns: NounGender::new(),
-        }
-    }
 }
 
 fn nominative(gender: Gender) -> &'static str {
