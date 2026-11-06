@@ -6,7 +6,7 @@
 //! was not, `aktualisiertes` and `bearbeitbaren` because the participle and the
 //! `-bar` adjective had no affix class at all.
 //!
-//! Three repairs, all decided per entry by `hunspell -m`:
+//! Three repairs, each decided per entry:
 //!
 //! * `-nis` doubles its `s` before an ending (`X`, `Y` and `0` grew a rule),
 //!   see `harper-core/src/language/german/scripts/fix_german_noun_forms.py --matching 'nis$'`.
@@ -163,7 +163,7 @@ mod tests {
         }
     }
 
-    /// The adjectives that hunspell declines and Harper could not: the entries
+    /// The adjectives Harper could not decline: the entries
     /// were there, the declension flags were not.
     #[test]
     fn corpus_mined_adjectives_decline_too() {

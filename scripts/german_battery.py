@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
-"""Score Harper and LanguageTool on a per-class battery of German sentences.
+"""Score Harper on a per-class battery of German sentences.
 
 A battery is a TSV of `class<TAB>err|ok<TAB>sentence`. Every `err` row is a
 sentence that should be reported and every `ok` row one that should not, so
 detection and false alarms are scored together — a class scored without its
 correct sentences is not scored.
 
-    docker start lt-bench
     just build-wasm   # and build harper-cli in the harper checkout: cargo build --release -p harper-cli
     python3 scripts/german_battery.py \
         src/tests/batteries/grammar.tsv
@@ -22,22 +21,16 @@ Three things this gets right that a quick rewrite does not:
   `CommaFixes` would otherwise count as a hit on the right sentence for the
   wrong reason — but `GermanSubordinateComma` is `Punctuation`-kind too, and
   filtering that whole kind silently drops the comma class from its own score.
-  The same holds on the LanguageTool side: its comma rules are `typographical`.
 """
 
 import os
 import argparse
 import collections
-import json
 import pathlib
 import re
 import shutil
 import subprocess
-import sys
 import tempfile
-import urllib.error
-import urllib.parse
-import urllib.request
 
 # harper-cli comes from a checkout of Dronakurl/harper (HARPER_CLI); the German module is the one
 # `just build-wasm` made, unless HARPER_DE_WASM names another.
@@ -47,10 +40,8 @@ PLUGIN_ARGS = [
 ]
 
 HARPER = os.environ.get("HARPER_CLI", "../harper/target/release/harper-cli")
-LANGUAGETOOL = "http://localhost:8010/v2/check"
 
 IGNORE_HARPER = {"Spaces", "CommaFixes"}
-IGNORE_LANGUAGETOOL = {"whitespace"}
 
 
 def harper_hits(rows, work):
@@ -73,36 +64,13 @@ def harper_hits(rows, work):
     return hits
 
 
-_languagetool_down = False
-
-
-def languagetool_hits(text):
-    """Which rules LanguageTool reports on one sentence."""
-    global _languagetool_down
-    if _languagetool_down:
-        return []
-    data = urllib.parse.urlencode({"language": "de-DE", "text": text}).encode()
-    try:
-        with urllib.request.urlopen(LANGUAGETOOL, data) as response:
-            return [
-                match["rule"]["id"]
-                for match in json.load(response)["matches"]
-                if match["rule"]["issueType"] not in IGNORE_LANGUAGETOOL
-            ]
-    except urllib.error.URLError:
-        # Harper's own numbers do not need it; only the comparison does.
-        print(f"LanguageTool is not running at {LANGUAGETOOL}; showing Harper only.", file=sys.stderr)
-        _languagetool_down = True
-        return []
-
-
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("battery", type=pathlib.Path)
     parser.add_argument(
         "--per-sentence",
         action="store_true",
-        help="list every sentence with what each tool said about it",
+        help="list every sentence with what Harper said about it",
     )
     args = parser.parse_args()
 
@@ -121,18 +89,12 @@ def main():
     score = collections.defaultdict(collections.Counter)
     for index, (cls, kind, text) in enumerate(rows):
         harper = hits.get(index, [])
-        languagetool = languagetool_hits(text)
         if args.per_sentence:
-            print(
-                f"{kind:3} {'H+' if harper else 'H-'} "
-                f"{'LT+' if languagetool else 'LT-'}  {text[:60]:<61}"
-                f"{','.join(harper)[:30]:<31}{','.join(languagetool)[:30]}"
-            )
-        for tool, found in (("harper", harper), ("lt", languagetool)):
-            hit = "hit" if kind == "err" else "fp"
-            total = "n" if kind == "err" else "ok"
-            score[cls][f"{tool}_{hit}"] += 1 if found else 0
-            score[cls][f"{tool}_{total}"] += 1
+            print(f"{kind:3} {'H+' if harper else 'H-'}  {text[:60]:<61}{','.join(harper)[:30]}")
+        hit = "hit" if kind == "err" else "fp"
+        total = "n" if kind == "err" else "ok"
+        score[cls][f"harper_{hit}"] += 1 if harper else 0
+        score[cls][f"harper_{total}"] += 1
 
     if args.per_sentence:
         print()
@@ -143,17 +105,15 @@ def main():
     def row(name, counts):
         print(
             f"{name:<26}{cell(counts['harper_hit'], counts['harper_n']):>8}"
-            f"{cell(counts['lt_hit'], counts['lt_n']):>8}"
             f"{cell(counts['harper_fp'], counts['harper_ok']):>14}"
-            f"{cell(counts['lt_fp'], counts['lt_ok']):>14}"
         )
 
-    print(f"{'Klasse':<26}{'Harper':>8}{'LT':>8}{'H-Fehlalarm':>14}{'LT-Fehlalarm':>14}")
+    print(f"{'Klasse':<26}{'Harper':>8}{'Fehlalarm':>14}")
     total = collections.Counter()
     for cls in dict.fromkeys(row_[0] for row_ in rows):
         row(cls, score[cls])
         total.update(score[cls])
-    print("-" * 70)
+    print("-" * 48)
     row("GESAMT", total)
 
 

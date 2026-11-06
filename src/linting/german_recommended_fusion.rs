@@ -127,9 +127,8 @@ const FUSIONS: &[Fusion] = &[
 /// the rest.
 ///
 /// Both spellings have been correct since 1996 and Duden recommends the fused
-/// one, so this is a style rule rather than a grammar rule. It is also the
-/// class LanguageTool reports most often on German prose that Harper had
-/// nothing for.
+/// one, so this is a style rule rather than a grammar rule. It is also one of
+/// the commonest classes in German prose that Harper had nothing for.
 ///
 /// The guard is what makes it usable. Each of these pairs has a literal reading
 /// in which the separated spelling is the only correct one — *das Schiff lief

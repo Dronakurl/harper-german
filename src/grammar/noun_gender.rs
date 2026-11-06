@@ -74,8 +74,8 @@ impl NounGender {
     /// Is `head` a noun plural that lacks the `-n` of the dative plural —
     /// *Kinder*, *Freunde*, *Jahre*, *Bücher*, *Leute*?
     ///
-    /// Read from the marker `&`, which `mark_german_plural_forms.py` writes
-    /// from hunspell's plural affixes, because the dictionary's number cannot
+    /// Read from the marker `&`, which the dictionary puts on plural forms,
+    /// because the dictionary's number cannot
     /// tell *Kinder* from *Lehrer*. A compound counts by its last part of four
     /// letters or more behind a word of its own: *Ameisenbäume*, *Spieltage*
     /// — but not *Etage*. And the pluralia tantum, *Leute*, *Geschwister*.

@@ -8,8 +8,8 @@
 //!   masculine singular, dative feminine singular, genitive feminine singular
 //!   and genitive plural, but it is never *nominative feminine*. Storing
 //!   `case = {NOM, DAT, GEN}` beside `gender = {M, F}` would admit exactly that
-//!   combination. What is needed is a set of fully specified readings — the
-//!   same shape LanguageTool intersects with `retainAll`.
+//!   combination. What is needed is a set of fully specified readings, which
+//!   a noun phrase can intersect word by word.
 //! * The paradigms are regular. Spelling out sixteen endings twice and naming
 //!   the stems is shorter, and far easier to check, than 200 dictionary lines.
 

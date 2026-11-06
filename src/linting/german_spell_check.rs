@@ -951,8 +951,7 @@ mod tests {
         assert!(wichtgen.iter().any(|s| s == "wichtigen"), "{wichtgen:?}");
     }
 
-    /// These expectations mirror hunspell's de_DE suggestion ordering: the
-    /// intended word is a deletion, transposition, or orthographic alternation
+    /// The intended word is a deletion, transposition, or orthographic alternation
     /// away from the typo, and those error kinds must outrank plain letter
     /// substitutions.
     #[test]

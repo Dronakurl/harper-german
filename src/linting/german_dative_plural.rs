@@ -28,8 +28,8 @@ use crate::{
 /// * a **determiner whose every plural reading is dative** — *den*, *diesen*,
 ///   *meinen*, *keinen*, *allen*, *vielen* — in front of a plural noun. *den
 ///   Lehrer* is the accusative singular, so the noun has to be known as a
-///   plural: `NounGender::lacks_dative_plural_n` reads the marker hunspell's
-///   plural affixes put on *Kinder*, *Freunde*, *Bücher*.
+///   plural: `NounGender::lacks_dative_plural_n` reads the plural marker the
+///   dictionary puts on *Kinder*, *Freunde*, *Bücher*.
 /// * a **preposition that only governs the dative** — *mit*, *seit*, *bei*,
 ///   *von*, *aus*, *nach*, *zu* — with nothing but numbers and adjectives
 ///   before the plural: *seit drei Jahre*, *mit kleine Kinder*.

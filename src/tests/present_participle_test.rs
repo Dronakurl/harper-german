@@ -1,5 +1,5 @@
 //! The declined present participle (`das lernende Kind`) is built by the affix
-//! class `c`, which mirrors hunspell's `SFX D`: hang `d`, `de`, `dem`, `den`,
+//! class `c`: hang `d`, `de`, `dem`, `den`,
 //! `der`, `des` on a verb.
 //!
 //! Harper's affix classes attach to the *stem*, so `c` takes the infinitive
@@ -12,7 +12,7 @@
 //!
 //! The flag was also missing from roughly fifteen hundred verbs that do have
 //! the form. `harper-core/src/language/german/scripts/fix_german_verb_forms.py --flags c` restores it, deciding
-//! each entry with `hunspell -m`.
+//! each entry by its verb forms.
 
 #[cfg(test)]
 mod tests {

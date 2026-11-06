@@ -59,8 +59,7 @@ const ADVERBIAL_PREPOSITIONS: &[&str] = &[
 /// Catches a determiner in the wrong case after a preposition: *"**wegen dem**
 /// Wetter"* needs the genitive, *"**für dem** Kind"* the accusative.
 ///
-/// The check is the set intersection LanguageTool performs with `retainAll`:
-/// the preposition names the cases it governs, the determiner carries every
+/// The check is a set intersection: the preposition names the cases it governs, the determiner carries every
 /// case it can be read in, and an empty intersection is the error. Both sides
 /// come from [`crate::grammar`], so nothing here depends on
 /// the 109,000 noun entries — of which 99.6% carry no gender and none carries a

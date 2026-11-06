@@ -2,3 +2,4 @@
 *.pack
 *.wasm
 /dist
+__pycache__/

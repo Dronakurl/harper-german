@@ -23,18 +23,9 @@ use harper_core::{Document, Token, TokenStringExt};
 /// this table and are deliberately not any more.
 ///
 /// The line between the two groups is not one a reader can feel, so check a
-/// candidate against LanguageTool, which encodes the official rules, before
-/// adding it — in both spellings:
-///
-/// ```bash
-/// docker start lt-bench   # erikvl87/languagetool, port 8010
-/// curl -s -X POST http://localhost:8010/v2/check -d language=de-DE \
-///     --data-urlencode "text=Das gilt im übrigen für alle." |
-///     python3 -c 'import json,sys; print([m["rule"]["id"] for m in json.load(sys.stdin)["matches"]])'
-/// ```
-///
-/// A phrase LanguageTool leaves alone in *both* spellings permits both and does
-/// not belong in this table.
+/// candidate against the official rules (Amtliche Regelung §§ 55–58) and the
+/// dictionary entry of the word before adding it, in both spellings. A phrase
+/// the rules permit in *both* spellings does not belong in this table.
 const FIXED_NOMINALIZATIONS: &[(&[&str], &str, &str, &[&str])] = &[
     (&["im"], "übrigen", "Übrigen", &[]),
     (&["im"], "allgemeinen", "Allgemeinen", &[]),
@@ -463,8 +454,8 @@ mod tests {
     /// The reform left the small letter standing as an equal variant in this
     /// handful, so flagging them calls correct German a mistake.
     ///
-    /// Verified against LanguageTool, which leaves every one of these alone in
-    /// both spellings; see the note on `FIXED_NOMINALIZATIONS`.
+    /// The official rules permit every one of these in both spellings; see
+    /// the note on `FIXED_NOMINALIZATIONS`.
     #[test]
     fn leaves_the_phrases_that_permit_both_spellings_alone() {
         for text in [
