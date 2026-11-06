@@ -13,6 +13,10 @@ Issue https://github.com/Dronakurl/harper/issues/14.
   from `harper-core/src/language/german/`.
 - `src/linting/weir_rules/de/*.weir` – Weir rules; `build.rs` turns each file into a rule and a test.
 - `data/` – `dictionary.dict`, `annotations.json`, `compound_begin_forms.txt`, `wikidata_names.tsv`.
+  The `suggestions` section of `annotations.json` ranks spelling suggestions (alternations, QWERTZ
+  keyboard, letter frequency) through harper-core's `SuggestionHints`; change the table, not
+  `GermanSpellCheck`. It is written for this repository: do not copy hunspell's `de_DE.aff` (GPL).
+  Measure a change with the ignored test `suggestion_accuracy` (see its doc comment).
   `data/german.pack` (git-ignored, 30 MB) is the dictionary already expanded; `just bake-pack` writes it
   and `build.rs` embeds it in the module.
 - `src/tests/` – unit tests (they use crate internals) and `batteries/*.tsv`.
@@ -58,5 +62,8 @@ Then `just bake-pack`, and measure as in "Tenth round" of `docs/GERMAN_DICTIONAR
   `web-time` directly, and do not add dependencies that need `wasm-bindgen`.
 - Keep `just check` and `just test-plugin` green. Compare lints before and after a change on
   `test_sources/` and the batteries; sort the output before diffing.
+- To compare without a wasm build, lint natively: `HARPER_LINT_FILE=<file or directory> cargo test
+  --release --lib lint_file_as_json -- --ignored --nocapture` prints one `LINTJSON {...}` line per
+  lint, with the plugin's dictionary and overlap removal, the same lints the module gives.
 - Human-facing guidance that proves stable belongs in `README.md`; remind the maintainer to move it
   from this file when you notice it has settled.

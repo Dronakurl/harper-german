@@ -146,6 +146,98 @@ mod tests {
         }
     }
 
+    /// Lints the files named by `HARPER_LINT_FILE` (a file, or a directory whose
+    /// files are all linted) with the curated German rules, and prints one
+    /// `LINTJSON` line per lint: file, rule, char span, text and suggestions. It
+    /// uses the plugin's dictionary and removes overlaps the way the plugin does,
+    /// so it gives what `harper-cli --format json` gives for the built module,
+    /// without a wasm build in between.
+    #[test]
+    #[ignore = "reads the files from the environment"]
+    fn lint_file_as_json() {
+        use crate::dialects::GermanDialect;
+        use crate::linting::new_curated_german;
+        use crate::parsers::PlainGerman;
+        use harper_core::Document;
+
+        let Ok(path) = std::env::var("HARPER_LINT_FILE") else {
+            return;
+        };
+        let path = std::path::PathBuf::from(path);
+        let mut files: Vec<_> = if path.is_dir() {
+            std::fs::read_dir(&path)
+                .unwrap()
+                .map(|entry| entry.unwrap().path())
+                .collect()
+        } else {
+            vec![path]
+        };
+        files.sort();
+
+        let dict = crate::spell::compound_aware_german_dictionary();
+        let mut linter = new_curated_german(GermanDialect::Standard, dict.clone());
+        for file in files {
+            let text = std::fs::read_to_string(&file).unwrap();
+            let document = Document::new(&text, &PlainGerman, &*dict);
+            let mut organized = linter.organized_lints(&document);
+            harper_core::remove_overlaps_map(&mut organized);
+            for (rule, lints) in organized {
+                for lint in lints {
+                    let suggestions: Vec<String> =
+                        lint.suggestions.iter().map(|s| s.to_string()).collect();
+                    println!(
+                        "LINTJSON {}",
+                        serde_json::json!({
+                            "file": file.display().to_string(),
+                            "rule": rule,
+                            "span": {"char_start": lint.span.start, "char_end": lint.span.end},
+                            "matched_text": document.get_span_content_str(&lint.span),
+                            "suggestions": suggestions,
+                        })
+                    );
+                }
+            }
+        }
+    }
+
+    /// Writes every spelling of the base dictionary, one per line, to the file
+    /// named by `HARPER_DUMP_WORDS`.
+    #[test]
+    #[ignore = "writes a large file; run on demand"]
+    fn dump_german_words() {
+        let Ok(path) = std::env::var("HARPER_DUMP_WORDS") else {
+            return;
+        };
+        let dict = curated_german_dictionary();
+        let mut out = std::io::BufWriter::new(std::fs::File::create(path).unwrap());
+        for word in dict.words_iter() {
+            let word: String = word.iter().collect();
+            writeln!(out, "{word}").unwrap();
+        }
+    }
+
+    /// For every word in the file `HARPER_COMPOUND_ONLY_IN`, prints it if the
+    /// spell checker accepts it only as a compound, with the decomposition:
+    /// `word<TAB>part|part|…`. Feeds the measurement of how a change to the
+    /// compound rules would treat the words of a corpus.
+    #[test]
+    #[ignore = "reads the words from the environment"]
+    fn list_compound_only_words() {
+        let Ok(path) = std::env::var("HARPER_COMPOUND_ONLY_IN") else {
+            return;
+        };
+        let dict = crate::spell::compound_aware_german_dictionary();
+        let base = curated_german_dictionary();
+        for word in std::fs::read_to_string(path).unwrap().lines() {
+            let chars: Vec<char> = word.chars().collect();
+            if chars.is_empty() || base.contains_word(&chars) || !dict.contains_word(&chars) {
+                continue;
+            }
+            let parts = dict.decomposition(&chars).unwrap_or_default().join("|");
+            println!("COMPOUNDONLY {word}\t{parts}");
+        }
+    }
+
     /// Prints how the compound checker takes the words of `HARPER_DEBUG_WORDS` apart.
     #[test]
     #[ignore = "reads the words from the environment"]

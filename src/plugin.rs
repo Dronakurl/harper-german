@@ -4,7 +4,7 @@
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
-use harper_core::linting::{FlatConfig, Lint, LintGroup};
+use harper_core::linting::{FlatConfig, Lint, LintGroup, LintKind};
 use harper_core::parsers::{Markdown, MarkdownOptions, OrgMode, Parser};
 use harper_core::spell::{Dictionary, MergedDictionary, MutableDictionary};
 use harper_core::{DictWordMetadata, Document, remove_overlaps_map};
@@ -19,7 +19,7 @@ use crate::parsers::PlainGerman;
 use crate::spell::compound_aware_german_dictionary;
 
 /// The `harper-core` this plugin is built against; kept in step with `Cargo.toml`.
-const HARPER_CORE_VERSION: &str = "2.13.0";
+const HARPER_CORE_VERSION: &str = "3.0.0";
 
 pub struct German {
     base: Arc<dyn Dictionary>,
@@ -29,6 +29,9 @@ pub struct German {
     words: Vec<String>,
     /// The dialect `group` was built for.
     dialect: GermanDialect,
+    /// The words the user added. Never reported as misspelled, whatever a
+    /// linter makes of them.
+    user: Arc<MutableDictionary>,
     group: LintGroup,
 }
 
@@ -72,6 +75,14 @@ impl German {
         let document = Document::new_from_chars(chars.to_vec().into(), &parser, &*self.dictionary);
 
         let mut lints: BTreeMap<String, Vec<Lint>> = self.group.organized_lints(&document);
+        for rule_lints in lints.values_mut() {
+            rule_lints.retain(|lint| {
+                lint.lint_kind != LintKind::Spelling
+                    || !self
+                        .user
+                        .contains_word(document.get_span_content(&lint.span))
+            });
+        }
         remove_overlaps_map(&mut lints);
 
         lints
@@ -101,8 +112,10 @@ impl German {
 
         let mut merged = MergedDictionary::new();
         merged.add_dictionary(self.base.clone());
-        merged.add_dictionary(Arc::new(user));
+        let user = Arc::new(user);
+        merged.add_dictionary(user.clone());
         let merged = Arc::new(merged);
+        self.user = user;
 
         // The linters hold on to the dictionary, so they are rebuilt with the new one. Keep the
         // rules the user switched off.
@@ -135,6 +148,8 @@ impl LanguagePlugin for German {
             plugin_version: env!("CARGO_PKG_VERSION").into(),
             abi: ABI_VERSION,
             harper_core_version: HARPER_CORE_VERSION.into(),
+            // `dispatch` fills in what the API crate this plugin is built with supports.
+            features: Vec::new(),
             dialects: vec![
                 DialectInfo {
                     id: "Standard".into(),
@@ -156,8 +171,6 @@ impl LanguagePlugin for German {
             // What the multilingual build of Harper accepted for German, so its settings keep
             // working.
             aliases: names(&["German", "Deutsch"]),
-            // The API crate adds what this build can do (`request_words`).
-            features: Vec::new(),
         }
     }
 
@@ -172,6 +185,7 @@ impl LanguagePlugin for German {
             dictionary,
             words: Vec::new(),
             dialect: GermanDialect::Standard,
+            user: Arc::new(MutableDictionary::new()),
         }
     }
 

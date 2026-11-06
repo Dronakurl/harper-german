@@ -326,7 +326,36 @@ impl GermanAdjectiveForm {
             {
                 return None;
             }
-            return self.wrong_ending(adjective, stem, ending, &determiner, readings);
+            let narrowed = self.narrowed_by_noun(readings, &noun_text);
+            if narrowed.len() < readings.len() {
+                // The noun is what rules a reading out, so it has to be the
+                // whole noun: not the first part of *Verb-Erst-Stellung* or of
+                // a suspended *Graphen- und Knotentheorie*.
+                let source = document.get_source();
+                if source.get(noun.span.end) == Some(&'-') {
+                    return None;
+                }
+                // *viele*, *andere*, *wenige* are quantifiers that decline on
+                // their own terms: *der viele Jahre tätige Forscher*, *kein
+                // anderes Präfix*.
+                if ["viel", "wenig", "ander", "einig", "mehrer", "manch"]
+                    .iter()
+                    .any(|quantifier| stem.starts_with(quantifier))
+                {
+                    return None;
+                }
+                // Left with the plural, *die* + *-e* is also a pronoun before a
+                // noun phrase of its own: *…, die eigene Entscheidungen treffen*,
+                // *und die ästhetische Prozesse … verstanden*. Only after a
+                // preposition or at the start of the sentence is it surely the
+                // article.
+                let plural_only = narrowed.iter().all(|reading| reading.gender.is_none());
+                let surely_article = at == 0 || previous.is_some_and(|p| p.kind.is_preposition());
+                if plural_only && ending == "e" && !surely_article {
+                    return None;
+                }
+            }
+            return self.wrong_ending(adjective, stem, ending, &determiner, &narrowed);
         }
 
         let noun_text: String = document.get_span_content(&noun.span).iter().collect();
@@ -351,6 +380,59 @@ impl GermanAdjectiveForm {
             priority: 31,
             message: format!("»{word}« steht zwischen Artikel und Nomen und braucht eine Endung."),
         })
+    }
+
+    /// The determiner's readings the noun behind it leaves standing.
+    ///
+    /// *die* is a feminine singular or a plural, and the adjective after it
+    /// takes *-e* or *-en* accordingly; the noun says which. A noun of one known
+    /// gender rules out the singular readings of every other (*die alte
+    /// Häuser*: *Haus* is neuter, so only the plural is left). A feminine noun
+    /// recorded only as a plural is one: feminine nouns do not inflect in the
+    /// singular, so *Gemeinden* cannot be a singular form of *Gemeinde* (*die
+    /// jüdische Gemeinden*). The masculine weak nouns, which spell the singular
+    /// like the plural (*den Menschen*), are not narrowed by number.
+    fn narrowed_by_noun(
+        &self,
+        readings: &[DeterminerReading],
+        noun: &str,
+    ) -> Vec<DeterminerReading> {
+        let chars: Vec<char> = noun.chars().collect();
+        let recorded_plural_only = self
+            .nouns
+            .dictionary()
+            .get_word_metadata(&chars)
+            .is_some_and(|m| m.noun_agreement().number == crate::morphology::NumberSet::PLURAL);
+        // A plural form often carries no gender of its own; its singular does:
+        // *Gemeinden* → *Gemeinde*.
+        let singular_gender = || {
+            ["en", "n", "e", "er", "s"].iter().find_map(|ending| {
+                let stem = noun.strip_suffix(ending)?;
+                self.nouns.gender_of(stem).map(|(gender, _)| gender)
+            })
+        };
+        let Some(gender) = self
+            .nouns
+            .gender_of(noun)
+            .map(|(gender, _)| gender)
+            .or_else(|| recorded_plural_only.then(singular_gender).flatten())
+        else {
+            return readings.to_vec();
+        };
+        let plural_only = gender == crate::morphology::Gender::Feminine && recorded_plural_only;
+        let narrowed: Vec<DeterminerReading> = readings
+            .iter()
+            .copied()
+            .filter(|reading| match reading.gender {
+                None => true,
+                Some(reading_gender) => reading_gender == gender && !plural_only,
+            })
+            .collect();
+        if narrowed.is_empty() {
+            readings.to_vec()
+        } else {
+            narrowed
+        }
     }
 
     /// *einen neue Helm*, *dem alter Mann*: a declined adjective whose ending
@@ -793,6 +875,28 @@ mod tests {
         assert_eq!(reported("Die Farbe des neue Autos gefällt mir."), ["neue"]);
         assert_eq!(reported("Er spielt mit seinen kleine Brüdern."), ["kleine"]);
         assert_eq!(reported("Das neuer Haus ist schön."), ["neuer"]);
+    }
+
+    #[test]
+    fn the_noun_decides_between_singular_and_plural() {
+        assert_eq!(
+            reported("Die jüdische Gemeinden widersprachen."),
+            ["jüdische"]
+        );
+        assert_eq!(reported("Für die alte Häuser fehlt Geld."), ["alte"]);
+        for text in [
+            "Die jüdischen Gemeinden widersprachen.",
+            "Die alte Frau lacht.",
+            "Ich sehe die alten Häuser.",
+            "Die neue Schule ist groß.",
+            "Er sah die vielen Menschen.",
+            "Ansätze, die von der Semiotik kamen und die ästhetische Prozesse als Zeichen sahen.",
+            "KI ist die erste Technik, die eigene Entscheidungen trifft.",
+            "Diese sogenannte Verb-Erst-Stellung ist selten.",
+            "Er trägt kein anderes Präfix.",
+        ] {
+            assert!(reported(text).is_empty(), "{text}: {:?}", reported(text));
+        }
     }
 
     #[test]

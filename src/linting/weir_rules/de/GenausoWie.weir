@@ -1,0 +1,24 @@
+# Equality is compared with "wie", inequality with "als": "genauso groß wie
+# ich", but "größer als ich". "genauso … als" mixes the two.
+#
+# "so … als" is left alone: "so bald als möglich" and "so schnell als
+# möglich" are old but correct.
+expr main <[(genauso * als), (ebenso * als)], als>
+
+let message "Nach »genauso« und »ebenso« vergleicht man mit »wie«."
+let description "Ersetzt »als« durch »wie« nach »genauso« und »ebenso«."
+let kind "Grammar"
+let becomes "wie"
+let strategy "MatchCase"
+
+test "Sie ist genauso groß als ich." "Sie ist genauso groß wie ich."
+test "Er läuft ebenso schnell als sein Bruder." "Er läuft ebenso schnell wie sein Bruder."
+test "Das Ergebnis ist genauso gut als vorher." "Das Ergebnis ist genauso gut wie vorher."
+
+allows "Sie ist genauso groß wie ich."
+allows "Er ist größer als ich."
+allows "Komm so bald als möglich."
+allows "Es sah genauso aus, als ob es regnen würde."
+allows "Er kam gleich, als ich rief."
+allows "Zwei Fälle werden als gleich oder als ungleich bewertet."
+allows "Ich mache es genauso, als wäre nichts gewesen."

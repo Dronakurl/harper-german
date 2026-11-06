@@ -1,0 +1,16 @@
+# "je nachdem" is a fixed phrase written with "nachdem" in one word.
+# "je nach dem Wetter" is the preposition "nach" with its article; only before
+# a clause is it the fixed phrase.
+expr main <[(je nach dem [wie, was, ob, wann, wo, welche, welcher, welches, welchen, inwieweit]), (je nach dem(,))], (je nach dem)>
+
+let message "»je nachdem« schreibt man mit »nachdem« in einem Wort."
+let description "Zieht »je nach dem« zu »je nachdem« zusammen."
+let kind "Spelling"
+let becomes "je nachdem"
+let strategy "MatchCase"
+
+test "Je nach dem wie es geht." "Je nachdem wie es geht."
+test "Wir sehen, je nach dem, was kommt." "Wir sehen, je nachdem, was kommt."
+
+allows "Je nachdem, wie es geht."
+allows "Je nach dem Wetter fahren wir."

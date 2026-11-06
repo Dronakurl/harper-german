@@ -1,0 +1,14 @@
+# "wie viele" is two words, like "wie viel": the 1996 reform separated both.
+expr main [wieviele, wievielem, wievieles]
+
+let message "»wie viele« wird getrennt geschrieben."
+let description "Trennt »wieviele« zu »wie viele«."
+let kind "Spelling"
+let becomes "wie viele"
+let strategy "MatchCase"
+
+test "Wieviele Leute kommen?" "Wie viele Leute kommen?"
+test "Ich weiß nicht, wieviele es sind." "Ich weiß nicht, wie viele es sind."
+
+allows "Wie viele Leute kommen?"
+allows "Der wievielte Tag ist heute?"

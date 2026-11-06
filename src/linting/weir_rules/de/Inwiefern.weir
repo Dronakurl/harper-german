@@ -1,0 +1,13 @@
+# "inwiefern" and "inwieweit" are one word each.
+expr main [(in wie fern), (in wie weit)]
+
+let message "»inwiefern« und »inwieweit« werden zusammengeschrieben."
+let description "Zieht »in wie fern« zu »inwiefern« und »in wie weit« zu »inwieweit« zusammen."
+let kind "Spelling"
+let becomes ["inwiefern", "inwieweit"]
+let strategy "MatchCase"
+
+test "In wie fern ist das wichtig?" "Inwiefern ist das wichtig?"
+
+allows "Inwiefern ist das wichtig?"
+allows "Inwieweit stimmt das?"

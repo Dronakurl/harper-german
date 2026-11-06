@@ -301,13 +301,14 @@ pub(crate) fn can_head_a_lowercase_compound(
     let without_t = tail.strip_suffix(&['t']).unwrap_or(tail).to_vec();
 
     let mut infinitives: Vec<Vec<char>> = Vec::with_capacity(3);
-    if let Some(lemma) = metadata
-        .derived_from
-        .as_ref()
-        .and_then(|id| dictionary.get_word_from_id(id))
-    {
-        infinitives.push(lemma.to_vec());
-    }
+    // A form may record several lemmas; each is a candidate infinitive.
+    infinitives.extend(
+        metadata
+            .derived_from
+            .iter()
+            .filter_map(|id| dictionary.get_word_from_id(id))
+            .map(<[char]>::to_vec),
+    );
     stem.push('n');
     infinitives.push(stem);
     infinitives.push([without_t.as_slice(), &['e', 'n']].concat());
@@ -357,12 +358,55 @@ pub(crate) fn can_head_a_capitalized_compound(dictionary: &impl Dictionary, tail
 
     let lemma_is_verb = metadata
         .derived_from
-        .as_ref()
-        .and_then(|id| dictionary.get_word_from_id(id))
-        .and_then(|lemma| dictionary.get_word_metadata(lemma))
-        .is_some_and(|lemma| lemma.verb.is_some());
+        .iter()
+        .filter_map(|id| dictionary.get_word_from_id(id))
+        .filter_map(|lemma| dictionary.get_word_metadata(lemma))
+        .any(|lemma| lemma.verb.is_some());
 
     metadata.verb.is_none() && !lemma_is_verb
+}
+
+/// Words that never open a lower-case compound: the conjunctions and the
+/// finite forms of *sein*, *haben* and *werden*.
+///
+/// [`function_word_set`] keeps the opening position open, and has to:
+/// `Ausbildung`, `Anfang` and `Nachteil` begin with a preposition or particle,
+/// and `dergleichen`, `demgemäß` and `Immobilisierung` with an article. These
+/// do not: no lower-case German compound begins with *und* or *sind*, and a
+/// word that only decomposes that way is two words written together —
+/// `sindschmal` passed as `sind` + `schmal`. The real words that do start like
+/// this (`wieso`, `obwohl`, `wenngleich`) are entries of their own and never
+/// reach the decomposition. Capitalized words are left alone: *Und* opens
+/// `Understanding` and *Wie* `Wieland`, and both are names, not slips.
+const NEVER_OPENS_A_LOWERCASE_COMPOUND: &[&str] = &[
+    "und", "oder", "aber", "weil", "wenn", "dass", "wie", "als", "sind", "bin", "bist", "seid",
+    "ist", "war", "waren", "hat", "hast", "habt", "wird", "wirst",
+];
+
+/// May `element` be the first element of the lower-case word `whole`? See
+/// [`NEVER_OPENS_A_LOWERCASE_COMPOUND`].
+pub(crate) fn may_open_the_word(element: &[char], whole_is_lowercase: bool) -> bool {
+    if !whole_is_lowercase {
+        return true;
+    }
+    let spelling: String = element.iter().collect();
+    !NEVER_OPENS_A_LOWERCASE_COMPOUND.contains(&spelling.as_str())
+}
+
+/// Does the lower-case `word` have a capital letter right after a small one,
+/// like `imKönigreich` or `undDie`?
+///
+/// A German compound is written as one word with at most its first letter
+/// capitalized; the elements lose their capitals inside it (`Haus` + `Tür` is
+/// `Haustür`). A word that starts small and has a capital in the middle is two
+/// words that lost the space between them. Words that start with a capital
+/// are left alone, because that is how product and company names are written
+/// (`InDesign`, `FontShop`, `AlphaGo`).
+pub(crate) fn has_inner_capital(word: &[char]) -> bool {
+    word.first().is_some_and(|c| c.is_lowercase())
+        && word
+            .windows(2)
+            .any(|pair| pair[0].is_lowercase() && pair[1].is_uppercase())
 }
 
 /// May `element` stand in front of a compound boundary?
@@ -1000,7 +1044,7 @@ impl CompoundChecker {
         }
 
         // A word that is itself a plain dictionary element is not a compound.
-        let result = if word.is_empty() || self.element_usable(word) {
+        let result = if word.is_empty() || self.element_usable(word) || has_inner_capital(word) {
             false
         } else {
             let start = Instant::now();
@@ -1074,8 +1118,12 @@ impl CompoundChecker {
             }
 
             // A function word may open a compound (`Ausbildung`, `Nachteil`)
-            // but not stand inside one: `Spe|ich|her`, `freu|und|lich`.
+            // but not stand inside one: `Spe|ich|her`, `freu|und|lich`. And
+            // not every one may open it: see `may_open_the_word`.
             if depth > 0 && self.is_function_word_only(first) {
+                continue;
+            }
+            if depth == 0 && !may_open_the_word(first, lowercase_whole.is_some()) {
                 continue;
             }
 
@@ -1086,6 +1134,12 @@ impl CompoundChecker {
                     continue;
                 }
                 let interfix_chars: Vec<char> = interfix.chars().collect();
+                // An article, pronoun or conjunction is not a noun and takes
+                // no linking element: `die` + `s` + `selbe` is `dieselbe`
+                // with a doubled letter, not a compound.
+                if !interfix.is_empty() && self.is_function_word_only(first) {
+                    continue;
+                }
                 if !interfix_fits(first, &interfix_chars)
                     || !interfix_matches_known_begin(first, &interfix_chars)
                     || (!interfix.is_empty()

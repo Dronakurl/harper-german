@@ -1,0 +1,14 @@
+# "hundertmal" is one word: numeral and "mal" make an adverb. Written apart,
+# "hundert mal" is the multiplication, so a numeral behind it keeps it apart.
+expr zahl [eins, zwei, drei, vier, fünf, sechs, sieben, acht, neun, zehn, elf, zwölf, hundert, tausend]
+
+expr main <(hundert mal !@zahl), (hundert mal)>
+
+let message "»hundertmal« wird zusammengeschrieben."
+let description "Zieht »hundert mal« zu »hundertmal« zusammen."
+let kind "Spelling"
+let becomes "hundertmal"
+let strategy "MatchCase"
+
+allows "Ich war schon hundertmal hier."
+allows "Hundert mal drei ist eine Zahl."

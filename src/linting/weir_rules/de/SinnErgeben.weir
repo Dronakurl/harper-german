@@ -1,0 +1,17 @@
+# "Sinn machen" is a loan from English "make sense". Duden lists it, but style
+# guides prefer "Sinn ergeben", "sinnvoll sein" or "Sinn haben". A style note.
+expr main <[(macht Sinn), (macht keinen Sinn), (macht wenig Sinn), (macht viel Sinn), (macht mehr Sinn), (macht durchaus Sinn), (Sinn macht), (keinen Sinn macht)], macht>
+
+let message "»Sinn machen« ist eine Lehnübersetzung aus dem Englischen; besser: »Sinn ergeben«."
+let description "Schlägt »ergibt Sinn« statt »macht Sinn« vor."
+let kind "Style"
+let becomes "ergibt"
+let strategy "MatchCase"
+
+test "Das macht keinen Sinn." "Das ergibt keinen Sinn."
+test "Das macht Sinn für mich." "Das ergibt Sinn für mich."
+test "Ob das Sinn macht, weiß ich nicht." "Ob das Sinn ergibt, weiß ich nicht."
+
+allows "Das ergibt keinen Sinn."
+allows "Er macht Sinnbilder."
+allows "Sie macht sich Sorgen um den Sinn."

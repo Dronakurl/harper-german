@@ -52,6 +52,33 @@ const SEIN_PARTICIPLES: &[&str] = &[
     "zusammengebrochen",
 ];
 
+/// Past participles whose perfect is formed with *haben* and never with
+/// *sein*, and that have no state passive either: *ich habe gearbeitet*, *es
+/// hat gedauert*. A transitive verb is left out, because *sein* with its
+/// participle is the state passive (*das Buch ist gelesen*), and so are
+/// *gewohnt* (*ich bin es gewohnt*) and the verbs of motion that take *sein*
+/// as well (*getanzt*, *geschwommen*).
+const HABEN_PARTICIPLES: &[&str] = &[
+    "gearbeitet",
+    "geschlafen",
+    "gelacht",
+    "geweint",
+    "gewartet",
+    "geredet",
+    "telefoniert",
+    "geschwiegen",
+    "gezögert",
+    "gefrühstückt",
+    "übernachtet",
+    "gedauert",
+    "geklappt",
+    "funktioniert",
+    "gefehlt",
+    "geholfen",
+    "geantwortet",
+    "gelebt",
+];
+
 /// Forms of *haben* and the *sein* form that replaces each.
 const HABEN_TO_SEIN: &[(&str, &str)] = &[
     ("habe", "bin"),
@@ -117,6 +144,61 @@ impl GermanPerfectAuxiliary {
     }
 }
 
+impl GermanPerfectAuxiliary {
+    fn haben_form(word: &str) -> Option<&'static str> {
+        HABEN_TO_SEIN
+            .iter()
+            .find(|(_, sein)| *sein == word)
+            .map(|(haben, _)| *haben)
+    }
+
+    /// The other direction: *ich bin gestern viel gearbeitet* → *habe*.
+    fn sein_with_a_haben_participle(
+        clause: &[&Token],
+        lower: &[String],
+        document: &Document,
+    ) -> Option<Lint> {
+        // A passive (*es ist gearbeitet worden*), a modal or a clause that
+        // already has *haben* is not this pattern.
+        if lower.iter().any(|word| {
+            BREAKERS.contains(&word.as_str())
+                || HABEN_TO_SEIN.iter().any(|(haben, _)| haben == word)
+        }) {
+            return None;
+        }
+        let last = lower.len().checked_sub(1)?;
+        let (participle, auxiliary) = if HABEN_PARTICIPLES.contains(&lower[last].as_str()) {
+            // Main clause: auxiliary somewhere in front, participle last.
+            let at = lower[..last]
+                .iter()
+                .position(|word| Self::haben_form(word).is_some())?;
+            (last, at)
+        } else if last >= 1
+            && HABEN_PARTICIPLES.contains(&lower[last - 1].as_str())
+            && Self::haben_form(&lower[last]).is_some()
+        {
+            (last - 1, last)
+        } else {
+            return None;
+        };
+        let haben = Self::haben_form(&lower[auxiliary])?;
+        let original = document.get_span_content(&clause[auxiliary].span);
+        Some(Lint {
+            span: clause[auxiliary].span,
+            lint_kind: LintKind::Grammar,
+            suggestions: vec![Suggestion::replace_with_match_case(
+                haben.chars().collect(),
+                original,
+            )],
+            priority: 31,
+            message: format!(
+                "»{}« bildet das Perfekt mit »haben«, nicht mit »sein«.",
+                lower[participle]
+            ),
+        })
+    }
+}
+
 impl Linter for GermanPerfectAuxiliary {
     fn lint(&mut self, document: &Document) -> Vec<Lint> {
         let mut lints = Vec::new();
@@ -140,6 +222,7 @@ impl Linter for GermanPerfectAuxiliary {
                     .iter()
                     .map(|token| lowercase_of(token, document))
                     .collect();
+                lints.extend(Self::sein_with_a_haben_participle(clause, &lower, document));
                 if lower.iter().any(|word| {
                     BREAKERS.contains(&word.as_str()) || SEIN_FORMS.contains(&word.as_str())
                 }) {
@@ -226,6 +309,28 @@ mod tests {
             fixes("Hast du gut eingeschlafen?"),
             ["Replace with: “Bist”"]
         );
+    }
+
+    #[test]
+    fn sein_with_a_haben_participle_is_reported() {
+        assert_eq!(
+            fixes("Ich bin gestern viel gearbeitet."),
+            ["Replace with: “habe”"]
+        );
+        assert_eq!(fixes("Es ist lange gedauert."), ["Replace with: “hat”"]);
+        assert_eq!(
+            fixes("Weil er gut geschlafen ist, war er wach."),
+            ["Replace with: “hat”"]
+        );
+        for text in [
+            "Ich habe gestern viel gearbeitet.",
+            "Es ist viel gearbeitet worden.",
+            "Ich bin es gewohnt.",
+            "Das Buch ist gelesen.",
+            "Er ist gegangen und hat gelacht.",
+        ] {
+            assert!(fixes(text).is_empty(), "{text}: {:?}", fixes(text));
+        }
     }
 
     #[test]

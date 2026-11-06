@@ -295,7 +295,7 @@ impl Linter for GermanPrepositionCase {
                 // before the noun was read at all.
                 let head = filtered_of[index + 2]
                     .and_then(|at| {
-                        noun_phrase::closed_head_after(document, &words, &phrases, at, false)
+                        noun_phrase::closed_head_after(document, &words, &phrases, at, true)
                     })
                     .map(|at| document.get_span_content_str(&words[at].span))
                     .filter(|_| !stands_alone(&determiner_text));
@@ -533,11 +533,13 @@ mod tests {
         // "das" and "den" together.
         assert_eq!(fixes("Das Geschenk ist für dem Kind."), ["das"]);
         assert_eq!(fixes("Wir gingen ohne dem Hund."), ["den"]);
-        // …but only when the phrase can be shown to have ended. *los* is
-        // neither a phrase boundary nor a capital, so the head is not read at
-        // all and both genders are offered again. An unread head narrows
-        // nothing, which is the safe direction.
-        assert_eq!(fixes("Wir gingen ohne dem Hund los."), ["das", "den"]);
+        // …when the phrase can be shown to have ended: by a determiner, a
+        // preposition or a conjunction, and by a verb, as *los* here or
+        // *gesprochen* in *mit meinen Bruder gesprochen*.
+        assert_eq!(fixes("Wir gingen ohne dem Hund los."), ["den"]);
+        // A capital behind the head still keeps it unread, and both genders
+        // are offered: *ohne dem Hund Bello* could be an apposition.
+        assert_eq!(fixes("Wir gingen ohne dem Hund Bello."), ["das", "den"]);
     }
 
     #[test]
@@ -727,6 +729,9 @@ mod tests {
     #[test]
     fn the_noun_reveals_what_the_determiner_hides() {
         assert_eq!(fixes("Ich gehe mit den Freund ins Kino."), ["dem"]);
+        // A verb behind the noun closes the phrase as well.
+        assert_eq!(fixes("Ich habe mit meinen Bruder gesprochen."), ["meinem"]);
+        assert_eq!(fixes("Das Auto von meinen Vater ist rot."), ["meinem"]);
         assert_eq!(fixes("Sie spielt mit den Hund im Garten."), ["dem"]);
         // A two-way preposition governs the accusative too, so this is right.
         assert_clean(&["Er antwortet auf den Brief nicht."]);

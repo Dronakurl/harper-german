@@ -1,0 +1,38 @@
+# "dass" written for the relative pronoun "das": "das Buch, dass ich gelesen
+# habe". After a neuter noun the relative pronoun is "das", and a comma
+# separates it, exactly as the conjunction would be separated.
+#
+# Which of the two it is depends on the noun. An abstract noun takes a content
+# clause with "dass" — "das Problem, dass niemand kommt", "das Gefühl, dass es
+# klappt" — and that is correct. A concrete thing cannot have a content: no
+# book, car or child is followed by "that something is the case". So only the
+# concrete neuter nouns are listed, and "dass" behind one of them is the
+# relative pronoun with one "s" too many.
+expr ding [Buch, Auto, Haus, Kind, Bild, Spiel, Lied, Zimmer, Fenster, Geld, Geschenk, Tier, Pferd, Boot, Schiff, Flugzeug, Fahrrad, Handy, Telefon, Paket, Hemd, Kleid, Bett, Glas, Dorf, Restaurant, Hotel, Café, Kino, Museum, Mädchen, Baby, Gerät, Werkzeug, Messer, Bier, Brot, Ei, Fleisch, Obst, Wasser, Gesicht, Auge, Ohr, Bein, Knie, Haar, Stück, Foto, Video, Album, Formular, Dokument, Heft, Papier, Blatt, Schild, Tor, Dach, Gebäude, Rezept, Getränk, Kostüm, Spielzeug, Computer, Laptop, Tablet, Instrument, Klavier, Sofa, Regal, Möbelstück, Grundstück, Büro, Labor, Krankenhaus, Rathaus, Schloss, Fest, Konzert, Theaterstück, Gemälde, Gedicht, Märchen, Kapitel, Werk, Schwein, Huhn, Kaninchen, Lamm, Kalb, Fohlen, Zelt, Fahrzeug, Motorrad, Taxi, Ticket, Zeugnis]
+
+# The article right in front of the noun keeps the consecutive clause out:
+# "so viel Geld, dass er nicht arbeiten muss", "ein so großes Haus, dass alle
+# Platz haben" are "so … dass", and correct.
+expr artikel [das, ein, dieses, jenes, mein, dein, sein, ihr, unser, euer, kein, jedes]
+
+expr main <(@artikel @ding(,) dass), dass>
+
+let message "Hier steht das Relativpronomen »das«, nicht die Konjunktion »dass«."
+let description "Ersetzt »dass« durch »das« nach einem konkreten Neutrum wie »das Buch, das …«."
+let kind "Grammar"
+let becomes "das"
+let strategy "MatchCase"
+let scope "Sentence"
+
+test "Das Buch, dass ich gelesen habe, war gut." "Das Buch, das ich gelesen habe, war gut."
+test "Das ist das Auto, dass mir gefällt." "Das ist das Auto, das mir gefällt."
+test "Das Kind, dass dort spielt, ist mein Sohn." "Das Kind, das dort spielt, ist mein Sohn."
+test "Wir kauften das Haus, dass am See liegt." "Wir kauften das Haus, das am See liegt."
+
+allows "Das Buch, das ich gelesen habe, war gut."
+allows "Das Problem, dass niemand kommt, bleibt."
+allows "Ich habe das Gefühl, dass es klappt."
+allows "Er kaufte ein Buch, damit er lesen kann."
+allows "Ich weiß, dass das Buch gut ist."
+allows "Er hatte so viel Geld, dass er nicht arbeiten musste."
+allows "Es war ein so großes Haus, dass alle Platz hatten."

@@ -1,0 +1,14 @@
+# "zweimal" is one word: numeral and "mal" make an adverb. Written apart,
+# "zwei mal" is the multiplication, so a numeral behind it keeps it apart.
+expr zahl [eins, zwei, drei, vier, fünf, sechs, sieben, acht, neun, zehn, elf, zwölf, hundert, tausend]
+
+expr main <(zwei mal !@zahl), (zwei mal)>
+
+let message "»zweimal« wird zusammengeschrieben."
+let description "Zieht »zwei mal« zu »zweimal« zusammen."
+let kind "Spelling"
+let becomes "zweimal"
+let strategy "MatchCase"
+
+allows "Ich war schon zweimal hier."
+allows "Zwei mal drei ist eine Zahl."

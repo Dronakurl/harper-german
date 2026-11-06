@@ -1,0 +1,15 @@
+# "zuletzt" is one word; "zu Letzt" splits it and capitalizes a noun that
+# does not exist.
+expr main (zu letzt)
+
+let message "»zuletzt« wird zusammen- und kleingeschrieben."
+let description "Zieht »zu Letzt« zu »zuletzt« zusammen."
+let kind "Spelling"
+let becomes ["Zuletzt", "zuletzt"]
+let strategy "Exact"
+
+test "Zu Letzt kam er doch." "Zuletzt kam er doch."
+test "Er kam zu letzt." "Er kam zuletzt."
+
+allows "Zuletzt kam er doch."
+allows "Er kam zuletzt."

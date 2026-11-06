@@ -1,0 +1,16 @@
+# "essen gehen" is two verbs: the infinitive "essen" stays small, just as in
+# "schwimmen gehen". With a capital it reads as the noun "das Essen".
+expr main <[(![dem, beim, das, zum, vom, vor, nach, ohne, kein, ihr, sein, mein, unser, euer] Essen gehen), (![dem, beim, das, zum, vom, vor, nach, ohne, kein, ihr, sein, mein, unser, euer] Essen gegangen), (gehen wir Essen), (gehen wir zusammen Essen), (gehen wir heute Essen), (gehen Essen), (gingen Essen), (gingen wir Essen)], Essen>
+
+let message "In »essen gehen« ist »essen« ein Verb und wird kleingeschrieben."
+let description "Schreibt »essen« in »essen gehen« klein."
+let kind "Capitalization"
+let becomes "essen"
+let strategy "Exact"
+
+test "Vielleicht gehen wir zusammen Essen." "Vielleicht gehen wir zusammen essen."
+test "Wir wollen heute Essen gehen." "Wir wollen heute essen gehen."
+
+allows "Wir wollen heute essen gehen."
+allows "Das Essen geht schnell."
+allows "Nach dem Essen gehen wir spazieren."

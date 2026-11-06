@@ -15,7 +15,20 @@ expr menge [zwei, drei, vier, fünf, sechs, sieben, acht, neun, zehn, elf, zwöl
 
 expr einzahl [jahr, monat, tag, jahrzehnt, jahrhundert, woche, stunde, minute]
 
-expr main <[(seid @zeitangabe), (seid @menge @zeitangabe), (seid [einem, einer] @einzahl)], seid>
+# "seid letzter Woche", "seid vergangenem Sommer": an inflected "letzt-" or
+# "vergangen-" in the dative can only follow a preposition. As a predicate after
+# the verb it is uninflected or nominalized: "ihr seid Letzte".
+expr vergangen [letzter, letztem, vergangener, vergangenem, voriger, vorigem]
+
+expr zeitraum [jahr, monat, tag, jahrzehnt, jahrhundert, woche, stunde, minute, sommer, winter, frühling, herbst, montag, dienstag, mittwoch, donnerstag, freitag, samstag, sonntag, wochenende, nacht, saison, jahrtausend]
+
+# "Seid dem Umzug geht es mir besser": a dative phrase and then a finite verb.
+# The imperative "seid" would itself be the verb, so a second one right after
+# the phrase leaves only the preposition. "Seid dem Lehrer dankbar" has an
+# adjective there and stays.
+expr finit [ist, sind, war, waren, geht, ging, gibt, gab, hat, haben, hatte, habe, bin, lebe, lebt, leben, wohne, wohnt, wohnen, arbeite, arbeitet, arbeiten, kann, können, weiß, wissen, fühle, fühlt, regnet, läuft, hat, bleibt, fehlt, kenne, kennt]
+
+expr main <[(seid [dem, der, einem, einer] * @finit), (seid @zeitangabe), (seid @menge @zeitangabe), (seid [einem, einer] @einzahl), (seid @vergangen @zeitraum)], seid>
 
 let message "»seid« ist die Verbform (»ihr seid«). Vor einer Zeitangabe steht die Präposition »seit«."
 let description "Ersetzt das Verb »seid« vor einer Zeitangabe durch die Präposition »seit«."
@@ -34,7 +47,16 @@ test "Das Geschäft gibt es seid ein paar Monaten." "Das Geschäft gibt es seit 
 test "Ich warte seid zwei Stunden." "Ich warte seit zwei Stunden."
 test "Er wartet seid einer Stunde." "Er wartet seit einer Stunde."
 
+test "Seid letzter Woche ist er krank." "Seit letzter Woche ist er krank."
+test "Seid dem Umzug geht es mir besser." "Seit dem Umzug geht es mir besser."
+test "Seid der Hochzeit wohnen sie in Bonn." "Seit der Hochzeit wohnen sie in Bonn."
+test "Wir wohnen hier seid vergangenem Sommer." "Wir wohnen hier seit vergangenem Sommer."
+
 allows "Ihr seid pünktlich gekommen."
+allows "Seid dem Lehrer dankbar."
+allows "Seid der Sache treu, ist sein Rat."
+allows "Ihr seid Letzte geworden."
+allows "Seit letzter Woche ist er krank."
 allows "Seid heute bitte pünktlich."
 allows "Das Haus steht seit Jahren leer."
 allows "Seid ihr schon da?"

@@ -18,11 +18,13 @@ pub fn rust_lint_group(
         german_compound_adjective_capitalization::GermanCompoundAdjectiveCapitalization,
         german_coordinating_comma::GermanCoordinatingComma,
         german_country_article::GermanCountryArticle,
+        german_dass_article::GermanDassArticle,
         german_dative_plural::GermanDativePlural,
         german_determiner_gender::GermanDeterminerGender,
         german_filler_words::GermanFillerWords,
         german_fixed_nominalization::GermanFixedNominalization,
         german_genitive_after_nominative_article::GermanGenitiveAfterNominativeArticle,
+        german_mid_sentence_capital::GermanMidSentenceCapital,
         german_modal_zu_infinitive::GermanModalZuInfinitive,
         german_nominalized_adjective::GermanNominalizedAdjective,
         german_nominalized_infinitive::GermanNominalizedInfinitive,
@@ -34,6 +36,7 @@ pub fn rust_lint_group(
         german_relative_clause_comma::GermanRelativeClauseComma,
         german_repeated_words::GermanRepeatedWords,
         german_sentence_capitalization::GermanSentenceCapitalization,
+        german_spacing::{GermanCommaFixes, GermanDoublePeriod, GermanSpaces},
         german_spell_check::GermanSpellCheck,
         german_split_compound::GermanSplitCompound,
         german_split_particle::GermanSplitParticle,
@@ -43,6 +46,7 @@ pub fn rust_lint_group(
         german_subordinate_word_order::GermanSubordinateWordOrder,
         german_suspended_hyphen::GermanSuspendedHyphen,
         german_typography::{GermanNumberFormat, GermanQuotationMarks},
+        german_verb_case::GermanVerbCase,
         german_verb_cluster::GermanVerbCluster,
         german_verb_preposition::GermanVerbPreposition,
         german_verb_second::GermanVerbSecond,
@@ -57,14 +61,15 @@ pub fn rust_lint_group(
 
     let mut group = LintGroup::empty();
 
-    // Typography, borrowed whole from the shared core. Spacing around a
-    // comma and doubled spaces are the same mistake in every language that
-    // uses the Latin script, so German gets the two rules as they stand
-    // rather than a copy of them. Their messages are English and stay
-    // English: the suggestion is what the user acts on, and it is a
-    // character, not a sentence. See `language/AGENTS.md` on reuse.
-    group.add("Spaces", harper_core::linting::spaces::Spaces);
-    group.add("CommaFixes", harper_core::linting::comma_fixes::CommaFixes);
+    // Typography from the shared core: spacing around a comma and doubled
+    // spaces are the same mistake in every language that uses the Latin
+    // script. The wrappers translate the core's messages and add the gap
+    // between two sentences, which German typography fixes at one space.
+    // The rule names stay the core's, so existing configurations still apply.
+    group.add("Spaces", GermanSpaces::default());
+    group.add("CommaFixes", GermanCommaFixes::default());
+    group.add("GermanDoublePeriod", GermanDoublePeriod);
+    group.add("GermanDassArticle", GermanDassArticle::new());
 
     group.add(
         "GermanSpellCheck",
@@ -97,6 +102,11 @@ pub fn rust_lint_group(
     group.add("GermanFixedNominalization", GermanFixedNominalization);
     group.add("GermanNominalizedInfinitive", GermanNominalizedInfinitive);
     group.add("GermanNominalizedAdjective", GermanNominalizedAdjective);
+    group.add("GermanVerbCase", GermanVerbCase::default());
+    group.add(
+        "GermanMidSentenceCapital",
+        GermanMidSentenceCapital::default(),
+    );
     group.add("GermanSubordinateComma", GermanSubordinateComma);
     group.add("GermanCoordinatingComma", GermanCoordinatingComma);
     group.add("GermanNumberFormat", GermanNumberFormat);

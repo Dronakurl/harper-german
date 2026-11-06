@@ -508,7 +508,7 @@ fn debug_worrt_scores() {
     for r in &results {
         let meta = dict.get_word_metadata_str(r);
         let common = meta.as_ref().map(|m| m.common).unwrap_or(false);
-        let derived = meta.as_ref().and_then(|m| m.derived_from);
+        let derived = meta.as_ref().map(|m| m.derived_from.clone());
         println!(
             "suggestion={} common={} derived={:?}",
             r,

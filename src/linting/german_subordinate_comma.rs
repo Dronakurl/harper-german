@@ -319,6 +319,377 @@ impl GermanSubordinateComma {
         })
     }
 
+    /// *Sie fragte mich wann wir losfahren*, *ich weiß nicht wo er wohnt*: an
+    /// indirect question after a verb of asking or knowing takes a comma.
+    ///
+    /// The question words are relative pronouns and comparisons as well
+    /// (*so wie*, *der Ort, wo*), so the verb has to come first, with at most
+    /// an object pronoun or *nicht* between it and the question word. *was* is
+    /// left out: *ich weiß was* is the colloquial *etwas*.
+    fn missing_comma_before_indirect_question(tokens: &[&Token], document: &Document) -> Vec<Lint> {
+        const ASKING: &[&str] = &[
+            "frage",
+            "fragst",
+            "fragt",
+            "fragte",
+            "fragten",
+            "gefragt",
+            "fragen",
+            "weiß",
+            "weißt",
+            "wisst",
+            "wissen",
+            "wusste",
+            "wussten",
+            "gewusst",
+            "verstehe",
+            "versteht",
+            "verstand",
+            "verstanden",
+            "überlege",
+            "überlegt",
+            "überlegte",
+            "entscheiden",
+        ];
+        const BETWEEN: &[&str] = &[
+            "mich", "dich", "ihn", "sie", "uns", "euch", "nicht", "genau", "auch", "noch", "nie",
+            "selbst", "schon", "es",
+        ];
+        const QUESTION_WORDS: &[&str] = &[
+            "wann", "warum", "weshalb", "weswegen", "wieso", "woher", "wohin", "wo", "wer", "wen",
+            "wem", "wessen", "wie", "welche", "welcher", "welches", "welchen", "womit", "wozu",
+            "worüber", "wofür",
+        ];
+        let mut lints = Vec::new();
+        for (at, token) in tokens.iter().enumerate() {
+            if !Self::word_in(token, document, QUESTION_WORDS)
+                || document
+                    .get_span_content(&token.span)
+                    .first()
+                    .is_some_and(|c| c.is_uppercase())
+            {
+                continue;
+            }
+            let mut verb = at;
+            while verb > 0 && Self::word_in(tokens[verb - 1], document, BETWEEN) {
+                verb -= 1;
+            }
+            let Some(verb_at) = verb.checked_sub(1) else {
+                continue;
+            };
+            if !matches!(tokens[verb_at].kind, TokenKind::Word(_))
+                || !Self::word_in(tokens[verb_at], document, ASKING)
+                || !matches!(tokens[at - 1].kind, TokenKind::Word(_))
+            {
+                continue;
+            }
+            // *wie* in *so wie*, *genauso wie*, *sowohl … wie*: a comparison.
+            if Self::word_in(token, document, &["wie"])
+                && tokens
+                    .get(at + 1)
+                    .is_none_or(|next| !matches!(next.kind, TokenKind::Word(_)))
+            {
+                continue;
+            }
+            // The question needs a clause: a verb somewhere behind the word.
+            if !tokens[at + 1..]
+                .iter()
+                .take_while(|t| matches!(t.kind, TokenKind::Word(_)))
+                .any(|t| GermanRelativeClauseComma::is_verb_token(t, document))
+            {
+                continue;
+            }
+            let question: String = document.get_span_content(&token.span).iter().collect();
+            lints.push(Lint {
+                span: tokens[at - 1].span,
+                lint_kind: LintKind::Punctuation,
+                suggestions: vec![Suggestion::InsertAfter(vec![','])],
+                priority: 28,
+                message: format!("Vor dem indirekten Fragesatz mit »{question}« steht ein Komma."),
+            });
+        }
+        lints
+    }
+
+    /// *Er hat gesagt er kommt später*, *ich glaube er hat recht*: a main clause
+    /// reported without *dass* takes a comma after the verb that reports it.
+    ///
+    /// The evidence is a subject pronoun right behind the verb of saying or
+    /// thinking, followed by a finite verb: *er kommt*, *es gibt*. Without the
+    /// verb behind the pronoun it is an object, *er sagte es ihm*, *ich glaube
+    /// ihr kein Wort*.
+    fn missing_comma_before_reported_clause(tokens: &[&Token], document: &Document) -> Vec<Lint> {
+        const SAYING: &[&str] = &[
+            "gesagt",
+            "gemeint",
+            "gedacht",
+            "geglaubt",
+            "gehofft",
+            "behauptet",
+            "sagte",
+            "sagten",
+            "sagt",
+            "meinte",
+            "meint",
+            "dachte",
+            "glaube",
+            "glaubt",
+            "glaubte",
+            "hoffe",
+            "hofft",
+            "hoffte",
+            "denke",
+            "denkt",
+            "finde",
+            "findet",
+            "behauptete",
+            "schätze",
+            "fürchte",
+            "wette",
+        ];
+        const SUBJECTS: &[&str] = &["ich", "du", "er", "sie", "es", "wir", "ihr", "man"];
+        let mut lints = Vec::new();
+        for at in 0..tokens.len().saturating_sub(2) {
+            let (verb, subject, finite) = (tokens[at], tokens[at + 1], tokens[at + 2]);
+            if !matches!(verb.kind, TokenKind::Word(_))
+                || !Self::word_in(verb, document, SAYING)
+                || !matches!(subject.kind, TokenKind::Word(_))
+                || !Self::word_in(subject, document, SUBJECTS)
+                || !matches!(finite.kind, TokenKind::Word(_))
+            {
+                continue;
+            }
+            let finite_text: String = document.get_span_content(&finite.span).iter().collect();
+            let is_finite = finite_text.chars().next().is_some_and(char::is_lowercase)
+                && GermanRelativeClauseComma::is_verb_token(finite, document)
+                && !finite.kind.is_noun()
+                && !finite.kind.is_adjective();
+            if !is_finite {
+                continue;
+            }
+            lints.push(Lint {
+                span: verb.span,
+                lint_kind: LintKind::Punctuation,
+                suggestions: vec![Suggestion::InsertAfter(vec![','])],
+                priority: 28,
+                message: "Der folgende Satz gibt wieder, was gesagt oder gedacht wird. Davor steht ein Komma."
+                    .to_owned(),
+            });
+        }
+        lints
+    }
+
+    /// *Das Ziel diese Werte zu erreichen*: an infinitive group that depends on
+    /// a noun takes a comma (Amtliche Regelung § 75 (2)).
+    ///
+    /// Only the nouns that take an infinitive, only a group of more than the
+    /// bare infinitive (*keine Lust zu arbeiten* may go without), and only when
+    /// nothing in between could end the noun's clause: a comma, a finite verb
+    /// or a conjunction sends the walk home empty.
+    fn missing_comma_after_noun_with_infinitive(
+        tokens: &[&Token],
+        document: &Document,
+    ) -> Vec<Lint> {
+        const NOUNS: &[&str] = &[
+            "ziel",
+            "absicht",
+            "aufgabe",
+            "möglichkeit",
+            "versuch",
+            "plan",
+            "idee",
+            "wunsch",
+            "gelegenheit",
+            "fähigkeit",
+            "pflicht",
+            "mut",
+            "lust",
+            "chance",
+            "entscheidung",
+            "bereitschaft",
+            "auftrag",
+            "befehl",
+            "erlaubnis",
+            "gefahr",
+            "angebot",
+            "vorschlag",
+            "forderung",
+            "bitte",
+            "hoffnung",
+            "kraft",
+            "methode",
+            "versprechen",
+            "vorhaben",
+        ];
+        let mut lints = Vec::new();
+        for (at, token) in tokens.iter().enumerate() {
+            let is_zu_infinitive = Self::word_in(token, document, &["zu"])
+                && tokens.get(at + 1).is_some_and(|verb| {
+                    let text = document.get_span_content_str(&verb.span);
+                    text.chars().next().is_some_and(char::is_lowercase)
+                        && text.ends_with('n')
+                        && GermanRelativeClauseComma::is_verb_token(verb, document)
+                })
+                && tokens
+                    .get(at + 2)
+                    .is_none_or(|after| !matches!(after.kind, TokenKind::Word(_)));
+            if !is_zu_infinitive {
+                continue;
+            }
+            // Walk left over the group to the noun.
+            let mut cursor = at;
+            let mut words_between = 0;
+            let noun_at = loop {
+                let Some(previous) = cursor.checked_sub(1) else {
+                    break None;
+                };
+                let t = tokens[previous];
+                if !matches!(t.kind, TokenKind::Word(_)) {
+                    break None;
+                }
+                if Self::word_in(t, document, NOUNS)
+                    && document
+                        .get_span_content(&t.span)
+                        .first()
+                        .is_some_and(|c| c.is_uppercase())
+                {
+                    break Some(previous);
+                }
+                let lower = document.get_span_content_str(&t.span).to_lowercase();
+                let finite = GermanRelativeClauseComma::is_verb_token(t, document)
+                    && document
+                        .get_span_content(&t.span)
+                        .first()
+                        .is_some_and(|c| c.is_lowercase());
+                if finite
+                    || Self::word_in(t, document, CLAUSE_COORDINATORS)
+                    || Self::word_in(t, document, SUBORDINATORS)
+                    || matches!(lower.as_str(), "zu" | "um" | "ohne" | "statt" | "anstatt")
+                {
+                    break None;
+                }
+                words_between += 1;
+                cursor = previous;
+            };
+            let Some(noun_at) = noun_at else {
+                continue;
+            };
+            if words_between == 0 {
+                continue;
+            }
+            // *aus einer Absicht heraus*: the noun belongs to a circumposition,
+            // and the infinitive to the verb before it.
+            const CIRCUMPOSITIONS: &[&str] = &[
+                "heraus",
+                "hinaus",
+                "herum",
+                "zufolge",
+                "entgegen",
+                "gegenüber",
+            ];
+            if tokens
+                .get(noun_at + 1)
+                .is_some_and(|after| Self::word_in(after, document, CIRCUMPOSITIONS))
+            {
+                continue;
+            }
+            // *um über die Möglichkeit zu diskutieren*, *ohne Gefahr eines
+            // Irrtums zu entscheiden*: the infinitive belongs to *um* or *ohne*
+            // further left in the clause.
+            let clause_start = tokens[..noun_at]
+                .iter()
+                .rposition(|t| !matches!(t.kind, TokenKind::Word(_)))
+                .map_or(0, |i| i + 1);
+            if tokens[clause_start..noun_at]
+                .iter()
+                .any(|t| Self::word_in(t, document, &["um", "ohne", "statt", "anstatt"]))
+            {
+                continue;
+            }
+            let noun: String = document
+                .get_span_content(&tokens[noun_at].span)
+                .iter()
+                .collect();
+            lints.push(Lint {
+                span: tokens[noun_at].span,
+                lint_kind: LintKind::Punctuation,
+                suggestions: vec![Suggestion::InsertAfter(vec![','])],
+                priority: 28,
+                message: format!(
+                    "Die Infinitivgruppe hängt von »{noun}« ab und wird mit Komma abgetrennt."
+                ),
+            });
+        }
+        lints
+    }
+
+    /// *am Montag den 3. Mai*: the date is an apposition to the weekday and
+    /// takes a comma in front (*am Montag, dem 3. Mai* or *am Montag, den 3.
+    /// Mai*).
+    fn missing_comma_before_date(tokens: &[&Token], document: &Document) -> Vec<Lint> {
+        const WEEKDAYS: &[&str] = &[
+            "montag",
+            "dienstag",
+            "mittwoch",
+            "donnerstag",
+            "freitag",
+            "samstag",
+            "sonntag",
+        ];
+        let mut lints = Vec::new();
+        for at in 0..tokens.len().saturating_sub(2) {
+            if Self::word_in(tokens[at], document, WEEKDAYS)
+                && Self::word_in(tokens[at + 1], document, &["den", "dem"])
+                && matches!(tokens[at + 2].kind, TokenKind::Number(_))
+            {
+                lints.push(Lint {
+                    span: tokens[at].span,
+                    lint_kind: LintKind::Punctuation,
+                    suggestions: vec![Suggestion::InsertAfter(vec![','])],
+                    priority: 28,
+                    message: "Das Datum erläutert den Wochentag und wird mit Komma angeschlossen."
+                        .to_owned(),
+                });
+            }
+        }
+        lints
+    }
+
+    /// *Sie ist beliebt auch wenn es keiner weiß*: *auch wenn*, *selbst wenn*
+    /// and *sogar wenn* are one conjunction, and the comma goes in front of the
+    /// pair. *wenn* alone is left out of [`SUBORDINATORS`] for *wenn auch*; with
+    /// the particle in front it is unambiguous.
+    fn missing_comma_before_concessive(tokens: &[&Token], document: &Document) -> Vec<Lint> {
+        let mut lints = Vec::new();
+        for at in 1..tokens.len().saturating_sub(1) {
+            let previous = tokens[at - 1];
+            if !Self::word_in(tokens[at], document, &["auch", "selbst", "sogar"])
+                || !Self::word_in(tokens[at + 1], document, &["wenn"])
+                || !matches!(previous.kind, TokenKind::Word(_))
+                || Self::word_in(previous, document, CLAUSE_COORDINATORS)
+                || document
+                    .get_span_content(&previous.span)
+                    .last()
+                    .is_some_and(|c| *c == '.')
+                // A heading on the line before: *Geschichte* / *Auch wenn …*.
+                || document.get_source()[previous.span.end..tokens[at].span.start].contains(&'\n')
+            {
+                continue;
+            }
+            let pair: String = document.get_span_content(&tokens[at].span).iter().collect();
+            lints.push(Lint {
+                span: previous.span,
+                lint_kind: LintKind::Punctuation,
+                suggestions: vec![Suggestion::InsertAfter(vec![','])],
+                priority: 28,
+                message: format!(
+                    "»{pair} wenn« leitet einen Nebensatz ein. Davor steht ein Komma."
+                ),
+            });
+        }
+        lints
+    }
+
     /// *Ich gehe in die Stadt um Schuhe zu kaufen*: an infinitive group
     /// opened by *um*, *ohne*, *statt* or *anstatt* always takes a comma.
     ///
@@ -580,6 +951,17 @@ impl Linter for GermanSubordinateComma {
             if let Some(lint) = Self::missing_comma_after_initial_clause(&tokens, document) {
                 lints.push(lint);
             }
+            lints.extend(Self::missing_comma_before_indirect_question(
+                &tokens, document,
+            ));
+            lints.extend(Self::missing_comma_before_reported_clause(
+                &tokens, document,
+            ));
+            lints.extend(Self::missing_comma_before_concessive(&tokens, document));
+            lints.extend(Self::missing_comma_before_date(&tokens, document));
+            lints.extend(Self::missing_comma_after_noun_with_infinitive(
+                &tokens, document,
+            ));
 
             for (index, token) in tokens.iter().enumerate() {
                 if let Some(lint) =
@@ -588,8 +970,43 @@ impl Linter for GermanSubordinateComma {
                     lints.push(lint);
                     continue;
                 }
+                // *wenn* is left out of the list for *wenn auch* and the
+                // comparisons *als wenn*, *wie wenn*; anywhere else it opens a
+                // clause. *auch wenn* is `missing_comma_before_concessive`'s.
+                let opens_wenn_clause = Self::word_in(token, document, &["wenn"])
+                    && document
+                        .get_span_content(&token.span)
+                        .first()
+                        .is_some_and(|c| c.is_lowercase())
+                    // *wenn möglich*, *wenn nötig*: an elliptical phrase, whose
+                    // comma is the writer's choice.
+                    && !tokens.get(index + 1).is_some_and(|next| {
+                        Self::word_in(
+                            next,
+                            document,
+                            &[
+                                "auch",
+                                "möglich",
+                                "nötig",
+                                "notwendig",
+                                "erforderlich",
+                                "gewünscht",
+                                "überhaupt",
+                                "nicht",
+                            ],
+                        )
+                    })
+                    && !index.checked_sub(1).is_some_and(|i| {
+                        Self::word_in(
+                            tokens[i],
+                            document,
+                            &[
+                                "als", "wie", "außer", "auch", "selbst", "sogar", "nur", "bloß",
+                            ],
+                        )
+                    });
                 if !matches!(token.kind, TokenKind::Word(_))
-                    || !Self::is_subordinator(token, document)
+                    || !(Self::is_subordinator(token, document) || opens_wenn_clause)
                 {
                     continue;
                 }
@@ -687,11 +1104,131 @@ mod tests {
     }
 
     #[test]
+    fn an_indirect_question_needs_a_comma() {
+        for text in [
+            "Sie fragte mich wann wir losfahren.",
+            "Ich weiß nicht wo er wohnt.",
+            "Er fragt warum das so ist.",
+            "Wir wissen nicht genau wie viel es kostet.",
+        ] {
+            assert_eq!(lint_count(text), 1, "{text}");
+        }
+        for text in [
+            "Sie fragte mich, wann wir losfahren.",
+            "Ich weiß was.",
+            "Er macht es so wie immer.",
+            "Ich frage dich wie immer.",
+            "Das ist der Ort, wo er wohnt.",
+        ] {
+            assert_eq!(lint_count(text), 0, "{text}");
+        }
+    }
+
+    #[test]
+    fn an_infinitive_group_after_its_noun_needs_a_comma() {
+        for text in [
+            "Ziel der Regelung ist das Ziel diese Sollwerte zu erreichen.",
+            "Er hatte die Absicht nach Berlin zu fahren.",
+            "Wir haben die Möglichkeit das Haus günstig zu kaufen.",
+        ] {
+            assert_eq!(lint_count(text), 1, "{text}");
+        }
+        for text in [
+            "Er hatte die Absicht, nach Berlin zu fahren.",
+            "Ich habe keine Lust zu arbeiten.",
+            "Das Ziel ist schwer zu erreichen.",
+            "Sie gab ihm die Möglichkeit und versuchte zu helfen.",
+            "Der Plan war gut zu verstehen.",
+            "Sie trafen sich, um über die Möglichkeit einer Synthese zu diskutieren.",
+            "Das heißt, aus einer Absicht heraus eine Lehre zu vermitteln.",
+            "Es ist möglich, ohne Gefahr eines Irrtums zu entscheiden.",
+        ] {
+            assert_eq!(lint_count(text), 0, "{text}");
+        }
+    }
+
+    #[test]
+    fn a_wenn_clause_needs_a_comma() {
+        for text in [
+            "Ich bin erreichbar, außer zwischen 10 und 11 Uhr wenn wir beim Arzt sind.",
+            "Es wäre gut wenn du dich meldest.",
+        ] {
+            assert_eq!(lint_count(text), 1, "{text}");
+        }
+        for text in [
+            "Es wäre gut, wenn du dich meldest.",
+            "Er tut so, als wenn nichts wäre.",
+            "Wenn auch nur kurz, er kam.",
+            "Ich komme nur wenn du kommst.",
+            "Vierteilige werden wenn möglich vermieden.",
+        ] {
+            assert_eq!(lint_count(text), 0, "{text}");
+        }
+    }
+
+    #[test]
+    fn a_date_after_the_weekday_needs_a_comma() {
+        assert_eq!(
+            lint_count("Das Treffen findet am Montag den 3. Mai statt."),
+            1
+        );
+        assert_eq!(
+            lint_count("Das Treffen findet am Montag, dem 3. Mai, statt."),
+            0
+        );
+    }
+
+    #[test]
+    fn a_concessive_pair_needs_a_comma() {
+        assert_eq!(
+            lint_count("Die Torte ist beliebt auch wenn keiner sie kennt."),
+            1
+        );
+        assert_eq!(lint_count("Er kommt selbst wenn es regnet."), 1);
+        for text in [
+            "Die Torte ist beliebt, auch wenn keiner sie kennt.",
+            "Auch wenn es regnet, kommt er.",
+            "Er kommt und auch wenn es regnet, bleibt er.",
+            "Wenn auch nur kurz, er kam.",
+            "Geschichte\nAuch wenn der Begriff alt ist, gilt er.",
+        ] {
+            assert_eq!(lint_count(text), 0, "{text}");
+        }
+    }
+
+    #[test]
+    fn a_reported_clause_needs_a_comma() {
+        for text in [
+            "Er hat gesagt er kommt später.",
+            "Ich glaube er hat recht.",
+            "Ich hoffe es geht dir gut.",
+            "Sie sagte sie sei müde.",
+        ] {
+            assert_eq!(lint_count(text), 1, "{text}");
+        }
+        for text in [
+            "Er hat gesagt, er kommt später.",
+            "Er sagte es ihm.",
+            "Ich glaube ihr kein Wort.",
+            "Er meint es ernst.",
+            "Ich glaube es dir.",
+            "Er hat gesagt, dass er kommt.",
+        ] {
+            assert_eq!(lint_count(text), 0, "{text}");
+        }
+    }
+
+    #[test]
     fn a_sentence_initial_clause_needs_its_closing_comma() {
         assert_eq!(lint_count("Wenn du kommst bringe Brot mit."), 1);
         assert_eq!(lint_count("Als ich nach Hause kam war niemand da."), 1);
         assert_eq!(lint_count("Weil es regnet bleiben wir zu Hause."), 1);
         assert_eq!(lint_count("Dass er kommt freut mich."), 1);
+        assert_eq!(lint_count("Wenn du heute kommst bringe Brot mit."), 1);
+        assert_eq!(lint_count("Wenn es heute regnet bleiben wir zu Hause."), 1);
+        // *heute* is not the preterite of *heuen* here: the clause has no
+        // closing verb, it is a main clause with a misspelled article.
+        assert_eq!(lint_count("Dass Wetter ist heute schlecht."), 0);
         assert_eq!(lint_count("Wenn du kommst, bringe Brot mit."), 0);
         assert_eq!(lint_count("Wenn du kommen willst, bringe Brot mit."), 0);
         assert_eq!(lint_count("Als Kind spielte ich oft draußen."), 0);

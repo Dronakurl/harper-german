@@ -1,0 +1,14 @@
+# "fünfmal" is one word: numeral and "mal" make an adverb. Written apart,
+# "fünf mal" is the multiplication, so a numeral behind it keeps it apart.
+expr zahl [eins, zwei, drei, vier, fünf, sechs, sieben, acht, neun, zehn, elf, zwölf, hundert, tausend]
+
+expr main <(fünf mal !@zahl), (fünf mal)>
+
+let message "»fünfmal« wird zusammengeschrieben."
+let description "Zieht »fünf mal« zu »fünfmal« zusammen."
+let kind "Spelling"
+let becomes "fünfmal"
+let strategy "MatchCase"
+
+allows "Ich war schon fünfmal hier."
+allows "Fünf mal drei ist eine Zahl."

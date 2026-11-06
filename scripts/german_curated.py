@@ -595,12 +595,20 @@ Schock M Schocks
 Geiz M -
 Hundert N Hunderte
 Tausend N Tausende
+Antigen N Antigene
+Ausdruck M Ausdrücke
+Hinblick M -
+Vorwort N Vorworte
+Mitteilung F Mitteilungen
+Ausschluss M Ausschlüsse
+Zusammenschluss M Zusammenschlüsse
 """.strip().splitlines()
 
 CORE_ADVERBS = """
 schweizweit vonstatten anderthalb eineinhalb deutschlandweit europaweit bundesweit österreichweit landesweit
 puncto petto alledem alldem sonstwo drein wohler
 infrage
+nochmal
 """.split()
 
 CORE_ADJECTIVES = """
