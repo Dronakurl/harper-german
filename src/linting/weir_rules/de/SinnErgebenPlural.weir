@@ -1,0 +1,13 @@
+# The plural of SinnErgeben: "die Regeln machen Sinn" -> "ergeben Sinn".
+expr main <[(machen Sinn), (machen keinen Sinn), (machen wenig Sinn), (machen viel Sinn), (machen mehr Sinn), (Sinn machen), (keinen Sinn machen)], machen>
+
+let message "»Sinn machen« ist eine Lehnübersetzung aus dem Englischen; besser: »Sinn ergeben«."
+let description "Schlägt »ergeben Sinn« statt »machen Sinn« vor."
+let kind "Style"
+let becomes "ergeben"
+let strategy "MatchCase"
+
+test "Die Regeln machen Sinn." "Die Regeln ergeben Sinn."
+test "Das kann keinen Sinn machen." "Das kann keinen Sinn ergeben."
+
+allows "Die Regeln ergeben Sinn."

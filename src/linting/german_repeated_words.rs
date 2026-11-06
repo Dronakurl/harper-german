@@ -100,6 +100,18 @@ impl Linter for GermanRepeatedWords {
                     continue;
                 }
 
+                // *meiner Meinung nach nach wie vor*: a postposition, then the
+                // fixed *nach wie vor*. Two words that only look alike.
+                let following: Vec<String> = chunk[idx_b + 1..]
+                    .iter()
+                    .filter(|t| t.kind.is_word())
+                    .take(2)
+                    .map(|t| document.get_span_content_str(&t.span).to_lowercase())
+                    .collect();
+                if lower == "nach" && following == ["wie", "vor"] {
+                    continue;
+                }
+
                 let word: String = a.iter().collect();
                 lints.push(Lint {
                     span: Span::new(tok_a.span.start, tok_b.span.end),
@@ -148,6 +160,15 @@ mod tests {
         ] {
             assert_eq!(lint_count(text), 1, "should fire on {text:?}");
         }
+    }
+
+    #[test]
+    fn leaves_nach_wie_vor_alone() {
+        assert_eq!(
+            lint_count("Das ist meiner Meinung nach nach wie vor richtig."),
+            0
+        );
+        assert_eq!(lint_count("Wir gehen nach nach Hause."), 1);
     }
 
     #[test]

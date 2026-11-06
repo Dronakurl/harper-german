@@ -42,6 +42,40 @@ const INTENSIFIERS: &[&str] = &[
 /// *im Heute*, *am Morgen*.
 const DAY_ADVERBS: &[&str] = &["gestern", "heute", "morgen", "vorgestern", "übermorgen"];
 
+/// The adverbs of repeated time, *montags*, *abends*: a noun only as the
+/// genitive behind an article (*des Abends*, *eines Montags*).
+const RECURRING_ADVERBS: &[&str] = &[
+    "montags",
+    "dienstags",
+    "mittwochs",
+    "donnerstags",
+    "freitags",
+    "samstags",
+    "sonntags",
+    "morgens",
+    "vormittags",
+    "mittags",
+    "nachmittags",
+    "abends",
+    "nachts",
+    "werktags",
+    "feiertags",
+    "wochentags",
+];
+
+/// What follows *bis* in a farewell: *bis bald*, *bis später*, *bis morgen*.
+const AFTER_BIS: &[&str] = &[
+    "bald",
+    "später",
+    "gleich",
+    "dann",
+    "morgen",
+    "nachher",
+    "demnächst",
+    "übermorgen",
+    "nächste",
+];
+
 /// Reports a capitalized word in mid-sentence where nothing can make it a noun.
 ///
 /// German capitalizes nouns, and almost any word can become one: *das Gute*,
@@ -153,9 +187,15 @@ impl GermanMidSentenceCapital {
             && !next_is_capitalized
             && !matches!(
                 previous_lower.as_str(),
-                "guten" | "jeden" | "diesen" | "den" | "einen" | "am" | "vom" | "zum" | "bis"
+                "guten" | "jeden" | "diesen" | "den" | "einen" | "am" | "vom" | "zum"
             );
-        if !(graded_adjective || finite_verb || day_adverb) {
+        let recurring = RECURRING_ADVERBS.contains(&lower.as_str())
+            && !matches!(
+                previous_lower.as_str(),
+                "des" | "eines" | "jedes" | "dieses" | "jenes"
+            );
+        let farewell = previous_lower == "bis" && AFTER_BIS.contains(&lower.as_str());
+        if !(graded_adjective || finite_verb || day_adverb || recurring || farewell) {
             return None;
         }
 
@@ -214,6 +254,10 @@ mod tests {
             ("Sie hat mir Gestern geschrieben.", "Gestern"),
             ("Ich gehe Morgen zum Arzt.", "Morgen"),
             ("Ob du Kommst, weiß ich nicht.", "Kommst"),
+            ("Wir treffen uns Montags.", "Montags"),
+            ("Sie arbeitet Abends lange.", "Abends"),
+            ("Bis Bald!", "Bald"),
+            ("Viele Grüße und bis Morgen.", "Morgen"),
         ] {
             assert_eq!(flagged(text), vec![word], "{text}");
         }
@@ -239,7 +283,8 @@ mod tests {
             "Er war ganz Ohr.",
             "Wir Deutschen essen gern.",
             "Laut Max Frisch gibt es mehr.",
-            "Sie wartete bis Morgen früh.",
+            "Eines Abends kam er.",
+            "Er kam des Nachts.",
             "Ich habe Hunger.",
             "Das Verhältnis des Physischen zu Psychischen.",
         ] {

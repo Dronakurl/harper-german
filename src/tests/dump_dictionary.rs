@@ -200,6 +200,44 @@ mod tests {
         }
     }
 
+    /// Writes every spelling of the base dictionary, one per line, to the file
+    /// named by `HARPER_DUMP_WORDS`.
+    #[test]
+    #[ignore = "writes a large file; run on demand"]
+    fn dump_german_words() {
+        let Ok(path) = std::env::var("HARPER_DUMP_WORDS") else {
+            return;
+        };
+        let dict = curated_german_dictionary();
+        let mut out = std::io::BufWriter::new(std::fs::File::create(path).unwrap());
+        for word in dict.words_iter() {
+            let word: String = word.iter().collect();
+            writeln!(out, "{word}").unwrap();
+        }
+    }
+
+    /// For every word in the file `HARPER_COMPOUND_ONLY_IN`, prints it if the
+    /// spell checker accepts it only as a compound, with the decomposition:
+    /// `word<TAB>part|part|…`. Feeds the measurement of how a change to the
+    /// compound rules would treat the words of a corpus.
+    #[test]
+    #[ignore = "reads the words from the environment"]
+    fn list_compound_only_words() {
+        let Ok(path) = std::env::var("HARPER_COMPOUND_ONLY_IN") else {
+            return;
+        };
+        let dict = crate::spell::compound_aware_german_dictionary();
+        let base = curated_german_dictionary();
+        for word in std::fs::read_to_string(path).unwrap().lines() {
+            let chars: Vec<char> = word.chars().collect();
+            if chars.is_empty() || base.contains_word(&chars) || !dict.contains_word(&chars) {
+                continue;
+            }
+            let parts = dict.decomposition(&chars).unwrap_or_default().join("|");
+            println!("COMPOUNDONLY {word}\t{parts}");
+        }
+    }
+
     /// Prints how the compound checker takes the words of `HARPER_DEBUG_WORDS` apart.
     #[test]
     #[ignore = "reads the words from the environment"]

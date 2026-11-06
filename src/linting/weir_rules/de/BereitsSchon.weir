@@ -1,0 +1,14 @@
+# "bereits schon" says the same thing twice: "bereits" and "schon" mean the
+# same here. A style note, not an error.
+expr main [(bereits schon), (schon bereits)]
+
+let message "»bereits« und »schon« bedeuten dasselbe; eines genügt."
+let description "Weist auf die Doppelung »bereits schon« hin."
+let kind "Style"
+let becomes ["bereits", "schon"]
+let strategy "MatchCase"
+
+test "Er ist bereits schon da." "Er ist bereits da."
+
+allows "Er ist bereits da."
+allows "Er ist schon da."

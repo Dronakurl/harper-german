@@ -1,12 +1,12 @@
 # "dieselbe" is one word. Split, both halves are real words, so the spell checker
 # has nothing to object to. (The contracted forms — "im selben Moment" — are
 # correct written apart and are deliberately not matched.)
-expr main (die selbe)
+expr main [(die selbe), (die selben)]
 
 let message "»dieselbe« wird zusammengeschrieben."
-let description "Zieht »die selbe« zu »dieselbe« zusammen."
+let description "Zieht »die selbe« zu »dieselbe« und »die selben« zu »dieselben« zusammen."
 let kind "Spelling"
-let becomes "dieselbe"
+let becomes ["dieselbe", "dieselben"]
 let strategy "MatchCase"
 
 test "Das ist die selbe Problem wie letztes Jahr." "Das ist dieselbe Problem wie letztes Jahr."

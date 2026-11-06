@@ -1,0 +1,15 @@
+# "Acht geben" or "achtgeben", but not the numeral "acht geben": the noun
+# "Acht" (attention) is meant.
+expr main <([darauf, gut, gib, gebt, geben, gab, gaben, aufeinander, sehr] acht [geben, gibt, gab, gaben, gegeben]), acht>
+
+let message "In »Acht geben« ist »Acht« ein Nomen (oder man schreibt »achtgeben« zusammen)."
+let description "Schreibt »acht geben« als »Acht geben«."
+let kind "Capitalization"
+let becomes "Acht"
+let strategy "Exact"
+
+test "Wir müssen darauf acht geben." "Wir müssen darauf Acht geben."
+test "Du musst gut acht geben." "Du musst gut Acht geben."
+
+allows "Wir müssen darauf Acht geben."
+allows "Sie werden acht geben müssen, wenn acht kommen."

@@ -479,6 +479,73 @@ impl GermanSubordinateComma {
         lints
     }
 
+    /// *am Montag den 3. Mai*: the date is an apposition to the weekday and
+    /// takes a comma in front (*am Montag, dem 3. Mai* or *am Montag, den 3.
+    /// Mai*).
+    fn missing_comma_before_date(tokens: &[&Token], document: &Document) -> Vec<Lint> {
+        const WEEKDAYS: &[&str] = &[
+            "montag",
+            "dienstag",
+            "mittwoch",
+            "donnerstag",
+            "freitag",
+            "samstag",
+            "sonntag",
+        ];
+        let mut lints = Vec::new();
+        for at in 0..tokens.len().saturating_sub(2) {
+            if Self::word_in(tokens[at], document, WEEKDAYS)
+                && Self::word_in(tokens[at + 1], document, &["den", "dem"])
+                && matches!(tokens[at + 2].kind, TokenKind::Number(_))
+            {
+                lints.push(Lint {
+                    span: tokens[at].span,
+                    lint_kind: LintKind::Punctuation,
+                    suggestions: vec![Suggestion::InsertAfter(vec![','])],
+                    priority: 28,
+                    message: "Das Datum erläutert den Wochentag und wird mit Komma angeschlossen."
+                        .to_owned(),
+                });
+            }
+        }
+        lints
+    }
+
+    /// *Sie ist beliebt auch wenn es keiner weiß*: *auch wenn*, *selbst wenn*
+    /// and *sogar wenn* are one conjunction, and the comma goes in front of the
+    /// pair. *wenn* alone is left out of [`SUBORDINATORS`] for *wenn auch*; with
+    /// the particle in front it is unambiguous.
+    fn missing_comma_before_concessive(tokens: &[&Token], document: &Document) -> Vec<Lint> {
+        let mut lints = Vec::new();
+        for at in 1..tokens.len().saturating_sub(1) {
+            let previous = tokens[at - 1];
+            if !Self::word_in(tokens[at], document, &["auch", "selbst", "sogar"])
+                || !Self::word_in(tokens[at + 1], document, &["wenn"])
+                || !matches!(previous.kind, TokenKind::Word(_))
+                || Self::word_in(previous, document, CLAUSE_COORDINATORS)
+                || document
+                    .get_span_content(&previous.span)
+                    .last()
+                    .is_some_and(|c| *c == '.')
+                // A heading on the line before: *Geschichte* / *Auch wenn …*.
+                || document.get_source()[previous.span.end..tokens[at].span.start].contains(&'\n')
+            {
+                continue;
+            }
+            let pair: String = document.get_span_content(&tokens[at].span).iter().collect();
+            lints.push(Lint {
+                span: previous.span,
+                lint_kind: LintKind::Punctuation,
+                suggestions: vec![Suggestion::InsertAfter(vec![','])],
+                priority: 28,
+                message: format!(
+                    "»{pair} wenn« leitet einen Nebensatz ein. Davor steht ein Komma."
+                ),
+            });
+        }
+        lints
+    }
+
     /// *Ich gehe in die Stadt um Schuhe zu kaufen*: an infinitive group
     /// opened by *um*, *ohne*, *statt* or *anstatt* always takes a comma.
     ///
@@ -746,6 +813,8 @@ impl Linter for GermanSubordinateComma {
             lints.extend(Self::missing_comma_before_reported_clause(
                 &tokens, document,
             ));
+            lints.extend(Self::missing_comma_before_concessive(&tokens, document));
+            lints.extend(Self::missing_comma_before_date(&tokens, document));
 
             for (index, token) in tokens.iter().enumerate() {
                 if let Some(lint) =
@@ -868,6 +937,36 @@ mod tests {
             "Er macht es so wie immer.",
             "Ich frage dich wie immer.",
             "Das ist der Ort, wo er wohnt.",
+        ] {
+            assert_eq!(lint_count(text), 0, "{text}");
+        }
+    }
+
+    #[test]
+    fn a_date_after_the_weekday_needs_a_comma() {
+        assert_eq!(
+            lint_count("Das Treffen findet am Montag den 3. Mai statt."),
+            1
+        );
+        assert_eq!(
+            lint_count("Das Treffen findet am Montag, dem 3. Mai, statt."),
+            0
+        );
+    }
+
+    #[test]
+    fn a_concessive_pair_needs_a_comma() {
+        assert_eq!(
+            lint_count("Die Torte ist beliebt auch wenn keiner sie kennt."),
+            1
+        );
+        assert_eq!(lint_count("Er kommt selbst wenn es regnet."), 1);
+        for text in [
+            "Die Torte ist beliebt, auch wenn keiner sie kennt.",
+            "Auch wenn es regnet, kommt er.",
+            "Er kommt und auch wenn es regnet, bleibt er.",
+            "Wenn auch nur kurz, er kam.",
+            "Geschichte\nAuch wenn der Begriff alt ist, gilt er.",
         ] {
             assert_eq!(lint_count(text), 0, "{text}");
         }
