@@ -51,6 +51,22 @@ const FIXED_NOMINALIZATIONS: &[(&[&str], &str, &str, &[&str])] = &[
     (&["fürs"], "erste", "Erste", &[]),
     (&["auf", "dem"], "laufenden", "Laufenden", &[]),
     (&["seit", "geraumer"], "zeit", "Zeit", &[]),
+    // A time of day after an article or a greeting is a noun: *am Morgen*,
+    // *jeden Abend*, *guten Morgen*. The adverb *morgen* never follows these.
+    (&["am"], "morgen", "Morgen", &[]),
+    (&["am"], "vormittag", "Vormittag", &[]),
+    (&["am"], "mittag", "Mittag", &[]),
+    (&["am"], "nachmittag", "Nachmittag", &[]),
+    (&["am"], "abend", "Abend", &[]),
+    (&["am"], "wochenende", "Wochenende", &[]),
+    (&["jeden"], "morgen", "Morgen", &[]),
+    (&["jeden"], "abend", "Abend", &[]),
+    (&["guten"], "morgen", "Morgen", &[]),
+    (&["guten"], "abend", "Abend", &[]),
+    (&["in", "der"], "nacht", "Nacht", &[]),
+    // *zu Hause* and *nach Hause*: the old dative of *Haus*, still a noun.
+    (&["zu"], "hause", "Hause", &[]),
+    (&["nach"], "hause", "Hause", &[]),
     // A pair: both halves are capitalized, and each half is only the
     // nominalization when the other is there. *im großen Saal* and *im ganzen
     // Land* are ordinary adjectives.
@@ -470,6 +486,9 @@ mod tests {
         for (text, word) in [
             ("Ich habe heute morgen gearbeitet.", "morgen"),
             ("Wir sehen uns morgen abend.", "abend"),
+            ("Am morgen trinke ich Kaffee.", "morgen"),
+            ("Guten abend, meine Damen.", "abend"),
+            ("Ich gehe jetzt nach hause.", "hause"),
             ("Gestern nachmittag war es kalt.", "nachmittag"),
             ("Zum ersten mal war ich dort.", "mal"),
             ("Das nächste mal komme ich früher.", "mal"),

@@ -1,0 +1,26 @@
+# "tot" is the adjective, "der Tod" the noun. After "sein" and "scheinen" the
+# predicate is the adjective, unless an article makes it the noun ("das ist der
+# Tod"). Only a "Tod" that ends the clause is taken, so "Das ist Tod und
+# Verderben" and "es ist Tod durch Ertrinken" stay as they are.
+expr seinsform [bin, bist, ist, sind, seid, war, warst, waren, wart, wäre, wären, sei, scheint, schien, schienen]
+
+expr subjekt [er, sie, es, ich, du, wir, ihr, man]
+
+expr main <[(@subjekt @seinsform Tod(.)), (@subjekt @seinsform Tod(,)), (@seinsform @subjekt Tod(.)), (@seinsform @subjekt Tod(,)), (![das, dies, was, nur, kein] @seinsform Tod(.)), (![das, dies, was, nur, kein] @seinsform Tod(,))], Tod>
+
+let message "Hier ist das Adjektiv »tot« gemeint, nicht das Nomen »Tod«."
+let description "Ersetzt »Tod« durch »tot«, wo es Prädikat zu »sein« ist."
+let kind "Spelling"
+let becomes "tot"
+let strategy "Exact"
+
+test "Der Vogel ist Tod." "Der Vogel ist tot."
+test "Er war Tod, als der Arzt kam." "Er war tot, als der Arzt kam."
+test "Ist er Tod." "Ist er tot."
+test "Die Pflanzen sind Tod." "Die Pflanzen sind tot."
+
+allows "Der Vogel ist tot."
+allows "Das ist der Tod."
+allows "Es ist Tod und Verderben."
+allows "Sein Tod war ein Schock."
+allows "Das ist Tod durch Ertrinken."

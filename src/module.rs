@@ -17,6 +17,7 @@ pub fn rust_lint_group(dictionary: Arc<impl Dictionary + 'static>) -> LintGroup 
         german_filler_words::GermanFillerWords,
         german_fixed_nominalization::GermanFixedNominalization,
         german_genitive_after_nominative_article::GermanGenitiveAfterNominativeArticle,
+        german_mid_sentence_capital::GermanMidSentenceCapital,
         german_modal_zu_infinitive::GermanModalZuInfinitive,
         german_nominalized_adjective::GermanNominalizedAdjective,
         german_nominalized_infinitive::GermanNominalizedInfinitive,
@@ -35,7 +36,8 @@ pub fn rust_lint_group(dictionary: Arc<impl Dictionary + 'static>) -> LintGroup 
         german_subordinate_comma::GermanSubordinateComma,
         german_subordinate_word_order::GermanSubordinateWordOrder,
         german_suspended_hyphen::GermanSuspendedHyphen,
-        german_typography::{GermanCommaFixes, GermanSpaces},
+        german_typography::{GermanCommaFixes, GermanDoublePeriod, GermanSpaces},
+        german_verb_case::GermanVerbCase,
         german_verb_cluster::GermanVerbCluster,
         german_wider_wieder::GermanWiderWieder,
         german_year_preposition::GermanYearPreposition,
@@ -50,6 +52,7 @@ pub fn rust_lint_group(dictionary: Arc<impl Dictionary + 'static>) -> LintGroup 
     // The rule names stay the core's, so existing configurations still apply.
     group.add("Spaces", GermanSpaces::default());
     group.add("CommaFixes", GermanCommaFixes::default());
+    group.add("GermanDoublePeriod", GermanDoublePeriod);
     group.add("GermanDassArticle", GermanDassArticle::new());
 
     group.add(
@@ -78,6 +81,11 @@ pub fn rust_lint_group(dictionary: Arc<impl Dictionary + 'static>) -> LintGroup 
     group.add("GermanFixedNominalization", GermanFixedNominalization);
     group.add("GermanNominalizedInfinitive", GermanNominalizedInfinitive);
     group.add("GermanNominalizedAdjective", GermanNominalizedAdjective);
+    group.add("GermanVerbCase", GermanVerbCase::default());
+    group.add(
+        "GermanMidSentenceCapital",
+        GermanMidSentenceCapital::default(),
+    );
     group.add("GermanSubordinateComma", GermanSubordinateComma);
     group.add("GermanSubordinateWordOrder", GermanSubordinateWordOrder);
     group.add("GermanVerbCluster", GermanVerbCluster::new());

@@ -1,0 +1,29 @@
+# "Angst" is a noun and is written with a capital: "ich habe Angst". Only in
+# "mir ist angst" and "angst und bange" is it the adjective, and neither has a
+# form of "haben" or a determiner in front of it.
+#
+# GermanNounCapitalization leaves "angst" alone because the dictionary gives
+# it that adjective reading, which is correct and stays.
+expr davor [habe, hast, hat, haben, habt, hatte, hattest, hatten, hattet, hätte, hätten, keine, große, grosse, viel, solche, panische, ohne, aus, vor, voller, keiner, meine, deine, seine, ihre, unsere, eure]
+
+expr main <[(@davor angst), (@davor [du, er, sie, es, ihr, wir, ich, man] angst)], angst>
+
+let message "»Angst« ist hier ein Nomen und wird großgeschrieben."
+let description "Schreibt »Angst« nach »haben« und nach Begleitern groß."
+let kind "Capitalization"
+let becomes "Angst"
+let strategy "Exact"
+
+test "Ich habe angst vor Spinnen." "Ich habe Angst vor Spinnen."
+test "Hast du angst?" "Hast du Angst?"
+test "Er hatte große angst." "Er hatte große Angst."
+test "Keine angst, das wird schon." "Keine Angst, das wird schon."
+test "Sie zitterte vor angst." "Sie zitterte vor Angst."
+test "Wir hätten angst gehabt." "Wir hätten Angst gehabt."
+test "Er tat es aus angst." "Er tat es aus Angst."
+
+allows "Mir ist angst und bange."
+allows "Ihm wurde angst."
+allows "Ich habe Angst vor Spinnen."
+allows "Keine Angst!"
+allows "Angst essen Seele auf."

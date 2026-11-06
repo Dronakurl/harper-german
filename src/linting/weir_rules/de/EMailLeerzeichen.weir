@@ -1,0 +1,16 @@
+# "E-Mail" takes a hyphen. Written with a space the "E" stands alone and the
+# word falls apart. ("Email" without a hyphen is the EMail rule's.)
+expr main (E Mail)
+
+let message "»E-Mail« schreibt man mit Bindestrich."
+let description "Ersetzt »E Mail« durch »E-Mail«."
+let kind "Spelling"
+let becomes "E-Mail"
+let strategy "Exact"
+
+test "Ich habe eine E Mail geschrieben." "Ich habe eine E-Mail geschrieben."
+test "Die e mail kam gestern." "Die E-Mail kam gestern."
+
+allows "Ich habe eine E-Mail geschrieben."
+allows "Das Email der Badewanne ist abgeplatzt."
+allows "Vitamin E Mangel ist selten."

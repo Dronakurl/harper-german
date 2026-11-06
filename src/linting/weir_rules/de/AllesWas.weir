@@ -1,0 +1,26 @@
+# After "alles", "nichts", "etwas", "vieles", "manches", "einiges" and
+# "weniges" the relative pronoun is "was", not "das": "alles, was ich weiß".
+# Only the case with a subject pronoun behind it is taken, which is a clause
+# for certain: "alles, das Haus eingeschlossen" is an apposition.
+expr pronomen [alles, nichts, etwas, vieles, manches, einiges, weniges, allem]
+
+expr subjekt [ich, du, er, sie, es, wir, ihr, man]
+
+expr main <(@pronomen(,) das @subjekt), das>
+
+let message "Nach »alles«, »nichts« oder »etwas« steht das Relativpronomen »was«."
+let description "Ersetzt »das« durch »was« nach »alles«, »nichts« und »etwas«."
+let kind "Grammar"
+let becomes "was"
+let strategy "MatchCase"
+let scope "Sentence"
+
+test "Das ist alles, das ich weiß." "Das ist alles, was ich weiß."
+test "Es gibt nichts, das er nicht kann." "Es gibt nichts, was er nicht kann."
+test "Ich habe etwas, das du brauchst." "Ich habe etwas, was du brauchst."
+test "Vieles, das wir lernen, vergessen wir." "Vieles, was wir lernen, vergessen wir."
+
+allows "Das ist alles, was ich weiß."
+allows "Er nahm alles, das Haus eingeschlossen."
+allows "Das Wichtigste, das ich weiß, ist das."
+allows "Es ist nichts, das Wetter ist schuld."

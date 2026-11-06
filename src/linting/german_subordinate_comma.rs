@@ -319,6 +319,166 @@ impl GermanSubordinateComma {
         })
     }
 
+    /// *Sie fragte mich wann wir losfahren*, *ich weiß nicht wo er wohnt*: an
+    /// indirect question after a verb of asking or knowing takes a comma.
+    ///
+    /// The question words are relative pronouns and comparisons as well
+    /// (*so wie*, *der Ort, wo*), so the verb has to come first, with at most
+    /// an object pronoun or *nicht* between it and the question word. *was* is
+    /// left out: *ich weiß was* is the colloquial *etwas*.
+    fn missing_comma_before_indirect_question(tokens: &[&Token], document: &Document) -> Vec<Lint> {
+        const ASKING: &[&str] = &[
+            "frage",
+            "fragst",
+            "fragt",
+            "fragte",
+            "fragten",
+            "gefragt",
+            "fragen",
+            "weiß",
+            "weißt",
+            "wisst",
+            "wissen",
+            "wusste",
+            "wussten",
+            "gewusst",
+            "verstehe",
+            "versteht",
+            "verstand",
+            "verstanden",
+            "überlege",
+            "überlegt",
+            "überlegte",
+            "entscheiden",
+        ];
+        const BETWEEN: &[&str] = &[
+            "mich", "dich", "ihn", "sie", "uns", "euch", "nicht", "genau", "auch", "noch", "nie",
+            "selbst", "schon", "es",
+        ];
+        const QUESTION_WORDS: &[&str] = &[
+            "wann", "warum", "weshalb", "weswegen", "wieso", "woher", "wohin", "wo", "wer", "wen",
+            "wem", "wessen", "wie", "welche", "welcher", "welches", "welchen", "womit", "wozu",
+            "worüber", "wofür",
+        ];
+        let mut lints = Vec::new();
+        for (at, token) in tokens.iter().enumerate() {
+            if !Self::word_in(token, document, QUESTION_WORDS)
+                || document
+                    .get_span_content(&token.span)
+                    .first()
+                    .is_some_and(|c| c.is_uppercase())
+            {
+                continue;
+            }
+            let mut verb = at;
+            while verb > 0 && Self::word_in(tokens[verb - 1], document, BETWEEN) {
+                verb -= 1;
+            }
+            let Some(verb_at) = verb.checked_sub(1) else {
+                continue;
+            };
+            if !matches!(tokens[verb_at].kind, TokenKind::Word(_))
+                || !Self::word_in(tokens[verb_at], document, ASKING)
+                || !matches!(tokens[at - 1].kind, TokenKind::Word(_))
+            {
+                continue;
+            }
+            // *wie* in *so wie*, *genauso wie*, *sowohl … wie*: a comparison.
+            if Self::word_in(token, document, &["wie"])
+                && tokens
+                    .get(at + 1)
+                    .is_none_or(|next| !matches!(next.kind, TokenKind::Word(_)))
+            {
+                continue;
+            }
+            // The question needs a clause: a verb somewhere behind the word.
+            if !tokens[at + 1..]
+                .iter()
+                .take_while(|t| matches!(t.kind, TokenKind::Word(_)))
+                .any(|t| GermanRelativeClauseComma::is_verb_token(t, document))
+            {
+                continue;
+            }
+            let question: String = document.get_span_content(&token.span).iter().collect();
+            lints.push(Lint {
+                span: tokens[at - 1].span,
+                lint_kind: LintKind::Punctuation,
+                suggestions: vec![Suggestion::InsertAfter(vec![','])],
+                priority: 28,
+                message: format!("Vor dem indirekten Fragesatz mit »{question}« steht ein Komma."),
+            });
+        }
+        lints
+    }
+
+    /// *Er hat gesagt er kommt später*, *ich glaube er hat recht*: a main clause
+    /// reported without *dass* takes a comma after the verb that reports it.
+    ///
+    /// The evidence is a subject pronoun right behind the verb of saying or
+    /// thinking, followed by a finite verb: *er kommt*, *es gibt*. Without the
+    /// verb behind the pronoun it is an object, *er sagte es ihm*, *ich glaube
+    /// ihr kein Wort*.
+    fn missing_comma_before_reported_clause(tokens: &[&Token], document: &Document) -> Vec<Lint> {
+        const SAYING: &[&str] = &[
+            "gesagt",
+            "gemeint",
+            "gedacht",
+            "geglaubt",
+            "gehofft",
+            "behauptet",
+            "sagte",
+            "sagten",
+            "sagt",
+            "meinte",
+            "meint",
+            "dachte",
+            "glaube",
+            "glaubt",
+            "glaubte",
+            "hoffe",
+            "hofft",
+            "hoffte",
+            "denke",
+            "denkt",
+            "finde",
+            "findet",
+            "behauptete",
+            "schätze",
+            "fürchte",
+            "wette",
+        ];
+        const SUBJECTS: &[&str] = &["ich", "du", "er", "sie", "es", "wir", "ihr", "man"];
+        let mut lints = Vec::new();
+        for at in 0..tokens.len().saturating_sub(2) {
+            let (verb, subject, finite) = (tokens[at], tokens[at + 1], tokens[at + 2]);
+            if !matches!(verb.kind, TokenKind::Word(_))
+                || !Self::word_in(verb, document, SAYING)
+                || !matches!(subject.kind, TokenKind::Word(_))
+                || !Self::word_in(subject, document, SUBJECTS)
+                || !matches!(finite.kind, TokenKind::Word(_))
+            {
+                continue;
+            }
+            let finite_text: String = document.get_span_content(&finite.span).iter().collect();
+            let is_finite = finite_text.chars().next().is_some_and(char::is_lowercase)
+                && GermanRelativeClauseComma::is_verb_token(finite, document)
+                && !finite.kind.is_noun()
+                && !finite.kind.is_adjective();
+            if !is_finite {
+                continue;
+            }
+            lints.push(Lint {
+                span: verb.span,
+                lint_kind: LintKind::Punctuation,
+                suggestions: vec![Suggestion::InsertAfter(vec![','])],
+                priority: 28,
+                message: "Der folgende Satz gibt wieder, was gesagt oder gedacht wird. Davor steht ein Komma."
+                    .to_owned(),
+            });
+        }
+        lints
+    }
+
     /// *Ich gehe in die Stadt um Schuhe zu kaufen*: an infinitive group
     /// opened by *um*, *ohne*, *statt* or *anstatt* always takes a comma.
     ///
@@ -580,6 +740,12 @@ impl Linter for GermanSubordinateComma {
             if let Some(lint) = Self::missing_comma_after_initial_clause(&tokens, document) {
                 lints.push(lint);
             }
+            lints.extend(Self::missing_comma_before_indirect_question(
+                &tokens, document,
+            ));
+            lints.extend(Self::missing_comma_before_reported_clause(
+                &tokens, document,
+            ));
 
             for (index, token) in tokens.iter().enumerate() {
                 if let Some(lint) =
@@ -684,6 +850,49 @@ mod tests {
         let dict = combined_german_dictionary();
         let document = Document::new(text, &PlainGerman, &dict);
         GermanSubordinateComma.lint(&document).len()
+    }
+
+    #[test]
+    fn an_indirect_question_needs_a_comma() {
+        for text in [
+            "Sie fragte mich wann wir losfahren.",
+            "Ich weiß nicht wo er wohnt.",
+            "Er fragt warum das so ist.",
+            "Wir wissen nicht genau wie viel es kostet.",
+        ] {
+            assert_eq!(lint_count(text), 1, "{text}");
+        }
+        for text in [
+            "Sie fragte mich, wann wir losfahren.",
+            "Ich weiß was.",
+            "Er macht es so wie immer.",
+            "Ich frage dich wie immer.",
+            "Das ist der Ort, wo er wohnt.",
+        ] {
+            assert_eq!(lint_count(text), 0, "{text}");
+        }
+    }
+
+    #[test]
+    fn a_reported_clause_needs_a_comma() {
+        for text in [
+            "Er hat gesagt er kommt später.",
+            "Ich glaube er hat recht.",
+            "Ich hoffe es geht dir gut.",
+            "Sie sagte sie sei müde.",
+        ] {
+            assert_eq!(lint_count(text), 1, "{text}");
+        }
+        for text in [
+            "Er hat gesagt, er kommt später.",
+            "Er sagte es ihm.",
+            "Ich glaube ihr kein Wort.",
+            "Er meint es ernst.",
+            "Ich glaube es dir.",
+            "Er hat gesagt, dass er kommt.",
+        ] {
+            assert_eq!(lint_count(text), 0, "{text}");
+        }
     }
 
     #[test]

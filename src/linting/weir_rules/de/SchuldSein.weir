@@ -1,0 +1,26 @@
+# "schuld sein" is written small: the noun has become a predicate adjective
+# ("er ist schuld daran"). The noun keeps its capital wherever it has a
+# determiner or is the object of "haben" or "geben": "er hat Schuld", "die
+# Schuld liegt bei ihm", "es ist seine Schuld".
+expr seinsform [bin, bist, ist, sind, seid, war, warst, waren, wart, wäre, wären, sei]
+
+expr main <[(@seinsform Schuld [daran, dran, an, am, und]), (@seinsform Schuld(.)), (@seinsform Schuld(,))], Schuld>
+
+let message "In »schuld sein« wird »schuld« kleingeschrieben."
+let description "Schreibt »schuld« in »schuld sein« klein."
+let kind "Capitalization"
+let becomes "schuld"
+let strategy "Exact"
+
+test "Ich bin Schuld daran." "Ich bin schuld daran."
+test "Er ist Schuld." "Er ist schuld."
+test "Wer ist Schuld am Unfall?" "Wer ist schuld am Unfall?"
+test "Du bist Schuld, und das weißt du." "Du bist schuld, und das weißt du."
+test "Sie waren Schuld an allem." "Sie waren schuld an allem."
+
+allows "Ich bin schuld daran."
+allows "Er hat Schuld."
+allows "Es ist seine Schuld."
+allows "Die Schuld liegt bei ihm."
+allows "Das ist Schuld des Fahrers."
+allows "Er gibt mir die Schuld."

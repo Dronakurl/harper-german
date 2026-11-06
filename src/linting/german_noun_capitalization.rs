@@ -1,3 +1,4 @@
+use crate::grammar::determiners::{DeterminerReading, determiner_readings};
 use crate::grammar::noun_phrase;
 use crate::grammar::verbs::plain_stem_present;
 use crate::morphology::{GenderSet, MorphologyExt, NumberSet};
@@ -443,6 +444,30 @@ impl<T: Dictionary> GermanNounCapitalization<T> {
                 .is_some_and(|c| c.is_uppercase())
         {
             return true;
+        }
+        // *ob ich das schaffe*: the article cannot belong to the noun reading.
+        // *das* is a neuter singular and *Schaffe* a feminine plural, so the word
+        // is the verb and *das* its object. Only a word that is a verb as well
+        // is let go; a noun with no other reading is still reported.
+        if tokens[index].kind.is_verb()
+            && let Some(previous) = index.checked_sub(1).map(|at| tokens[at])
+            && let Some(readings) =
+                determiner_readings(&noun_phrase::lowercase_of(previous, document))
+            && let TokenKind::Word(Some(metadata)) = &tokens[index].kind
+        {
+            let agreement = metadata.noun_agreement();
+            let agrees = |reading: &DeterminerReading| {
+                agreement.number.contains(NumberSet::from(reading.number()))
+                    && reading
+                        .gender
+                        .is_none_or(|gender| agreement.gender.contains(GenderSet::from(gender)))
+            };
+            if !agreement.gender.is_empty()
+                && !agreement.number.is_empty()
+                && !readings.iter().any(agrees)
+            {
+                return true;
+            }
         }
         if NOUN_PREPOSITIONS.contains(&word.as_str()) {
             let attributed = index.checked_sub(1).is_some_and(|at| {
@@ -1187,6 +1212,7 @@ mod tests {
             "Eine neue 600-MHz-Version kommt.",
             "Er kaufte es bei eBay.",
             "Die hierzulande übliche Technik ist alt.",
+            "Ich weiß nicht, ob ich das schaffe.",
         ] {
             let doc = create_document(text);
             let flagged: Vec<String> = linter

@@ -11,5 +11,6 @@ let strategy "MatchCase"
 test "Wieviel kostet das?" "Wie viel kostet das?"
 test "Ich weiß nicht, wieviel es ist." "Ich weiß nicht, wie viel es ist."
 
+
 allows "Wie viel kostet das?"
 allows "Der wievielte Tag ist heute?"

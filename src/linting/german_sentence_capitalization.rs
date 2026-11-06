@@ -8,7 +8,7 @@ use harper_core::{Document, Punctuation, Token, TokenKind, TokenStringExt, spell
 /// after one looks like the first word of a new sentence and gets reported for
 /// being lower case. On encyclopedic prose this was the *only* thing this rule
 /// ever fired on.
-const SENTENCE_INTERNAL_ABBREVIATIONS: &[&str] = &[
+pub(crate) const SENTENCE_INTERNAL_ABBREVIATIONS: &[&str] = &[
     // General
     "bzw",
     "ggf",
@@ -186,13 +186,20 @@ impl<T: Dictionary> GermanSentenceCapitalization<T> {
         let mut preceding = tokens[..index]
             .iter()
             .rev()
-            .filter(|t| !t.kind.is_whitespace());
+            .filter(|t| !t.kind.is_whitespace() && !t.kind.is_quote());
 
-        if !matches!(
-            preceding.next().map(|t| &t.kind),
-            Some(TokenKind::Punctuation(Punctuation::Period))
-        ) {
-            return false;
+        // Only a full stop, a question mark or an exclamation mark ends a
+        // sentence. After a colon, a comma or a bracket the line goes on the
+        // sentence before it, as the items of a list do: *gilt:* / *die
+        // Nordamerikanische Platte,* / *a) Nominale Suffixe*. On encyclopedic
+        // prose that was most of what this rule reported.
+        match preceding.next().map(|t| &t.kind) {
+            None => return false,
+            Some(TokenKind::Punctuation(Punctuation::Period)) => {}
+            Some(TokenKind::Punctuation(Punctuation::Question | Punctuation::Bang)) => {
+                return false;
+            }
+            Some(_) => return true,
         }
 
         let Some(before_period) = preceding.next() else {

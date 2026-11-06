@@ -36,19 +36,31 @@
 # where they differ from the participle: "sagt", but not "erklärt", because "er
 # hat das Prinzip erklärt, das die Sohle …" is a relative clause. Separable
 # verbs ("nehme an", "stelle fest") are left out, their particle sits elsewhere.
-expr verb [hofft, glaubt, denkt, meint, sagt, findet, fürchtet, hoffe, hoffst, hoffte, hofftest, glaube, glaubst, glaubte, denke, denkst, dachte, meinst, meinte, sage, sagst, sagte, sagtest, weiß, weißt, wusste, wusstest, finde, findest, sehe, siehst, höre, hörst, hörte, vermute, vermutest, vermutete, fürchte, fürchtest, befürchte, bezweifle, bezweifelst, behaupte, behauptest, behauptete, erwarte, erwartest, verspreche, versprichst, versprach, verstehe, wünsche, ahne, bemerke, bemerkte, betone, betonte, berichte, berichtete, erkläre, erklärte, gestehe, gestand, erwiderte, antwortete, ergänzte, entgegnete]
+expr verb [hofft, glaubt, denkt, meint, sagt, findet, fürchtet, hoffe, hoffst, hoffte, hofftest, glaube, glaubst, glaubte, denke, denkst, dachte, meinst, meinte, sage, sagst, sagte, sagtest, weiß, weißt, wusste, wusstest, finde, findest, sehe, siehst, höre, hörst, hörte, vermute, vermutest, vermutete, fürchte, fürchtest, befürchte, bezweifle, bezweifelst, behaupte, behauptest, behauptete, erwarte, erwartest, verspreche, versprichst, versprach, verstehe, wünsche, ahne, bemerke, bemerkte, betone, betonte, berichte, berichtete, erkläre, erklärte, gestehe, gestand, erwiderte, antwortete, ergänzte, entgegnete, schreibe, schreibst, schreibt, schrieb, schriebst, merke, merkst, merkt, merkte, heißt]
 
 # Predicate adjectives that take a content clause: "es ist schade, dass …".
-expr adjektiv [schade, klar, wichtig, möglich, unmöglich, wahrscheinlich, unwahrscheinlich, denkbar, offensichtlich, verständlich, unverständlich, bedauerlich, erstaunlich, überraschend, selbstverständlich, peinlich, ärgerlich, bezeichnend, ratsam, sinnvoll, unnötig, notwendig, nötig]
+# The second line are the feelings: "ich bin froh, dass …".
+expr adjektiv [schade, klar, wichtig, möglich, unmöglich, wahrscheinlich, unwahrscheinlich, denkbar, offensichtlich, verständlich, unverständlich, bedauerlich, erstaunlich, überraschend, selbstverständlich, peinlich, ärgerlich, bezeichnend, ratsam, sinnvoll, unnötig, notwendig, nötig, froh, stolz, glücklich, traurig, dankbar, egal, seltsam, merkwürdig, komisch, fraglich, unklar]
 
 # Abstract nouns that take a content clause rather than a relative clause.
-expr nomen [tatsache, annahme, vermutung, befürchtung, gewissheit, behauptung]
+#
+# None of them is neuter, and that is what makes them safe: a relative pronoun
+# after a feminine or masculine noun is "die" or "der", never "das", so "der
+# Meinung, das wir …" has no reading as a relative clause.
+expr nomen [tatsache, annahme, vermutung, befürchtung, gewissheit, behauptung, meinung, ansicht, überzeugung, hoffnung, angst, sorge, eindruck, verdacht, gefahr, möglichkeit, wahrscheinlichkeit, voraussetzung, bedingung, feststellung, erkenntnis, nachricht, mitteilung, erwartung, vorstellung, forderung, hinweis, beweis, garantie, chance]
+
+# A verb of feeling with its object: "es freut mich, dass …".
+expr gefuehl [(freut mich), (freut uns), (freut dich), (freut euch), (wundert mich), (ärgert mich), (stört mich), (überrascht mich)]
+
+# The subject after the verb, when the clause starts with something else: "bis
+# dahin hoffe ich, dass …".
+expr nachgestellt [ich, du, er, wir, ihr, man]
 
 # Adverbs that may stand between the trigger and the comma: "ich glaube nicht,
 # dass …", "sie sagte gestern, dass …".
 expr einschub [sehr, fest, dringend, erneut, zunächst, bereits, nicht, auch, schon, immer, sicher, wirklich, eigentlich, natürlich, leider, hoffentlich, wohl, doch, ja, kaum, daher, deshalb, damals, gestern, heute, ferner, ebenfalls, allerdings]
 
-expr ausloeser [@verb, @adjektiv, @nomen]
+expr ausloeser [@verb, @adjektiv, @nomen, @gefuehl]
 
 # A subject may follow the conjunction; a finite verb or a capitalized noun may
 # not, and neither is in this list. "das" itself is left out on purpose: in
@@ -75,7 +87,7 @@ expr subjektohnekomma [ich, du, er, sie, es, wir, ihr, man, jemand, niemand]
 # "er hat mir gesagt das er kommt".
 expr partizip [gesagt, gedacht, geglaubt, gehofft, gewusst, gehört, gesehen, gemerkt, bemerkt, erfahren, gelesen, geschrieben, erzählt, versprochen, behauptet, vermutet, befürchtet, mitgeteilt, festgestellt, erwähnt]
 
-expr main <[(@partizip das @subjektohnekomma), (@ausloeser(,) das @subjekt), (@ausloeser @einschub(,) das @subjekt), (@verb(,) das @artikel), (@verb @einschub(,) das @artikel), (@ausloeser das @subjektohnekomma), (@ausloeser @einschub das @subjektohnekomma)], das>
+expr main <[(@partizip das @subjektohnekomma), (@verb @nachgestellt(,) das @subjekt), (@verb @nachgestellt(,) das @artikel), (@ausloeser(,) das @subjekt), (@ausloeser @einschub(,) das @subjekt), (@verb(,) das @artikel), (@verb @einschub(,) das @artikel), (@ausloeser das @subjektohnekomma), (@ausloeser @einschub das @subjektohnekomma)], das>
 
 let message "Hier steht die Konjunktion »dass«. Das Pronomen »das« schreibt man mit einem »s«, die Konjunktion mit zwei."
 let description "Ersetzt das Pronomen »das« durch die Konjunktion »dass«, wenn ein Nebensatz folgt."
@@ -101,6 +113,14 @@ test "Sie glaubt, das die Sohle hält." "Sie glaubt, dass die Sohle hält."
 test "Ich hoffe, das die Stiefel passen." "Ich hoffe, dass die Stiefel passen."
 test "Sie sagte, das ein Absatz abgebrochen ist." "Sie sagte, dass ein Absatz abgebrochen ist."
 test "Ich glaube nicht, das meine Schuhe bequem sind." "Ich glaube nicht, dass meine Schuhe bequem sind."
+
+test "Wir sind der Meinung, das wir recht haben." "Wir sind der Meinung, dass wir recht haben."
+test "Er schreibt, das ich kommen soll." "Er schreibt, dass ich kommen soll."
+test "Bis dahin hoffe ich, das die Farbe trocken ist." "Bis dahin hoffe ich, dass die Farbe trocken ist."
+test "Es freut mich, das du da bist." "Es freut mich, dass du da bist."
+test "Ich bin froh, das es geklappt hat." "Ich bin froh, dass es geklappt hat."
+test "Ich habe die Hoffnung, das er kommt." "Ich habe die Hoffnung, dass er kommt."
+test "Dann merkte er, das sie fehlte." "Dann merkte er, dass sie fehlte."
 
 test "Der Lehrer sagte das wir kommen sollen." "Der Lehrer sagte dass wir kommen sollen."
 test "Ich hoffe das du bald kommst." "Ich hoffe dass du bald kommst."
@@ -140,4 +160,17 @@ allows "Was sie meint, das wissen wir nicht."
 allows "Das Paar, das der Schuhmacher genäht hat, ist teuer."
 allows "Sie kaufte das Buch, das die Lehrerin empfohlen hat."
 allows "Ein Gesetz war notwendig, das dem Angehörigen den Besitz erlaubte."
+allows "Er schreibt das Buch, das ich lesen will."
+allows "Dann sah ich das Haus, das er gebaut hat."
+allows "Er zeigt das Bild, das er gemalt hat."
+# "zeigen", "beweisen" and "verstehen" stay out of the verbs: at the end of a
+# subordinate clause they are followed by a relative clause as often as by a
+# content clause.
+allows "Ob eine Maschine intelligentes Verhalten zeigt, das dem eines Menschen gleichwertig ist."
+allows "Wenn ein Käufer nur auf ein Brötchen zeigt, das er kaufen möchte."
+allows "Sie hat ein Gefühl, das ich kenne."
+allows "Dann sage ich, das ist falsch."
+allows "Ich bin froh, dass es geklappt hat."
+allows "Es freut mich, das Haus zu sehen."
+allows "Es freut mich, das zu hören."
 allows "Es ist unmöglich, das Eine vom Anderen zu trennen."
