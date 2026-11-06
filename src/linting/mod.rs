@@ -24,6 +24,7 @@ pub mod german_preposition_case;
 pub mod german_question_mark;
 pub mod german_recommended_fusion;
 pub mod german_relative_clause_comma;
+pub mod german_relative_pronoun;
 pub mod german_repeated_words;
 pub mod german_sentence_capitalization;
 pub mod german_spacing;

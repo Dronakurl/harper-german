@@ -88,7 +88,7 @@ impl GermanRelativeClauseComma {
 
     /// The genders a relative pronoun can refer back to, and whether it can
     /// refer to a plural.
-    fn antecedents(pronoun: &str) -> Option<(GenderSet, bool)> {
+    pub(crate) fn antecedents(pronoun: &str) -> Option<(GenderSet, bool)> {
         match pronoun {
             "dessen" => Some((GenderSet::MASCULINE | GenderSet::NEUTER, false)),
             "deren" => Some((GenderSet::FEMININE, true)),
