@@ -321,7 +321,13 @@ impl Linter for GermanRelativeClauseComma {
                 let masculine_subject = !behind_preposition
                     && pronoun == "der"
                     && noun_genders == GenderSet::from(Gender::Masculine)
-                    && (Self::is_adverb(next, document) || Self::is_verb(next, document));
+                    && (Self::is_adverb(next, document)
+                        || Self::is_verb(next, document)
+                        // *ein mächtiger Berg der im Rheintal thront*: an article is
+                        // never followed by a preposition, except before an extended
+                        // attribute (*der in Berlin lebenden Familie*), which ends on
+                        // a noun and not on the verb `clause_end` looks for.
+                        || (next.kind.is_preposition() && !Self::is_capitalized(next, document)));
                 // Behind a comma the pronoun reading is settled unless an
                 // adjective or a noun follows, which would make it an article
                 // opening a clause of its own (*…, die neuen Kinder schliefen*).
@@ -393,6 +399,25 @@ mod tests {
         assert_eq!(lint_count("Das Buch das ich lese ist spannend."), 2);
         assert_eq!(lint_count("Der Mann der dort steht ist mein Vater."), 2);
         assert_eq!(lint_count("Die Frau die ich kenne wohnt hier."), 2);
+    }
+
+    #[test]
+    fn a_preposition_behind_der_opens_the_clause() {
+        assert_eq!(
+            lint_count(
+                "Der Margelchopf ist ein eindrucksvoller, mächtiger Berg der im Rheintal hoch über dem Bezirk Werdenberg thront."
+            ),
+            1
+        );
+        assert_eq!(lint_count("Er ist ein alter Mann der in Berlin wohnt."), 1);
+        for text in [
+            "Er sah den Freund der in Berlin lebenden Familie.",
+            "Der Margelchopf ist ein mächtiger Berg, der im Rheintal thront.",
+            "Er stieg auf den Berg der Götter.",
+            "Er sah den Berg der Nachbarn.",
+        ] {
+            assert_eq!(lint_count(text), 0, "{text}");
+        }
     }
 
     #[test]
