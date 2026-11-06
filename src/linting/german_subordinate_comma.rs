@@ -479,6 +479,42 @@ impl GermanSubordinateComma {
         lints
     }
 
+    /// *Sie haben gespielt bis es dunkel wurde*: *bis* opens a clause when a
+    /// subject pronoun follows it, which no preposition takes. *bis morgen*,
+    /// *bis zum Abend* stay quiet. The verb in front has to be a participle or
+    /// an infinitive, so that *bis es* at the start of a sentence is not touched.
+    fn missing_comma_before_bis_clause(tokens: &[&Token], document: &Document) -> Vec<Lint> {
+        const SUBJECTS: &[&str] = &["ich", "du", "er", "sie", "es", "wir", "ihr", "man"];
+        let mut lints = Vec::new();
+        for at in 1..tokens.len().saturating_sub(2) {
+            let (before, bis, subject) = (tokens[at - 1], tokens[at], tokens[at + 1]);
+            if !Self::word_in(bis, document, &["bis"])
+                || !matches!(before.kind, TokenKind::Word(_))
+                || !Self::word_in(subject, document, SUBJECTS)
+            {
+                continue;
+            }
+            let written: String = document.get_span_content(&before.span).iter().collect();
+            let participle = written.starts_with("ge")
+                && (written.ends_with('t') || written.ends_with("en"))
+                && written.chars().count() > 4;
+            if !participle
+                || before.kind.is_noun()
+                || !GermanRelativeClauseComma::is_verb_token(before, document)
+            {
+                continue;
+            }
+            lints.push(Lint {
+                span: before.span,
+                lint_kind: LintKind::Punctuation,
+                suggestions: vec![Suggestion::InsertAfter(vec![','])],
+                priority: 28,
+                message: "Vor dem Nebensatz mit »bis« steht ein Komma.".to_owned(),
+            });
+        }
+        lints
+    }
+
     /// *Das Ziel diese Werte zu erreichen*: an infinitive group that depends on
     /// a noun takes a comma (Amtliche Regelung § 75 (2)).
     ///
@@ -1159,6 +1195,7 @@ impl Linter for GermanSubordinateComma {
             lints.extend(Self::missing_comma_before_reported_clause(
                 &tokens, document,
             ));
+            lints.extend(Self::missing_comma_before_bis_clause(&tokens, document));
             lints.extend(Self::missing_comma_before_concessive(&tokens, document));
             lints.extend(Self::missing_comma_before_date(&tokens, document));
             lints.extend(Self::missing_comma_closing_infinitive_group(
@@ -1442,6 +1479,20 @@ mod tests {
         ] {
             assert_eq!(lint_count(text), 0, "{text}");
         }
+    }
+
+    #[test]
+    fn a_bis_clause_needs_a_comma() {
+        assert_eq!(
+            lint_count("Die Kinder haben gespielt bis es dunkel wurde."),
+            1
+        );
+        assert_eq!(
+            lint_count("Die Kinder haben gespielt, bis es dunkel wurde."),
+            0
+        );
+        assert_eq!(lint_count("Wir haben gearbeitet bis morgen."), 0);
+        assert_eq!(lint_count("Wir haben gewartet bis zum Abend."), 0);
     }
 
     #[test]

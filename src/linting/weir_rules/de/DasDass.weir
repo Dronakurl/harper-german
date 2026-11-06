@@ -85,7 +85,12 @@ expr subjektohnekomma [ich, du, er, sie, es, wir, ihr, man, jemand, niemand]
 # are left out for the relative clauses above; without it, and with a subject
 # pronoun behind "das", there is no noun for a relative pronoun to refer to:
 # "er hat mir gesagt das er kommt".
-expr partizip [gesagt, gedacht, geglaubt, gehofft, gewusst, gehört, gesehen, gemerkt, bemerkt, erfahren, gelesen, geschrieben, erzählt, versprochen, behauptet, vermutet, befürchtet, mitgeteilt, festgestellt, erwähnt]
+expr partizip [gesagt, gedacht, geglaubt, gehofft, gewusst, gehört, gesehen, gemerkt, bemerkt, erfahren, gelesen, geschrieben, erzählt, versprochen, behauptet, vermutet, befürchtet, mitgeteilt, festgestellt, erwähnt, gefreut, gefürchtet, bedauert, bezweifelt, gewünscht, erwartet, betont, gemeint, beschlossen, bestätigt, berichtet, begriffen]
+
+# Pronouns and quantifiers that can open the clause behind a participle: "er hat
+# gesagt das alles bleibt". Behind a participle without a comma, nothing but a
+# clause can follow "das" here.
+expr quantor [alles, nichts, jeder, jede, jedes, viele, niemand, keiner, keine, einige, manche, beide, vieles]
 
 # With the comma, a participle of saying or thinking counts only behind its
 # dative pronoun ("sie hat mir gesagt, das er kommt"): with a noun object in
@@ -94,7 +99,7 @@ expr partizip [gesagt, gedacht, geglaubt, gehofft, gewusst, gehört, gesehen, ge
 expr sagepartizip [gesagt, erzählt, versprochen, mitgeteilt, geschrieben, verraten, erklärt, gestanden]
 expr dativ [mir, dir, ihm, ihr, uns, euch, ihnen, Ihnen]
 
-expr main <[(@partizip das @subjektohnekomma), (@dativ @sagepartizip, das @subjektohnekomma), (@verb @nachgestellt(,) das @subjekt), (@verb @nachgestellt(,) das @artikel), (@ausloeser(,) das @subjekt), (@ausloeser @einschub(,) das @subjekt), (@verb(,) das @artikel), (@verb @einschub(,) das @artikel), (@ausloeser das @subjektohnekomma), (@ausloeser @einschub das @subjektohnekomma)], das>
+expr main <[(@partizip das @subjektohnekomma), (@partizip das @quantor), (@dativ @sagepartizip, das @subjektohnekomma), (@verb @nachgestellt(,) das @subjekt), (@verb @nachgestellt(,) das @artikel), (@ausloeser(,) das @subjekt), (@ausloeser @einschub(,) das @subjekt), (@verb(,) das @artikel), (@verb @einschub(,) das @artikel), (@ausloeser das @subjektohnekomma), (@ausloeser @einschub das @subjektohnekomma)], das>
 
 let message "Hier steht die Konjunktion »dass«. Das Pronomen »das« schreibt man mit einem »s«, die Konjunktion mit zwei."
 let description "Ersetzt das Pronomen »das« durch die Konjunktion »dass«, wenn ein Nebensatz folgt."
@@ -144,6 +149,10 @@ test "Ich weiß das du recht hast." "Ich weiß dass du recht hast."
 allows "Er hat das gesagt, das Buch aber nicht gelesen."
 allows "Wir haben das Heil gesehen, das du bereitet hast."
 allows "Sie hat mir das erzählt."
+test "Der Chef hat gesagt das alles so bleibt." "Der Chef hat gesagt dass alles so bleibt."
+test "Ich habe mich sehr gefreut das sie teilnehmen." "Ich habe mich sehr gefreut dass sie teilnehmen."
+allows "Ich habe das alles gesehen."
+allows "Er hat gesehen das Haus."
 allows "Ich hoffe dass du bald kommst."
 allows "Ich glaube das ist richtig."
 allows "Ich sehe das Haus."
