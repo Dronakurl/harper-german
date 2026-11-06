@@ -1,0 +1,14 @@
+# "tausendmal" is one word: numeral and "mal" make an adverb. Written apart,
+# "tausend mal" is the multiplication, so a numeral behind it keeps it apart.
+expr zahl [eins, zwei, drei, vier, fünf, sechs, sieben, acht, neun, zehn, elf, zwölf, hundert, tausend]
+
+expr main <(tausend mal !@zahl), (tausend mal)>
+
+let message "»tausendmal« wird zusammengeschrieben."
+let description "Zieht »tausend mal« zu »tausendmal« zusammen."
+let kind "Spelling"
+let becomes "tausendmal"
+let strategy "MatchCase"
+
+allows "Ich war schon tausendmal hier."
+allows "Tausend mal drei ist eine Zahl."

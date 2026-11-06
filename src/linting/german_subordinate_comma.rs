@@ -970,8 +970,43 @@ impl Linter for GermanSubordinateComma {
                     lints.push(lint);
                     continue;
                 }
+                // *wenn* is left out of the list for *wenn auch* and the
+                // comparisons *als wenn*, *wie wenn*; anywhere else it opens a
+                // clause. *auch wenn* is `missing_comma_before_concessive`'s.
+                let opens_wenn_clause = Self::word_in(token, document, &["wenn"])
+                    && document
+                        .get_span_content(&token.span)
+                        .first()
+                        .is_some_and(|c| c.is_lowercase())
+                    // *wenn möglich*, *wenn nötig*: an elliptical phrase, whose
+                    // comma is the writer's choice.
+                    && !tokens.get(index + 1).is_some_and(|next| {
+                        Self::word_in(
+                            next,
+                            document,
+                            &[
+                                "auch",
+                                "möglich",
+                                "nötig",
+                                "notwendig",
+                                "erforderlich",
+                                "gewünscht",
+                                "überhaupt",
+                                "nicht",
+                            ],
+                        )
+                    })
+                    && !index.checked_sub(1).is_some_and(|i| {
+                        Self::word_in(
+                            tokens[i],
+                            document,
+                            &[
+                                "als", "wie", "außer", "auch", "selbst", "sogar", "nur", "bloß",
+                            ],
+                        )
+                    });
                 if !matches!(token.kind, TokenKind::Word(_))
-                    || !Self::is_subordinator(token, document)
+                    || !(Self::is_subordinator(token, document) || opens_wenn_clause)
                 {
                     continue;
                 }
@@ -1107,6 +1142,25 @@ mod tests {
             "Sie trafen sich, um über die Möglichkeit einer Synthese zu diskutieren.",
             "Das heißt, aus einer Absicht heraus eine Lehre zu vermitteln.",
             "Es ist möglich, ohne Gefahr eines Irrtums zu entscheiden.",
+        ] {
+            assert_eq!(lint_count(text), 0, "{text}");
+        }
+    }
+
+    #[test]
+    fn a_wenn_clause_needs_a_comma() {
+        for text in [
+            "Ich bin erreichbar, außer zwischen 10 und 11 Uhr wenn wir beim Arzt sind.",
+            "Es wäre gut wenn du dich meldest.",
+        ] {
+            assert_eq!(lint_count(text), 1, "{text}");
+        }
+        for text in [
+            "Es wäre gut, wenn du dich meldest.",
+            "Er tut so, als wenn nichts wäre.",
+            "Wenn auch nur kurz, er kam.",
+            "Ich komme nur wenn du kommst.",
+            "Vierteilige werden wenn möglich vermieden.",
         ] {
             assert_eq!(lint_count(text), 0, "{text}");
         }

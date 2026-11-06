@@ -174,6 +174,78 @@ impl GermanQuestionMark {
     }
 }
 
+impl GermanQuestionMark {
+    /// *Kannst du das bitte prüfen.*: a yes/no question opens with the finite
+    /// verb and has its subject right behind it.
+    ///
+    /// With *du* or *ihr* behind the verb nothing else reads that way, since
+    /// the imperative drops the pronoun (*Komm!*). With *Sie* only the modal
+    /// and auxiliary verbs count: *Kommen Sie herein.* is the polite
+    /// imperative, *Können Sie kommen.* a question. A comma is allowed when a
+    /// subordinate clause follows it (*…, bevor wir zahlen.*), but not when a
+    /// main clause does: *Hast du Zeit, komm vorbei.* is a condition.
+    fn full_stop_of_yes_no_question<'a>(
+        words: &[&'a Token],
+        document: &Document,
+    ) -> Option<&'a Token> {
+        const ASKING_WITH_SIE: &[&str] = &[
+            "können", "könnten", "würden", "haben", "hätten", "sind", "wären", "wissen", "wollen",
+            "möchten", "dürfen", "sollen", "müssen", "werden",
+        ];
+        const OPENS_A_CLAUSE: &[&str] = &[
+            "bevor", "weil", "dass", "wenn", "ob", "damit", "sodass", "nachdem", "falls", "obwohl",
+            "sobald", "da", "die", "der", "das", "den", "dem", "was", "wo", "wie",
+        ];
+        let stop = *words.last()?;
+        if !matches!(stop.kind, TokenKind::Punctuation(Punctuation::Period)) {
+            return None;
+        }
+        let verb = words.first()?;
+        let subject = words.get(1)?;
+        if words.len() < 4 || !verb.kind.is_word() || !subject.kind.is_word() {
+            return None;
+        }
+        let subject_word = document.get_span_content_str(&subject.span);
+        let verb_word = lowercase_of(verb, document);
+        let pronoun_fits = match subject_word.as_str() {
+            "du" | "ihr" => true,
+            "Sie" => ASKING_WITH_SIE.contains(&verb_word.as_str()),
+            _ => false,
+        };
+        // The verb opens the sentence, so it is capitalized and
+        // `is_verb_form`'s lower-case test does not apply.
+        let finite = verb.kind.is_verb()
+            && !verb.kind.is_determiner()
+            && !verb.kind.is_pronoun()
+            && !verb.kind.is_conjunction()
+            && !verb.kind.is_preposition()
+            && !matches!(
+                &verb.kind,
+                TokenKind::Word(Some(metadata)) if metadata.is_verb_past_participle_form()
+            );
+        if !pronoun_fits || !finite {
+            return None;
+        }
+        // Every comma must open a subordinate clause; anything else that is
+        // not a word ends the matter.
+        for (at, token) in words[..words.len() - 1].iter().enumerate() {
+            if token.kind.is_word() || matches!(token.kind, TokenKind::Number(_)) {
+                continue;
+            }
+            if !matches!(token.kind, TokenKind::Punctuation(Punctuation::Comma)) {
+                return None;
+            }
+            let next = words.get(at + 1)?;
+            if !next.kind.is_word()
+                || !OPENS_A_CLAUSE.contains(&lowercase_of(next, document).as_str())
+            {
+                return None;
+            }
+        }
+        Some(stop)
+    }
+}
+
 impl Linter for GermanQuestionMark {
     fn lint(&mut self, document: &Document) -> Vec<Lint> {
         let mut lints = Vec::new();
@@ -183,7 +255,9 @@ impl Linter for GermanQuestionMark {
                 .iter()
                 .filter(|token| !token.kind.is_whitespace())
                 .collect();
-            if let Some(stop) = Self::full_stop_of_question(&words, document) {
+            if let Some(stop) = Self::full_stop_of_question(&words, document)
+                .or_else(|| Self::full_stop_of_yes_no_question(&words, document))
+            {
                 lints.push(Lint {
                     span: stop.span,
                     lint_kind: LintKind::Punctuation,
@@ -227,6 +301,26 @@ mod tests {
             }
         }
         chars.into_iter().collect()
+    }
+
+    #[test]
+    fn a_yes_no_question_ending_in_a_full_stop_gets_a_question_mark() {
+        for text in [
+            "Kannst du das bitte nochmal prüfen, bevor wir sie bezahlen.",
+            "Hast du morgen Zeit.",
+            "Können Sie mir helfen.",
+        ] {
+            assert_eq!(lints(text).len(), 1, "{text}");
+        }
+        for text in [
+            "Kommen Sie bitte herein.",
+            "Hast du Zeit, komm vorbei.",
+            "Gehen wir nach Hause.",
+            "Kannst du das prüfen?",
+            "Komm bitte her.",
+        ] {
+            assert!(lints(text).is_empty(), "{text}");
+        }
     }
 
     #[test]

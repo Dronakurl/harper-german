@@ -579,6 +579,7 @@ Geiz M -
 
 CORE_ADVERBS = """
 schweizweit vonstatten anderthalb eineinhalb deutschlandweit europaweit bundesweit österreichweit landesweit
+nochmal
 """.split()
 
 CORE_ADJECTIVES = """

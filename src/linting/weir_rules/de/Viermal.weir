@@ -1,0 +1,14 @@
+# "viermal" is one word: numeral and "mal" make an adverb. Written apart,
+# "vier mal" is the multiplication, so a numeral behind it keeps it apart.
+expr zahl [eins, zwei, drei, vier, fünf, sechs, sieben, acht, neun, zehn, elf, zwölf, hundert, tausend]
+
+expr main <(vier mal !@zahl), (vier mal)>
+
+let message "»viermal« wird zusammengeschrieben."
+let description "Zieht »vier mal« zu »viermal« zusammen."
+let kind "Spelling"
+let becomes "viermal"
+let strategy "MatchCase"
+
+allows "Ich war schon viermal hier."
+allows "Vier mal drei ist eine Zahl."

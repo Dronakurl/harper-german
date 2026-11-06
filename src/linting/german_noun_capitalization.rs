@@ -239,6 +239,25 @@ impl<T: Dictionary> GermanNounCapitalization<T> {
         })
     }
 
+    /// *wenn du fragen hast*, *ob ihr zeit habt*: behind the subject pronoun
+    /// and in front of a form of *haben* the word is the object, so a noun,
+    /// not the verb a word behind a pronoun usually is. *recht haben* is left
+    /// out, which Duden allows both ways.
+    fn object_before_haben(tokens: &[&Token], index: usize, document: &Document) -> bool {
+        const HABEN: &[&str] = &[
+            "habe", "hast", "hat", "haben", "habt", "hatte", "hattest", "hatten", "hattet",
+            "hätte", "hättest", "hätten", "hättet",
+        ];
+        let word = noun_phrase::lowercase_of(tokens[index], document);
+        if matches!(word.as_str(), "recht" | "unrecht") || word.starts_with("ge") {
+            return false;
+        }
+        tokens.get(index + 1).is_some_and(|next| {
+            matches!(next.kind, TokenKind::Word(_))
+                && HABEN.contains(&noun_phrase::lowercase_of(next, document).as_str())
+        })
+    }
+
     /// The token range of the clause around `index`, up to the punctuation on
     /// either side.
     fn clause_bounds(tokens: &[&Token], index: usize) -> (usize, usize) {
@@ -944,7 +963,8 @@ impl<T: Dictionary> Linter for GermanNounCapitalization<T> {
                     if Self::is_hyphen_compound_fragment(token, prev, next)
                         || Self::follows_language_gloss(&tokens, i, document)
                         || Self::in_foreign_stretch(&tokens, i, document)
-                        || Self::follows_subject_pronoun(prev, document)
+                        || (Self::follows_subject_pronoun(prev, document)
+                            && !Self::object_before_haben(&tokens, i, document))
                         || Self::is_predicative_noun(&tokens, i, document)
                         || Self::is_coordinated_attribute(&tokens, i, document)
                         || Self::follows_clause_initial_ihr(&tokens, i, document)
@@ -1213,6 +1233,8 @@ mod tests {
             "Er kaufte es bei eBay.",
             "Die hierzulande übliche Technik ist alt.",
             "Ich weiß nicht, ob ich das schaffe.",
+            "Ich weiß nicht, ob du recht hast.",
+            "Weil du gegessen hast, gehen wir.",
         ] {
             let doc = create_document(text);
             let flagged: Vec<String> = linter

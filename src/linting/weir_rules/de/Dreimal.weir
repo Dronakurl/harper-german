@@ -1,0 +1,16 @@
+# "dreimal" is one word: numeral and "mal" make an adverb. Written apart,
+# "drei mal" is the multiplication, so a numeral behind it keeps it apart.
+expr zahl [eins, zwei, drei, vier, fünf, sechs, sieben, acht, neun, zehn, elf, zwölf, hundert, tausend]
+
+expr main <(drei mal !@zahl), (drei mal)>
+
+let message "»dreimal« wird zusammengeschrieben."
+let description "Zieht »drei mal« zu »dreimal« zusammen."
+let kind "Spelling"
+let becomes "dreimal"
+let strategy "MatchCase"
+
+test "Ich habe schon drei mal angerufen." "Ich habe schon dreimal angerufen."
+
+allows "Ich war schon dreimal hier."
+allows "Drei mal drei ist eine Zahl."

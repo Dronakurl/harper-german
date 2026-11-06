@@ -36,7 +36,7 @@
 # where they differ from the participle: "sagt", but not "erklärt", because "er
 # hat das Prinzip erklärt, das die Sohle …" is a relative clause. Separable
 # verbs ("nehme an", "stelle fest") are left out, their particle sits elsewhere.
-expr verb [hofft, glaubt, denkt, meint, sagt, findet, fürchtet, hoffe, hoffst, hoffte, hofftest, glaube, glaubst, glaubte, denke, denkst, dachte, meinst, meinte, sage, sagst, sagte, sagtest, weiß, weißt, wusste, wusstest, finde, findest, sehe, siehst, höre, hörst, hörte, vermute, vermutest, vermutete, fürchte, fürchtest, befürchte, bezweifle, bezweifelst, behaupte, behauptest, behauptete, erwarte, erwartest, verspreche, versprichst, versprach, verstehe, wünsche, ahne, bemerke, bemerkte, betone, betonte, berichte, berichtete, erkläre, erklärte, gestehe, gestand, erwiderte, antwortete, ergänzte, entgegnete, schreibe, schreibst, schreibt, schrieb, schriebst, merke, merkst, merkt, merkte, heißt]
+expr verb [hofft, glaubt, denkt, meint, sagt, findet, fürchtet, hoffe, hoffst, hoffte, hofftest, glaube, glaubst, glaubte, denke, denkst, dachte, meinst, meinte, sage, sagst, sagte, sagtest, weiß, weißt, wusste, wusstest, finde, findest, sehe, siehst, höre, hörst, hörte, vermute, vermutest, vermutete, fürchte, fürchtest, befürchte, bezweifle, bezweifelst, behaupte, behauptest, behauptete, erwarte, erwartest, verspreche, versprichst, versprach, verstehe, wünsche, ahne, bemerke, bemerkte, betone, betonte, berichte, berichtete, erkläre, erklärte, gestehe, gestand, erwiderte, antwortete, ergänzte, entgegnete, schreibe, schreibst, schreibt, schrieb, schriebst, merke, merkst, merkt, merkte, heißt, vergiss, vergesst, vergessen, bedenke, bedenkt, beachte, beachtet]
 
 # Predicate adjectives that take a content clause: "es ist schade, dass …".
 # The second line are the feelings: "ich bin froh, dass …".
@@ -121,6 +121,7 @@ test "Es freut mich, das du da bist." "Es freut mich, dass du da bist."
 test "Ich bin froh, das es geklappt hat." "Ich bin froh, dass es geklappt hat."
 test "Ich habe die Hoffnung, das er kommt." "Ich habe die Hoffnung, dass er kommt."
 test "Dann merkte er, das sie fehlte." "Dann merkte er, dass sie fehlte."
+test "Vergiss nicht das wir morgen ein Meeting haben." "Vergiss nicht dass wir morgen ein Meeting haben."
 
 test "Der Lehrer sagte das wir kommen sollen." "Der Lehrer sagte dass wir kommen sollen."
 test "Ich hoffe das du bald kommst." "Ich hoffe dass du bald kommst."

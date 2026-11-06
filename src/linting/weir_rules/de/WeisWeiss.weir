@@ -1,7 +1,11 @@
 # "weis" for "weiß", the first and third person of "wissen". "weis" is no form
 # of "wissen", and of "weisen" only the archaic imperative, which never follows
 # a subject pronoun.
-expr main <[(ich weis), (er weis), (sie weis), (es weis), (man weis), (weis ich), (weis er), (weis man)], weis>
+# "ich mehr weis", "er nichts weis": one word may stand between, at the end of a
+# subordinate clause.
+expr zwischen [mehr, nichts, nicht, es, das, schon, ja, noch, auch, genau, viel, wenig, alles]
+
+expr main <[(ich weis), (er weis), (sie weis), (es weis), (man weis), (weis ich), (weis er), (weis man), ([ich, er, sie, man] @zwischen weis)], weis>
 
 let message "Die Form von »wissen« schreibt man mit ß: »weiß«."
 let description "Ersetzt »weis« durch »weiß« nach einem Subjektpronomen."
@@ -16,6 +20,8 @@ test "Sie weis es genau." "Sie weiß es genau."
 test "Man weis nie." "Man weiß nie."
 test "Woher weis er das?" "Woher weiß er das?"
 test "Weis man, wann der Laden öffnet?" "Weiß man, wann der Laden öffnet?"
+
+test "Ich melde mich, sobald ich mehr weis." "Ich melde mich, sobald ich mehr weiß."
 
 allows "Ich weiß nicht."
 allows "Er weist darauf hin."
