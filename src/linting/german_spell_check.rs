@@ -681,14 +681,122 @@ impl<T: Dictionary> GermanSpellCheck<T> {
         }
 
         // *gesingt*, *geschreibt*: the weak participle of a strong verb. The
-        // strong one changes the vowel of the stem and ends in *-en*.
-        if let Some(strong) = self.strong_participle(word) {
-            suggestions.retain(|suggestion| *suggestion != strong);
-            suggestions.insert(0, strong);
+        // strong one changes the vowel of the stem and ends in *-en*. And the
+        // weak preterite: *schwimmte* → *schwamm*, *rufte* → *rief*.
+        // *muß*, *Schiffahrt*: the spellings before 1996, which are no typos
+        // but a rule, and which the edit search answers with other words
+        // (*Muße*, *Schifahrt*).
+        for systematic in [
+            self.strong_participle(word),
+            self.strong_preterite(word),
+            self.reformed_spelling(word),
+        ]
+        .into_iter()
+        .flatten()
+        {
+            suggestions.retain(|suggestion| *suggestion != systematic);
+            suggestions.insert(0, systematic);
         }
 
         suggestions.truncate(5);
         suggestions
+    }
+
+    /// The spelling after the 1996 reform: *ß* after a short vowel became *ss*
+    /// (*muß* → *muss*, *Eßzimmer* → *Esszimmer*), and three equal consonants
+    /// are all written (*Schiffahrt* → *Schifffahrt*).
+    fn reformed_spelling(&self, word: &[char]) -> Option<Vec<char>> {
+        if word.contains(&'ß') {
+            let ss: Vec<char> = word
+                .iter()
+                .flat_map(|&c| if c == 'ß' { vec!['s', 's'] } else { vec![c] })
+                .collect();
+            if self.dictionary.contains_word(&ss) {
+                return Some(ss);
+            }
+        }
+        for at in 0..word.len().saturating_sub(1) {
+            let c = word[at];
+            if c == word[at + 1] && "bfklmnprt".contains(c) && word.get(at + 2) != Some(&c) {
+                let mut tripled = word.to_vec();
+                tripled.insert(at, c);
+                if self.dictionary.contains_word(&tripled) {
+                    return Some(tripled);
+                }
+            }
+        }
+        None
+    }
+
+    /// The strong preterite for a weak one built on a strong verb:
+    /// *schwimmte* → *schwamm*, *rufte* → *rief*, *gingten* → *gingen*.
+    fn strong_preterite(&self, word: &[char]) -> Option<Vec<char>> {
+        // In the order the preterites of strong verbs take them most often:
+        // *schwamm* before *schwemm* (which is the imperative of another verb).
+        const VOWELS: &[&str] = &["a", "ie", "o", "u", "i", "ä", "e", "ei", "au", "ö", "ü"];
+        let text: String = word.iter().collect();
+        let lower = text.to_lowercase();
+        let (stem, strong_ending) = [("test", "st"), ("tet", "t"), ("ten", "en"), ("te", "")]
+            .iter()
+            .find_map(|(weak, strong)| lower.strip_suffix(weak).map(|stem| (stem, *strong)))?;
+        if stem.len() < 2 {
+            return None;
+        }
+        // *gingten*: the strong preterite with a weak ending on top.
+        if self.dictionary.contains_word_str(stem)
+            && self
+                .dictionary
+                .get_word_metadata_str(&format!("{stem}{strong_ending}"))
+                .is_some_and(|m| m.is_verb())
+            && !self.dictionary.contains_word_str(&format!("{stem}en"))
+        {
+            return Some(format!("{stem}{strong_ending}").chars().collect());
+        }
+        if !self.dictionary.contains_word_str(&format!("{stem}en")) {
+            return None;
+        }
+        let is_vowel = |c: char| "aeiouäöü".contains(c);
+        let start = stem.find(is_vowel)?;
+        let end = stem[start..]
+            .find(|c: char| !is_vowel(c))
+            .map_or(stem.len(), |i| start + i);
+        let (onset, vowel, coda) = (&stem[..start], &stem[start..end], &stem[end..]);
+        // Only a strong verb has a strong preterite, and a strong verb has a
+        // participle in *-en* (*gerufen*, *geschwommen*). Without it *muste*
+        // would come out as *mies* rather than *musste*.
+        let strong = std::iter::once(vowel)
+            .chain(VOWELS.iter().copied())
+            .any(|v| {
+                // Exactly, in lower case: *Gemüsen* is no participle of *musen*.
+                let participle: Vec<char> = format!("ge{onset}{v}{coda}en").chars().collect();
+                curated_german_dictionary().contains_exact_word(&participle)
+            });
+        if !strong {
+            return None;
+        }
+        let found: Vec<String> = VOWELS
+            .iter()
+            .filter(|v| **v != vowel)
+            .map(|v| format!("{onset}{v}{coda}"))
+            .filter(|preterite| {
+                // The first person of the preterite is a word, and so is the
+                // form with the ending wanted.
+                // Strong preterites often come with no part of speech, so their
+                // presence in the curated word list is what counts.
+                curated_german_dictionary().contains_word_str(preterite)
+                    && curated_german_dictionary()
+                        .contains_word_str(&format!("{preterite}{strong_ending}"))
+            })
+            .map(|preterite| format!("{preterite}{strong_ending}"))
+            .collect();
+        let preterite = found.first()?;
+        let mut out: Vec<char> = preterite.chars().collect();
+        if text.chars().next().is_some_and(char::is_uppercase)
+            && let Some(first) = out.first_mut()
+        {
+            *first = first.to_uppercase().next().unwrap_or(*first);
+        }
+        Some(out)
     }
 
     /// The strong participle for a weak one built on a strong verb:
@@ -1209,6 +1317,26 @@ mod tests {
             suggestions_for("geschreibt").first().map(String::as_str),
             Some("geschrieben")
         );
+    }
+
+    #[test]
+    fn the_old_spelling_and_weak_preterites_get_the_right_word() {
+        for (wrong, right) in [
+            ("muß", "muss"),
+            ("Schiffahrt", "Schifffahrt"),
+            ("Eßzimmer", "Esszimmer"),
+            ("Mißverständnis", "Missverständnis"),
+            ("schwimmte", "schwamm"),
+            ("rufte", "rief"),
+            ("gebackt", "gebacken"),
+        ] {
+            assert_eq!(
+                suggestions_for(wrong).first().map(String::as_str),
+                Some(right),
+                "{wrong}: {:?}",
+                suggestions_for(wrong)
+            );
+        }
     }
 
     #[test]

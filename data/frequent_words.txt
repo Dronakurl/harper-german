@@ -467,3 +467,9 @@ vorbereiten
 vorgestellt
 weitergeben
 zurückgekehrt
+
+# Nouns whose slips cut cleanly into two words (Kaffe, Rückgrad: Dronakurl/harper#56)
+Kaffee
+Rückgrat
+Satellit
+Lizenz
