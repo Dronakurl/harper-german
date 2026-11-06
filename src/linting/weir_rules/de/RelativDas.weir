@@ -8,14 +8,20 @@
 # book, car or child is followed by "that something is the case". So only the
 # concrete neuter nouns are listed, and "dass" behind one of them is the
 # relative pronoun with one "s" too many.
-expr ding [Buch, Auto, Haus, Kind, Bild, Spiel, Lied, Zimmer, Fenster, Geld, Geschenk, Tier, Pferd, Boot, Schiff, Flugzeug, Fahrrad, Handy, Telefon, Paket, Hemd, Kleid, Bett, Glas, Dorf, Restaurant, Hotel, Café, Kino, Museum, Mädchen, Baby, Gerät, Werkzeug, Messer, Bier, Brot, Ei, Fleisch, Obst, Wasser, Gesicht, Auge, Ohr, Bein, Knie, Haar, Stück, Foto, Video, Album, Formular, Dokument, Heft, Papier, Blatt, Schild, Tor, Dach, Gebäude, Rezept, Getränk, Kostüm, Spielzeug, Computer, Laptop, Tablet, Instrument, Klavier, Sofa, Regal, Möbelstück, Grundstück, Büro, Labor, Krankenhaus, Rathaus, Schloss, Fest, Konzert, Theaterstück, Gemälde, Gedicht, Märchen, Kapitel, Werk, Schwein, Huhn, Kaninchen, Lamm, Kalb, Fohlen, Zelt, Fahrzeug, Motorrad, Taxi, Ticket, Zeugnis]
+expr ding [Buch, Auto, Haus, Kind, Bild, Spiel, Lied, Zimmer, Fenster, Geld, Geschenk, Tier, Pferd, Boot, Schiff, Flugzeug, Fahrrad, Handy, Telefon, Paket, Hemd, Kleid, Bett, Glas, Dorf, Restaurant, Hotel, Café, Kino, Museum, Mädchen, Baby, Gerät, Werkzeug, Messer, Bier, Brot, Ei, Fleisch, Obst, Wasser, Gesicht, Auge, Ohr, Bein, Knie, Haar, Stück, Foto, Video, Album, Formular, Dokument, Heft, Papier, Blatt, Schild, Tor, Dach, Gebäude, Rezept, Getränk, Kostüm, Spielzeug, Computer, Laptop, Tablet, Instrument, Klavier, Sofa, Regal, Möbelstück, Grundstück, Büro, Labor, Krankenhaus, Rathaus, Schloss, Konzert, Theaterstück, Gemälde, Gedicht, Märchen, Kapitel, Werk, Schwein, Huhn, Kaninchen, Lamm, Kalb, Fohlen, Zelt, Fahrzeug, Motorrad, Taxi, Ticket, Zeugnis]
 
 # The article right in front of the noun keeps the consecutive clause out:
 # "so viel Geld, dass er nicht arbeiten muss", "ein so großes Haus, dass alle
 # Platz haben" are "so … dass", and correct.
 expr artikel [das, ein, dieses, jenes, mein, dein, sein, ihr, unser, euer, kein, jedes]
 
-expr main <(@artikel @ding(,) dass), dass>
+# Up to two adjectives may stand between the article and the noun: "ein schönes
+# Haus, dass wir gekauft haben". A degree word among them makes it the
+# consecutive "so … dass": "ein so großes Haus, dass alle Platz haben".
+# "Fest" is not among the things: Weir matches regardless of case, and the
+# particle "fest" closes "stellte das Gericht fest, dass …".
+expr grad [so, zu, derart, dermaßen, solch, solches, genug, sehr]
+expr main <[(@artikel @ding(,) dass), (@artikel !@grad @ding(,) dass), (@artikel !@grad !@grad @ding(,) dass)], dass>
 
 let message "Hier steht das Relativpronomen »das«, nicht die Konjunktion »dass«."
 let description "Ersetzt »dass« durch »das« nach einem konkreten Neutrum wie »das Buch, das …«."
@@ -24,6 +30,12 @@ let becomes "das"
 let strategy "MatchCase"
 let scope "Sentence"
 
+test "Das ist ein schönes Haus, dass wir gekauft haben." "Das ist ein schönes Haus, das wir gekauft haben."
+test "Das ist ein schönes altes Haus, dass wir gekauft haben." "Das ist ein schönes altes Haus, das wir gekauft haben."
+allows "Des Weiteren stellte das Gericht fest, dass es nicht möglich ist."
+allows "Ich weiß, dass das das Beste ist."
+allows "Das Problem, dass niemand kommt, bleibt."
+allows "Er hat ein so großes Haus, dass alle Platz haben."
 test "Das Buch, dass ich gelesen habe, war gut." "Das Buch, das ich gelesen habe, war gut."
 test "Das ist das Auto, dass mir gefällt." "Das ist das Auto, das mir gefällt."
 test "Das Kind, dass dort spielt, ist mein Sohn." "Das Kind, das dort spielt, ist mein Sohn."

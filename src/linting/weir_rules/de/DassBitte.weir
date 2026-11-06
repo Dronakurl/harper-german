@@ -1,0 +1,20 @@
+# "Kannst du dass bitte machen?": in a question with the verb first, "das" is the
+# object, and a particle of the request follows it. A "dass" clause never
+# starts with "bitte", "mal" or "doch".
+expr frage [kannst, könntest, würdest, willst, magst, sollst, kann, könnt, könntet, würdet, können, könnten, würden, wollt]
+expr wer [du, ihr, Sie, er, sie, man]
+expr partikel [bitte, mal, doch, schnell, nochmal, gerade, eben, kurz]
+
+expr main <(@frage @wer dass @partikel), dass>
+
+let message "Hier ist »das« das Objekt der Frage, nicht die Konjunktion »dass«."
+let description "Ersetzt »dass« durch »das« in einer Bitte wie »Kannst du das bitte machen?«."
+let kind "Grammar"
+let becomes "das"
+let strategy "MatchCase"
+
+test "Kannst du dass bitte machen?" "Kannst du das bitte machen?"
+test "Könnten Sie dass mal prüfen?" "Könnten Sie das mal prüfen?"
+
+allows "Kannst du das bitte machen?"
+allows "Weißt du, dass bitte nicht genügt?"

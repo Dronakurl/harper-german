@@ -1238,6 +1238,24 @@ impl Linter for GermanSubordinateComma {
                     continue;
                 }
 
+                // *Kannst du dass bitte machen?*: the pronoun *das* misspelt,
+                // with a particle of the request behind it. No clause starts
+                // with *bitte*, *mal* or *doch*, so no comma either.
+                if Self::word_in(token, document, &["dass"])
+                    && tokens.get(index + 1).is_some_and(|next| {
+                        Self::word_in(
+                            next,
+                            document,
+                            &[
+                                "bitte", "mal", "doch", "schnell", "nochmal", "gerade", "eben",
+                                "kurz",
+                            ],
+                        )
+                    })
+                {
+                    continue;
+                }
+
                 // The conjunction as a word, not as a conjunction.
                 if Self::is_hyphenated_mention(&tokens, index)
                     || Self::is_bare_mention(&tokens, index, document)
@@ -1351,6 +1369,7 @@ mod tests {
             "Sie trafen sich, um über die Möglichkeit einer Synthese zu diskutieren.",
             "Das heißt, aus einer Absicht heraus eine Lehre zu vermitteln.",
             "Es ist möglich, ohne Gefahr eines Irrtums zu entscheiden.",
+            "Kannst du dass bitte machen?",
             "Trump dementierte Absichten, den Iran anzugreifen.",
             "Er versuchte, etwas zu essen und zu trinken.",
             "Er versuchte, etwas zu essen und trinken.",
