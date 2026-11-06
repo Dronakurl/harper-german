@@ -50,6 +50,7 @@ pub fn rust_lint_group(
         german_verb_cluster::GermanVerbCluster,
         german_verb_preposition::GermanVerbPreposition,
         german_verb_second::GermanVerbSecond,
+        german_vorfeld_comma::GermanVorfeldComma,
         german_wider_wieder::GermanWiderWieder,
         german_wording::{
             GermanDoubleComparison, GermanDoublePassive, GermanPassivePerfect,
@@ -109,6 +110,7 @@ pub fn rust_lint_group(
     );
     group.add("GermanSubordinateComma", GermanSubordinateComma);
     group.add("GermanCoordinatingComma", GermanCoordinatingComma);
+    group.add("GermanVorfeldComma", GermanVorfeldComma);
     group.add("GermanNumberFormat", GermanNumberFormat);
     group.add("GermanQuotationMarks", GermanQuotationMarks);
     group.add("GermanReasonIsBecause", GermanReasonIsBecause);
