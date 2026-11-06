@@ -48,7 +48,7 @@ kein Absturz.
 
 Selbst gebaut: `just build-wasm`, dann `harper-cli plugin install target/wasm32-unknown-unknown/release/harper_german.wasm`.
 Obsidian, Browser-Erweiterung und `harper.js` nehmen dieselbe Datei; wie, steht in Harpers Anleitung
-[Other Languages](https://github.com/Dronakurl/harper/blob/claude/language-plugin-architecture-h8bw6z/packages/web/src/routes/docs/integrations/language-plugins/+page.md).
+[Other Languages](https://github.com/Dronakurl/harper/blob/feature/language-plugins/packages/web/src/routes/docs/integrations/language-plugins/+page.md).
 
 Das Modul ist etwa 45 MB groß (gepackt ca. 16 MB): fast alles davon ist das deutsche Wörterbuch.
 Gemessen mit `just test-plugin` (Release-Build, ein Rechner, Zahlen als Größenordnung):

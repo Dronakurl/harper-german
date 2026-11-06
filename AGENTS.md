@@ -22,7 +22,6 @@ Issue https://github.com/Dronakurl/harper/issues/14.
 - `src/tests/` – unit tests (they use crate internals) and `batteries/*.tsv`.
 - `tests/plugin_host.rs` – loads the built `.wasm` through `harper-plugin-host`; includes the
   wasm-equals-native check on `test_sources/`.
-- `docs/` – historical notes from when German lived inside `harper-core`.
 
 ## Commands
 
@@ -47,7 +46,7 @@ scripts/fetch_wikidata_names.py                                                 
 scripts/build_german_dictionary.py --lexemes /tmp/german_lexemes.db                # data/dictionary.dict, 1 minute
 ```
 
-Then `just bake-pack`, and measure as in "Tenth round" of `docs/GERMAN_DICTIONARY_NOTES.md`.
+Then `just bake-pack`, and measure with `scripts/measure_rules.py` (see its docstring).
 
 ## Rules
 
