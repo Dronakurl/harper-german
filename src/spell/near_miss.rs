@@ -71,7 +71,10 @@ fn spelling_slips(lower: &[char]) -> Vec<Vec<char>> {
         for at in 0..=lower.len() - 2 * len {
             // *anzuwendenden* is the gerundive of *anwenden*, not a slip.
             let gerundive = lower[..at].windows(2).any(|w| w == ['z', 'u'])
-                && matches!(lower[at..at + len], ['d', 'e', 'n'] | ['e', 'n', 'd'] | ['n', 'd', 'e']);
+                && matches!(
+                    lower[at..at + len],
+                    ['d', 'e', 'n'] | ['e', 'n', 'd'] | ['n', 'd', 'e']
+                );
             if !gerundive && lower[at..at + len] == lower[at + len..at + 2 * len] {
                 let mut repaired = lower.to_vec();
                 repaired.drain(at..at + len);
@@ -87,7 +90,12 @@ fn spelling_slips(lower: &[char]) -> Vec<Vec<char>> {
         }
         // *Betriebsystem*: the linking *s* in front of an *s*. Not after
         // *-ung*, whose *Vergnügungsteuer* is a spelling of its own.
-        if c == 's' && at > 2 && !vowel(before) && before != 's' && !lower[..at].ends_with(&['u', 'n', 'g']) {
+        if c == 's'
+            && at > 2
+            && !vowel(before)
+            && before != 's'
+            && !lower[..at].ends_with(&['u', 'n', 'g'])
+        {
             slips.push(inserted(at, 's'));
         }
         // *Ausname*, *wärend*: the silent *h*.
@@ -134,7 +142,8 @@ const SOLID_SHORT_ELEMENTS: &[&str] = &[
 /// *Tierarzt*). A typo cuts only into scraps: *Fun* + *kion*, *Lit* + *eraur*.
 fn has_a_clean_cut(base: &impl Dictionary, lower: &[char]) -> bool {
     let solid = |piece: &[char]| {
-        piece.len() >= 4 || SOLID_SHORT_ELEMENTS.contains(&piece.iter().collect::<String>().as_str())
+        piece.len() >= 4
+            || SOLID_SHORT_ELEMENTS.contains(&piece.iter().collect::<String>().as_str())
     };
     let word = |piece: &[char]| solid(piece) && base.contains_word(piece);
     let stem = |piece: &[char]| {
@@ -182,7 +191,8 @@ pub fn near_misses(word: &[char]) -> Vec<Vec<char>> {
         // *Woerdens*.
         let new_digraph = |candidate: &[char]| {
             [['a', 'e'], ['o', 'e'], ['u', 'e']].iter().any(|digraph| {
-                candidate.windows(2).any(|w| w == digraph) && !lower.windows(2).any(|w| w == digraph)
+                candidate.windows(2).any(|w| w == digraph)
+                    && !lower.windows(2).any(|w| w == digraph)
             })
         };
         found = keystroke_slips(&lower)
@@ -232,7 +242,11 @@ mod tests {
             ("Literaur", "Literatur"),
             ("Funkion", "Funktion"),
         ] {
-            assert!(near(typo).contains(&word.to_string()), "{typo}: {:?}", near(typo));
+            assert!(
+                near(typo).contains(&word.to_string()),
+                "{typo}: {:?}",
+                near(typo)
+            );
         }
     }
 

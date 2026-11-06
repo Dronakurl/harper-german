@@ -11,10 +11,10 @@ use crate::spell::compound_checker::{
     may_open_the_word, may_take_an_interfix,
 };
 use crate::spell::curated_german_dictionary;
-use crate::spell::near_miss::near_misses;
 use crate::spell::german_dict::{
     GERMAN_BARRED_ELEMENTS, GERMAN_FUNCTION_WORDS, GERMAN_STEMS, GERMAN_SUFFIXED_ELEMENTS,
 };
+use crate::spell::near_miss::near_misses;
 use harper_core::linting::{Lint, LintKind, Linter, Suggestion};
 use harper_core::spell::{
     Dictionary, EditKind, SuggestionHints, suggest_correct_spelling_with_hints,
@@ -542,9 +542,7 @@ fn in_a_name(tokens: &[&Token], index: usize, document: &Document) -> bool {
     let capital = previous_text.first().is_some_and(|c| c.is_uppercase());
     // *C. Pepper*, *Raymond L. Lindeman*: an initial, with its full stop
     // a token of its own or part of the word.
-    let is_initial = |text: &[char]| {
-        matches!(text, [c] | [c, '.'] if c.is_uppercase())
-    };
+    let is_initial = |text: &[char]| matches!(text, [c] | [c, '.'] if c.is_uppercase());
     if is_initial(previous_text) {
         return true;
     }

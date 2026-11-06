@@ -60,7 +60,9 @@ impl German {
         for rule_lints in lints.values_mut() {
             rule_lints.retain(|lint| {
                 lint.lint_kind != LintKind::Spelling
-                    || !self.user.contains_word(document.get_span_content(&lint.span))
+                    || !self
+                        .user
+                        .contains_word(document.get_span_content(&lint.span))
             });
         }
         remove_overlaps_map(&mut lints);
