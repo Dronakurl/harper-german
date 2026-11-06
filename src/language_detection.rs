@@ -48,7 +48,7 @@ pub fn german_confidence_given_english(text: &str, english_ratio: f32) -> Option
     let chars: Vec<char> = text.chars().collect();
     let counts = Counts::of(&PlainGerman.parse(&chars), &chars)?;
 
-    if counts.ratio(counts.special) >= 0.01 {
+    if counts.has_special_letters() {
         return Some(0.95);
     }
     // English is clearly dominant.
@@ -68,6 +68,8 @@ pub fn german_confidence_given_english(text: &str, english_ratio: f32) -> Option
 struct Counts {
     total: usize,
     special: usize,
+    /// Words with a letter German does not use (ť, č, ł, é, ...).
+    foreign: usize,
     german: usize,
     english: usize,
 }
@@ -78,6 +80,7 @@ impl Counts {
         let mut counts = Self {
             total: 0,
             special: 0,
+            foreign: 0,
             german: 0,
             english: 0,
         };
@@ -92,7 +95,10 @@ impl Counts {
                 .collect::<String>()
                 .to_lowercase();
             // ß is German only; ä, ö and ü also occur in other languages, but together they count.
-            if word.contains(['ä', 'ö', 'ü', 'ß']) {
+            // A word that also has a letter German does not use is not German (Slovak "späť").
+            if word.chars().any(is_foreign_letter) {
+                counts.foreign += 1;
+            } else if word.contains(['ä', 'ö', 'ü', 'ß']) {
                 counts.special += 1;
             }
             if GERMAN_WORDS.contains(&word.as_str()) {
@@ -108,12 +114,23 @@ impl Counts {
     fn ratio(&self, n: usize) -> f32 {
         n as f32 / self.total as f32
     }
+
+    /// Enough words with ä, ö, ü or ß, and more of them than words with letters German does not
+    /// use (Slovak "mäso" next to "čo", "šťastie").
+    fn has_special_letters(&self) -> bool {
+        self.ratio(self.special) >= 0.01 && self.special > self.foreign
+    }
+}
+
+/// A letter that does not occur in German words: not ASCII and not ä, ö, ü or ß.
+fn is_foreign_letter(c: char) -> bool {
+    c.is_alphabetic() && !c.is_ascii() && !matches!(c, 'ä' | 'ö' | 'ü' | 'ß' | 'ẞ')
 }
 
 fn german_confidence_of_tokens(tokens: &[Token], source: &[char]) -> Option<f32> {
     let counts = Counts::of(tokens, source)?;
 
-    if counts.ratio(counts.special) >= 0.01 {
+    if counts.has_special_letters() {
         return Some(0.95);
     }
     // English is clearly dominant.
@@ -202,6 +219,30 @@ mod tests {
             let text = std::fs::read_to_string(format!("test_sources/{name}")).unwrap();
             assert!(is_german(&text), "{name}");
         }
+    }
+
+    /// Slovak has ä in common words ("späť", "päť", "mäso"), next to letters German does not use.
+    #[test]
+    fn slovak_with_an_umlaut_is_not_german() {
+        use super::german_confidence_given_english;
+        let text = "Vďaka tomu sa vrátil späť. Zrejme konečne prišlo pol roka. \
+                    Podarilo sa mi ťo nainštalovať. Sme stastni. Kontrola xyzqw.";
+        assert!(!is_german(text));
+        assert_eq!(german_confidence_given_english(text, 0.0), None);
+    }
+
+    #[test]
+    fn slovak_whose_only_umlaut_word_has_no_other_foreign_letter_is_not_german() {
+        assert!(!is_german(
+            "Na obed bolo mäso so zemiakmi. Potom sme išli do mesta a kúpili sme si čerstvý chlieb."
+        ));
+    }
+
+    #[test]
+    fn german_with_a_loanword_stays_german() {
+        assert!(is_german(
+            "Wir trafen uns im Café und tranken Kaffee. Danach gingen wir über die Brücke nach Hause."
+        ));
     }
 
     /// An English sentence about German grammar, with a few German words in it. The English
