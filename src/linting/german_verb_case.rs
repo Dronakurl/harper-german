@@ -217,8 +217,17 @@ const TIME_WORDS: &[&str] = &[
     "Termin",
 ];
 
-/// The pronouns that show their case, with the form of the other case.
-const DATIVE_TO_ACCUSATIVE: &[(&str, &str)] = &[("mir", "mich"), ("dir", "dich"), ("ihm", "ihn")];
+/// The pronouns that show their case, with the form of the other case. *jemanden* and
+/// *niemanden* are accusative only, so they are never the subject.
+const DATIVE_TO_ACCUSATIVE: &[(&str, &str)] = &[
+    ("mir", "mich"),
+    ("dir", "dich"),
+    ("ihm", "ihn"),
+    ("jemandem", "jemanden"),
+    ("niemandem", "niemanden"),
+    ("Jemandem", "Jemanden"),
+    ("Niemandem", "Niemanden"),
+];
 
 pub struct GermanVerbCase {
     dictionary: Arc<CompactDictionary>,
@@ -464,8 +473,17 @@ impl GermanVerbCase {
         let mut lints = Vec::new();
         for (at, token) in clause.iter().enumerate() {
             let written = document.get_span_content_str(&token.span);
+            // *…, jemanden zu schaden*: an infinitive group that opens with the
+            // pronoun. Only at the start of the clause: in *er bat mich zu helfen*
+            // the *mich* belongs to *bitten*.
+            let before_zu_infinitive = at == 0
+                && clause
+                    .get(at + 1)
+                    .is_some_and(|t| lowercase_of(t, document) == "zu")
+                && clause.get(at + 2).is_some_and(|t| is_dative_verb(t));
             let next_to_verb = at.checked_sub(1).is_some_and(|i| is_dative_verb(clause[i]))
-                || clause.get(at + 1).is_some_and(|t| is_dative_verb(t));
+                || clause.get(at + 1).is_some_and(|t| is_dative_verb(t))
+                || before_zu_infinitive;
             if !next_to_verb {
                 continue;
             }
@@ -627,6 +645,16 @@ mod tests {
     fn catches_the_accusative_where_the_verb_wants_the_dative() {
         assert_eq!(fixed("Er hat mich geholfen."), ["mich"]);
         assert_eq!(fixed("Ich danke dich."), ["dich"]);
+        assert_eq!(
+            fixed("Er beteuerte, dass es keine Absicht war, jemanden zu schaden."),
+            ["jemanden"]
+        );
+        assert_eq!(
+            fixes("Er beteuerte, dass es keine Absicht war, jemanden zu schaden.")[0].1,
+            ["jemandem"]
+        );
+        assert_eq!(fixed("Er wollte niemanden schaden."), ["niemanden"]);
+        assert_eq!(fixed("Sie hat jemanden geholfen."), ["jemanden"]);
         assert_eq!(fixed("Ich nehme an den Kurs teil."), ["den"]);
         assert_eq!(fixed("Er fürchtet sich vor den Hund."), ["den"]);
         assert_eq!(fixed("Die Brille liegt auf den Tisch."), ["den"]);
@@ -644,6 +672,12 @@ mod tests {
             "Lass mich helfen.",
             "Er hilft den Kindern.",
             "Er hilft mir, den Koffer zu tragen.",
+            "Er bat jemanden zu helfen.",
+            "Er bat mich zu helfen.",
+            "Es war keine Absicht, jemandem zu schaden.",
+            "Er hat niemandem geholfen.",
+            "Er sah jemanden helfen.",
+            "Jemanden zu finden, der hilft, ist schwer.",
             "Ich nehme an dem Kurs teil.",
             "Die Brille liegt auf dem Tisch.",
             "Er legt die Brille auf den Tisch.",
