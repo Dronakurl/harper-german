@@ -62,8 +62,7 @@ Then `just bake-pack`, and measure as in "Tenth round" of `docs/GERMAN_DICTIONAR
   `web-time` directly, and do not add dependencies that need `wasm-bindgen`.
 - Keep `just check` and `just test-plugin` green. Compare lints before and after a change on
   `test_sources/` and the batteries; sort the output before diffing.
-- To compare without a wasm build, lint natively: `HARPER_LINT_FILE=<file or directory> cargo test
-  --release --lib lint_file_as_json -- --ignored --nocapture` prints one `LINTJSON {...}` line per
-  lint, with the plugin's dictionary and overlap removal, the same lints the module gives.
+- To compare without a wasm build, lint natively: `just lint-native <file or directory>` (see
+  README, "Texte nativ prüfen"); `just decompose "<words>"` shows compound splits.
 - Human-facing guidance that proves stable belongs in `README.md`; remind the maintainer to move it
   from this file when you notice it has settled.

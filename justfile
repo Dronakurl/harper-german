@@ -16,6 +16,14 @@ check:
 test:
   cargo test --lib
 
+# Lint a file or a directory natively, with the same lints as the module: one `LINTJSON {...}` line per lint.
+lint-native path:
+  HARPER_LINT_FILE={{path}} cargo test --release --lib lint_file_as_json -- --ignored --nocapture | grep '^LINTJSON'
+
+# Show how the compound checker takes words apart: just decompose "zusamen Beisiel".
+decompose words:
+  HARPER_DEBUG_WORDS="{{words}}" cargo test --release --lib show_german_decompositions -- --ignored --nocapture
+
 # Expand the word list into data/german.pack, which build.rs bakes in (else it is expanded at first use).
 bake-pack:
   cargo run --release --example bake_pack

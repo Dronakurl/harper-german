@@ -16,6 +16,19 @@ just test                     # deutsche Tests, nativ
 just test-plugin              # Modul bauen, laden, damit prüfen (braucht das Ziel wasm32-unknown-unknown)
 ```
 
+### Texte nativ prüfen
+
+Ohne Wasm-Build, mit denselben Meldungen wie das Modul (kompositumfähiges Wörterbuch, Überlappungen entfernt):
+
+```bash
+just lint-native notizen.md          # Datei oder Ordner; eine Zeile LINTJSON {...} je Meldung
+just decompose "zusamen Beisiel"     # zeigt, wie der Kompositum-Prüfer Wörter zerlegt
+```
+
+Vorher prüfen, ob der Build kompiliert: Ein kaputter Build gibt still keine Meldungen aus.
+Um eine Änderung zu messen, die Meldungen vor und nach der Änderung sortiert vergleichen; jede neue
+Meldung auf korrektem Text ist ein Fehlalarm. Für größere Korpora: `scripts/measure_rules.py`.
+
 ## In Harper installieren
 
 Das Plugin ist **eine einzige Datei**, `harper-de.wasm`. Das Release [`latest`](https://github.com/Dronakurl/harper-german/releases/tag/latest) wird bei jedem Push auf `main`

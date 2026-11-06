@@ -602,6 +602,7 @@ Vorwort N Vorworte
 Mitteilung F Mitteilungen
 Ausschluss M Ausschlüsse
 Zusammenschluss M Zusammenschlüsse
+Halbwertzeit F Halbwertzeiten
 """.strip().splitlines()
 
 CORE_ADVERBS = """
@@ -635,7 +636,7 @@ Verdi Puccini Rossini Vivaldi Debussy Ravel Tschaikowsky Dvořák Smetana Sibeli
 Goethe Schiller Lessing Kleist Heine Fontane Hesse Kafka Brecht Böll Grass Rilke Hölderlin Novalis Tieck Eichendorff
 Storm Keller Grillparzer Nestroy Büchner Hauptmann Zweig Musil Joyce Shakespeare Dante Cervantes Tolstoi Dostojewski
 Tschechow Orwell Montaigne Voltaire Rousseau Molière Hugo Balzac Flaubert Zola Proust Homer Vergil Ovid Cicero
-Kant Hegel Marx Engels Nietzsche Schopenhauer Husserl Heidegger Platon Aristoteles Sokrates Descartes Spinoza Leibniz
+Kant Hegel Marx Engels Nietzsche Schopenhauer Husserl Heidegger Platon Plotin Aristoteles Sokrates Descartes Spinoza Leibniz
 Hume Locke Hobbes Freud Jung Einstein Newton Galilei Kepler Kopernikus Darwin Humboldt Röntgen Planck Heisenberg Bohr
 Curie Pasteur Koch Gauß Euler Riemann Hilbert Turing Edison Tesla Faraday Maxwell Hawking Luther Calvin Zwingli
 Cäsar Augustus Nero Karl Otto Friedrich Heinrich Maximilian Barbarossa Napoleon Bismarck Hitler Stalin Lenin Churchill
