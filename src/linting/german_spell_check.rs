@@ -11,6 +11,7 @@ use crate::spell::compound_checker::{
     may_open_the_word, may_take_an_interfix,
 };
 use crate::spell::curated_german_dictionary;
+use crate::spell::near_miss::near_misses;
 use crate::spell::german_dict::{
     GERMAN_BARRED_ELEMENTS, GERMAN_FUNCTION_WORDS, GERMAN_STEMS, GERMAN_SUFFIXED_ELEMENTS,
 };
@@ -517,6 +518,75 @@ impl<T: Dictionary> GermanSpellCheck<T> {
     }
 }
 
+/// Is the capitalized word at `index` part of a name: behind a first name or
+/// an initial (*Wolfgang Wieland*, *C. Pepper*), or in front of a hyphen
+/// (*Hartree-Fock*)? Behind any capitalized content word, in fact: a noun
+/// in front of the typo (*die Firma Kontrole*) is lost with it, which is rare. A name the dictionary does not know cuts like a compound
+/// as readily as a typo does.
+fn in_a_name(tokens: &[&Token], index: usize, document: &Document) -> bool {
+    let word = tokens[index];
+    if !document
+        .get_span_content(&word.span)
+        .first()
+        .is_some_and(|c| c.is_uppercase())
+    {
+        return false;
+    }
+    if document.get_full_content().get(word.span.end) == Some(&'-') {
+        return true;
+    }
+    let Some(previous) = index.checked_sub(1).map(|at| tokens[at]) else {
+        return false;
+    };
+    let previous_text = document.get_span_content(&previous.span);
+    let capital = previous_text.first().is_some_and(|c| c.is_uppercase());
+    // *C. Pepper*, *Raymond L. Lindeman*: an initial, with its full stop
+    // a token of its own or part of the word.
+    let is_initial = |text: &[char]| {
+        matches!(text, [c] | [c, '.'] if c.is_uppercase())
+    };
+    if is_initial(previous_text) {
+        return true;
+    }
+    if matches!(previous.kind, TokenKind::Punctuation(Punctuation::Period))
+        && index >= 2
+        && is_initial(document.get_span_content(&tokens[index - 2].span))
+    {
+        return true;
+    }
+    // *Wolfgang Wieland*, *Volker Halbach*: a capitalized word in front that
+    // is no article, preposition, pronoun or conjunction, and not the first
+    // word of the sentence, whose capital says nothing.
+    previous.kind.is_proper_noun()
+        || (capital
+            && index >= 2
+            && !previous.kind.is_determiner()
+            && !previous.kind.is_preposition()
+            && !previous.kind.is_pronoun()
+            && !previous.kind.is_conjunction())
+}
+
+/// The lint for a word the compound splitter accepts that is a slip away from a
+/// plain word; see [`near_misses`].
+fn near_miss_lint(word: &Token, chars: &[char]) -> Option<Lint> {
+    let near = near_misses(chars);
+    if near.is_empty() {
+        return None;
+    }
+    let word_str: String = chars.iter().collect();
+    let near_str: Vec<String> = near.iter().map(|s| s.iter().collect()).collect();
+    Some(Lint {
+        span: word.span,
+        lint_kind: LintKind::Spelling,
+        suggestions: near.into_iter().map(Suggestion::ReplaceWith).collect(),
+        priority: 20,
+        message: format!(
+            "»{word_str}« ist vermutlich ein Tippfehler. Meinten Sie: {}?",
+            near_str.join(", ")
+        ),
+    })
+}
+
 impl<T: Dictionary> Linter for GermanSpellCheck<T> {
     fn lint(&mut self, document: &Document) -> Vec<Lint> {
         let mut lints = Vec::new();
@@ -539,8 +609,16 @@ impl<T: Dictionary> Linter for GermanSpellCheck<T> {
                         continue;
                     }
 
-                    // Skip words in dictionary
+                    // Skip words in dictionary. One the base dictionary does
+                    // not list got in as a compound, and a typo often cuts
+                    // too (*zusamen* is *zu* + *Samen*): it is still reported
+                    // when it is a slip away from a plain word.
                     if self.dictionary.contains_word(word_chars) {
+                        if !curated_german_dictionary().contains_word(word_chars)
+                            && !in_a_name(&tokens, index, document)
+                        {
+                            lints.extend(near_miss_lint(word, word_chars));
+                        }
                         continue;
                     }
 
@@ -571,8 +649,11 @@ impl<T: Dictionary> Linter for GermanSpellCheck<T> {
                         continue;
                     }
 
-                    // Try compound word splitting
+                    // Try compound word splitting.
                     if self.try_compound_word_check(word_chars) {
+                        if !in_a_name(&tokens, index, document) {
+                            lints.extend(near_miss_lint(word, word_chars));
+                        }
                         continue;
                     }
 

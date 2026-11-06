@@ -575,6 +575,13 @@ Fessel F Fesseln
 Laster N =
 Schock M Schocks
 Geiz M -
+Antigen N Antigene
+Ausdruck M Ausdrücke
+Hinblick M -
+Vorwort N Vorworte
+Mitteilung F Mitteilungen
+Ausschluss M Ausschlüsse
+Zusammenschluss M Zusammenschlüsse
 """.strip().splitlines()
 
 CORE_ADVERBS = """

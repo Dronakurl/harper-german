@@ -4,7 +4,7 @@
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
-use harper_core::linting::{FlatConfig, Lint, LintGroup};
+use harper_core::linting::{FlatConfig, Lint, LintGroup, LintKind};
 use harper_core::parsers::{Markdown, MarkdownOptions, OrgMode, Parser};
 use harper_core::spell::{Dictionary, MergedDictionary, MutableDictionary};
 use harper_core::{DictWordMetadata, Document, remove_overlaps_map};
@@ -25,6 +25,9 @@ pub struct German {
     base: Arc<dyn Dictionary>,
     /// The dictionary the linters were built with: `base`, plus the user's words.
     dictionary: Arc<MergedDictionary>,
+    /// The words the user added. Never reported as misspelled, whatever a
+    /// linter makes of them.
+    user: Arc<MutableDictionary>,
     group: LintGroup,
 }
 
@@ -54,6 +57,12 @@ impl German {
         let document = Document::new_from_chars(chars.to_vec().into(), &parser, &*self.dictionary);
 
         let mut lints: BTreeMap<String, Vec<Lint>> = self.group.organized_lints(&document);
+        for rule_lints in lints.values_mut() {
+            rule_lints.retain(|lint| {
+                lint.lint_kind != LintKind::Spelling
+                    || !self.user.contains_word(document.get_span_content(&lint.span))
+            });
+        }
         remove_overlaps_map(&mut lints);
 
         lints
@@ -126,6 +135,7 @@ impl LanguagePlugin for German {
             group: Self::build_group(&dictionary),
             base,
             dictionary,
+            user: Arc::new(MutableDictionary::new()),
         }
     }
 
@@ -189,8 +199,10 @@ impl LanguagePlugin for German {
 
         let mut merged = MergedDictionary::new();
         merged.add_dictionary(self.base.clone());
-        merged.add_dictionary(Arc::new(user));
+        let user = Arc::new(user);
+        merged.add_dictionary(user.clone());
         let merged = Arc::new(merged);
+        self.user = user;
 
         // The linters hold on to the dictionary, so they are rebuilt with the new one. Keep the
         // rules the user switched off.
