@@ -636,12 +636,37 @@ impl GermanSubordinateComma {
             "samstag",
             "sonntag",
         ];
+        const MONTHS: &[&str] = &[
+            "januar",
+            "jänner",
+            "februar",
+            "märz",
+            "april",
+            "mai",
+            "juni",
+            "juli",
+            "august",
+            "september",
+            "oktober",
+            "november",
+            "dezember",
+        ];
         let mut lints = Vec::new();
         for at in 0..tokens.len().saturating_sub(2) {
-            if Self::word_in(tokens[at], document, WEEKDAYS)
-                && Self::word_in(tokens[at + 1], document, &["den", "dem"])
-                && matches!(tokens[at + 2].kind, TokenKind::Number(_))
-            {
+            if !Self::word_in(tokens[at], document, WEEKDAYS) {
+                continue;
+            }
+            let with_article = Self::word_in(tokens[at + 1], document, &["den", "dem"])
+                && matches!(tokens[at + 2].kind, TokenKind::Number(_));
+            // *Montag 26. Mai*: the day as an ordinal and a month behind it,
+            // no article. A bare number (*Montag 3 Stunden*) is no date.
+            let without_article = matches!(tokens[at + 1].kind, TokenKind::Number(_))
+                && tokens
+                    .get(at + 2)
+                    .is_some_and(|t| matches!(t.kind, TokenKind::Punctuation(Punctuation::Period)))
+                && Self::word_after(tokens[at + 2], document)
+                    .is_some_and(|t| Self::word_in(t, document, MONTHS));
+            if with_article || without_article {
                 lints.push(Lint {
                     span: tokens[at].span,
                     lint_kind: LintKind::Punctuation,
@@ -928,6 +953,16 @@ impl GermanSubordinateComma {
         })
     }
 
+    /// The next word in the document behind `token`, across a sentence end: the
+    /// full stop of an ordinal (*26. Mai*) ends the sentence for the tokenizer.
+    fn word_after<'a>(token: &Token, document: &'a Document) -> Option<&'a Token> {
+        document
+            .get_tokens()
+            .iter()
+            .skip_while(|t| t.span.start <= token.span.start)
+            .find(|t| !t.kind.is_whitespace())
+    }
+
     fn word_in(token: &Token, document: &Document, set: &[&str]) -> bool {
         let word: String = document
             .get_span_content(&token.span)
@@ -1176,6 +1211,17 @@ mod tests {
             lint_count("Das Treffen findet am Montag, dem 3. Mai, statt."),
             0
         );
+        assert_eq!(
+            lint_count("Selbstverlag, Starnberg, Montag 26. Mai 2025."),
+            1
+        );
+        for text in [
+            "Selbstverlag, Starnberg, Montag, 26. Mai 2025.",
+            "Er arbeitete am Montag 3 Stunden.",
+            "Am Montag 3. Platz, am Dienstag Sieg.",
+        ] {
+            assert_eq!(lint_count(text), 0, "{text}");
+        }
     }
 
     #[test]
