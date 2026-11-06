@@ -57,6 +57,7 @@ pub fn rust_lint_group(
         german_verb_preposition::GermanVerbPreposition,
         german_verb_second::GermanVerbSecond,
         german_vorfeld_comma::GermanVorfeldComma,
+        german_weak_noun::GermanWeakNoun,
         german_wider_wieder::GermanWiderWieder,
         german_wording::{
             GermanDoubleComparison, GermanDoublePassive, GermanPassivePerfect,
@@ -117,6 +118,7 @@ pub fn rust_lint_group(
     group.add("GermanSubordinateComma", GermanSubordinateComma);
     group.add("GermanCoordinatingComma", GermanCoordinatingComma);
     group.add("GermanVorfeldComma", GermanVorfeldComma);
+    group.add("GermanWeakNoun", GermanWeakNoun);
     group.add("GermanNumberFormat", GermanNumberFormat);
     group.add("GermanCoupling", GermanCoupling);
     group.add("GermanApostrophe", GermanApostrophe);
