@@ -382,6 +382,77 @@ impl GermanAdjectiveForm {
         })
     }
 
+    /// A capitalized adjective in a name, with the strong ending behind a
+    /// definite article: *dem Sächsischem Oberverwaltungsgericht*, *des
+    /// Deutsches Bundestages*, *im Europäischem Parlament*. Behind *dem*,
+    /// *des* and their contractions the adjective is weak and ends in *-en*;
+    /// *-em* and *-es* are always wrong there. *der* and *den* count only behind
+    /// a preposition, where they cannot be a relative pronoun.
+    fn capitalized_name_adjective(
+        &self,
+        words: &[&Token],
+        at: usize,
+        document: &Document,
+    ) -> Option<Lint> {
+        const ALWAYS: &[&str] = &["dem", "des", "im", "am", "zum", "zur", "vom", "beim"];
+        let determiner = lowercase_of(words[at], document);
+        let previous = at.checked_sub(1).map(|i| words[i]);
+        let surely_article = ALWAYS.contains(&determiner.as_str())
+            || (matches!(determiner.as_str(), "der" | "den")
+                && previous.is_some_and(|p| p.kind.is_preposition()));
+        if !surely_article {
+            return None;
+        }
+        // A relative pronoun behind its comma: *…, dem Großes gelang*.
+        if previous.is_some_and(|p| matches!(p.kind, TokenKind::Punctuation(_))) {
+            return None;
+        }
+        let adjective = words.get(at + 1)?;
+        let noun = words.get(at + 2)?;
+        if !matches!(adjective.kind, TokenKind::Word(_))
+            || !matches!(noun.kind, TokenKind::Word(_))
+            || !starts_uppercase(adjective, document)
+            || !starts_uppercase(noun, document)
+        {
+            return None;
+        }
+        let written = document.get_span_content_str(&adjective.span);
+        let word = lowercase_of(adjective, document);
+        let (stem, ending) = ["em", "es"]
+            .iter()
+            .find_map(|ending| word.strip_suffix(ending).map(|stem| (stem, *ending)))?;
+        let weak = format!("{stem}en");
+        // *des Gutes Schenkendorf*: the genitive of a noun (*Gut*) with a name
+        // behind it. Behind *des* the adjective's noun is a genitive too, and
+        // ends in *-s*: *des Deutsches Bundestages*.
+        let noun_text = document.get_span_content_str(&noun.span);
+        if ending == "es" && !noun_text.ends_with('s') {
+            return None;
+        }
+        // A nominalized adjective is weak here too (*dem Deutschen*), so a noun
+        // reading of the word is no reason to leave it alone.
+        if !self.is_adjective(&word)
+            || !self.is_adjective(&weak)
+            || determiner_readings(&word).is_some()
+            || NUMERALS.contains(&word)
+        {
+            return None;
+        }
+        let mut fixed: Vec<char> = written.chars().collect();
+        fixed.truncate(fixed.len() - ending.len());
+        fixed.extend(['e', 'n']);
+        Some(Lint {
+            span: adjective.span,
+            lint_kind: LintKind::Agreement,
+            suggestions: vec![Suggestion::ReplaceWith(fixed.clone())],
+            priority: 31,
+            message: format!(
+                "Nach »{determiner}« endet das Adjektiv auf »-en«: »{}«, nicht »{written}«.",
+                fixed.iter().collect::<String>()
+            ),
+        })
+    }
+
     /// The determiner's readings the noun behind it leaves standing.
     ///
     /// *die* is a feminine singular or a plural, and the adjective after it
@@ -817,6 +888,8 @@ impl Linter for GermanAdjectiveForm {
                     lints.push(lint);
                 } else if let Some(lint) = self.nominalized_adjective(&words, at, document) {
                     lints.push(lint);
+                } else if let Some(lint) = self.capitalized_name_adjective(&words, at, document) {
+                    lints.push(lint);
                 }
             }
         }
@@ -844,6 +917,39 @@ mod tests {
             .into_iter()
             .map(|lint| document.get_span_content_str(&lint.span))
             .collect()
+    }
+
+    #[test]
+    fn a_strong_ending_in_a_name_is_reported() {
+        assert_eq!(
+            reported(
+                "Er klagte vor dem Verwaltungsgericht Dresden und dem Sächsischem Oberverwaltungsgericht."
+            ),
+            ["Sächsischem"]
+        );
+        assert_eq!(
+            reported("Das ist eine Sitzung des Deutsches Bundestages."),
+            ["Deutsches"]
+        );
+        assert_eq!(
+            reported("Er sitzt im Europäischem Parlament."),
+            ["Europäischem"]
+        );
+        assert_eq!(
+            reported("Das kam von der Bayerischem Staatsregierung."),
+            ["Bayerischem"]
+        );
+        for text in [
+            "Er sitzt im Europäischen Parlament.",
+            "Das ist eine Sitzung des Deutschen Bundestages.",
+            "Er dankte dem Deutschen Roten Kreuz.",
+            "Das gehört der Deutsches Recht studierenden Frau.",
+            "Der Mann, dem Großes gelang, kam.",
+            "Er gab dem Kind ein Buch.",
+            "Er erwarb das Vorwerk des Gutes Schenkendorf.",
+        ] {
+            assert!(reported(text).is_empty(), "{text}: {:?}", reported(text));
+        }
     }
 
     #[test]
