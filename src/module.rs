@@ -25,6 +25,7 @@ pub fn rust_lint_group(
         german_fixed_nominalization::GermanFixedNominalization,
         german_genitive_after_nominative_article::GermanGenitiveAfterNominativeArticle,
         german_mid_sentence_capital::GermanMidSentenceCapital,
+        german_modal_finite_sein::GermanModalFiniteSein,
         german_modal_zu_infinitive::GermanModalZuInfinitive,
         german_nominalized_adjective::GermanNominalizedAdjective,
         german_nominalized_infinitive::GermanNominalizedInfinitive,
@@ -136,6 +137,7 @@ pub fn rust_lint_group(
     group.add("GermanYearPreposition", GermanYearPreposition);
     group.add("GermanPerfectAuxiliary", GermanPerfectAuxiliary);
     group.add("GermanModalZuInfinitive", GermanModalZuInfinitive);
+    group.add("GermanModalFiniteSein", GermanModalFiniteSein);
     group.add("GermanStrongImperative", GermanStrongImperative);
     group.add("GermanQuestionMark", GermanQuestionMark);
     group.add("GermanCountryArticle", GermanCountryArticle);

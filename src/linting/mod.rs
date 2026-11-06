@@ -14,6 +14,7 @@ pub mod german_fixed_nominalization;
 pub mod german_foreign_stretch;
 pub mod german_genitive_after_nominative_article;
 pub mod german_mid_sentence_capital;
+pub mod german_modal_finite_sein;
 pub mod german_modal_zu_infinitive;
 pub mod german_nominalized_adjective;
 pub mod german_nominalized_infinitive;
