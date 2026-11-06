@@ -193,16 +193,16 @@ pub(crate) fn interfix_fits(element: &[char], interfix: &[char]) -> bool {
 /// # Typing the elements from the word list does not work
 ///
 /// Length is the whole gate, so `vieleicht` decomposes as `viel` + `eicht` —
-/// `eicht` being the third person singular of *eichen*. Hunspell rejects the
-/// same word without any blocklist entry, because its German dictionary marks
-/// compound participation explicitly and positionally (`COMPOUNDBEGIN`,
-/// `COMPOUNDMIDDLE`, `COMPOUNDEND`, `ONLYINCOMPOUND`) and only **3.0%** of its
-/// 258 216 entries may take part at all. Here it is effectively every entry of
+/// `eicht` being the third person singular of *eichen*. A dictionary that
+/// marks compound participation explicitly and positionally (may begin, may
+/// stand inside, may end a compound) rejects the same word without any
+/// blocklist entry, and in such a dictionary only a few percent of the
+/// entries may take part at all. Here it is effectively every entry of
 /// three characters or more.
 ///
 /// The obvious repair is to ask what part of speech an element is. It was
-/// measured three ways on 1.44M words of edited German prose, against the 1271
-/// single-word entries of `Wikipedia:Liste von Tippfehlern`:
+/// measured three ways on 1.44M words of edited German prose, against 1271
+/// everyday single-word typos:
 ///
 /// | element must … | extra typos caught | extra lints on correct prose |
 /// |---|---|---|
@@ -255,8 +255,8 @@ pub(crate) fn lowercase(word: &[char]) -> bool {
 /// `stattfinden` is a German verb and is in the dictionary; `vieleichen` is
 /// not. So when the last element has no word class of its own, the compound is
 /// accepted only if the prefix plus that element's **infinitive** is itself a
-/// word — which is the question hunspell answers with per-entry compound
-/// flags, asked the other way round.
+/// word — the question per-entry compound flags would answer, asked the other
+/// way round.
 pub(crate) fn can_head_a_lowercase_compound(
     dictionary: &impl Dictionary,
     whole: &[char],
@@ -953,9 +953,8 @@ impl CompoundChecker {
     /// This used to key on the compound flags instead, which was no gate at
     /// all: `h` is the bookkeeping marker that sits on nearly every entry. On
     /// 1.44M words of prose, asking for a noun or a preposition catches 235
-    /// more misspellings and newly reports 670 words, of which 488 are ones
-    /// hunspell rejects as well (proper names and quoted English) and the rest
-    /// are almost all names too.
+    /// more misspellings and newly reports 670 words, of which 488 are proper
+    /// names and quoted English and the rest are almost all names too.
     ///
     /// Without a base dictionary there is no metadata to ask, and the flags are
     /// all that is left; that path is only used by tests.
@@ -1923,7 +1922,7 @@ mod tests {
     /// `fix_german_noun_forms.py` gave `Zeug` its plural, so `zeuge` is now a
     /// noun and `Werkzeuge` no longer needs the gate to stay open. `räume` and
     /// `garten` followed: `add_german_noun_homograph_readings.py` gives the
-    /// noun forms hunspell knows a noun entry of their own, which is what let
+    /// noun forms a noun entry of their own, which is what let
     /// [`can_head_a_capitalized_compound`] reject verb-form heads (`Bett|rieb`)
     /// without taking `Zeiträume` along. The ones left are the verb forms.
     ///
@@ -1996,8 +1995,8 @@ mod tests {
             );
         }
 
-        // Still a word: hunspell reads these as imperatives, so
-        // `mark_german_stems.py` leaves them alone.
+        // Still a word: these are imperatives, so `mark_german_stems.py`
+        // leaves them alone.
         for imperative in ["hab", "werd", "soll", "quer", "vier", "paar"] {
             assert!(
                 accepts(imperative),

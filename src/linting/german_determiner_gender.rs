@@ -188,8 +188,7 @@ impl GermanDeterminerGender {
 
     /// Is the determiner-shaped word at `at` something else in this position?
     ///
-    /// Three readings, each found on the correct example sentences of
-    /// LanguageTool's German rules:
+    /// Three readings, each found on correct example sentences:
     ///
     /// * **the numeral *ein***, behind another determiner: *das **eine** Mal*,
     ///   *der **eine** Server*, *vom **einen** Ende*, *Ich kenne **eine**, die*.

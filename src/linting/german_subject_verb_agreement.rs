@@ -42,10 +42,9 @@ use harper_core::{Document, Punctuation, Token, TokenKind, TokenStringExt};
 ///   edited prose and was wrong every time.
 /// * the **end of a subordinate clause**. A clause opened by *dass*, *weil* or
 ///   *wie* is verb-final, so the last word before the clause's punctuation is
-///   the verb. This is the half of the language the front field cannot see, and
-///   LanguageTool does not see it either: its `DE_VERBAGREEMENT` wants the two
-///   words adjacent, so *Es ist nicht so wie es sein sollt* goes unreported by
-///   both tools until now.
+///   the verb. This is the half of the language the front field cannot see: a
+///   check that wants subject and verb adjacent leaves *Es ist nicht so wie es
+///   sein sollt* unreported.
 ///
 /// The second position is worth less than it looks, because `-en` has to be
 /// thrown away there — it is the infinitive, the plural and the declined
@@ -928,9 +927,8 @@ impl<T: Dictionary> GermanSubjectVerbAgreement<T> {
     ///
     /// A subordinate clause is verb-final, so *weil du kommen sollt* pairs the
     /// pronoun behind the conjunction with the last word of the clause. This is
-    /// the half of the language the front-field check cannot see, and neither
-    /// tool Harper is measured against sees it either: LanguageTool's
-    /// `DE_VERBAGREEMENT` wants the two words adjacent.
+    /// the half of the language the front-field check cannot see, nor any
+    /// check that wants the two words adjacent.
     ///
     /// `es` is admitted here and nowhere else — see
     /// [`subordinate_subject_pronoun`] — but only its **person** is checked.

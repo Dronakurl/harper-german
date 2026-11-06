@@ -3,12 +3,12 @@
 //! unchanged otherwise. Harper had the names and not the genitives, so 48 of
 //! them were reported as misspellings across the archived corpus.
 //!
-//! The rule is hunspell de_DE's `SFX S`, on Harper's `H`. It is deliberately not
+//! The rule is Harper's affix class `H`. It is deliberately not
 //! `b`, which is the same surface rule but declares both the result and the base
 //! a **plural** noun: true for `Autos`, wrong for `Großbritanniens`.
 //!
 //! `H` is given only to capitalized entries, and that restriction is the whole
-//! reason it is affordable. On all 45545 entries hunspell marks it cost 184
+//! reason it is affordable. On all 45545 entries that could take it, it cost 184
 //! detections in `just language-recall german` — `anderen -> annderen`,
 //! `jeweils -> jeweills`, `Anfang -> Annfang`, typos of the most frequent words
 //! there are — because every new form is also a compound element. Capitalized

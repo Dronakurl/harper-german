@@ -15,8 +15,8 @@ class is a real error, not a random perturbation:
 
 With `--forms` it also measures the other kind of miss: plausible typos of the
 words the corpus actually uses — a doubled letter, a dropped one from a pair, two
-letters swapped, `ss`/`ß` — kept only when hunspell rejects them, so every one is
-a real mistake. What Harper accepts there is a spell-check false negative.
+letters swapped, `ss`/`ß` — kept only when a list of German word forms does not
+contain them, so every one is a real mistake. What Harper accepts there is a spell-check false negative.
 
 Recall alone is not the goal — a rule that flags everything would score 100% —
 so read it next to ``just check` and the batteries`, which is the precision
@@ -157,7 +157,7 @@ def typo_variants(word: str) -> set[str]:
 
 def report_typos(files: list[Path], forms_path: Path) -> None:
     """How many real typos of frequent corpus words does Harper let through?"""
-    oracle = {
+    known_forms = {
         line.strip()
         for line in forms_path.read_text(encoding="utf-8", errors="replace").splitlines()
         if line.strip()
@@ -171,10 +171,10 @@ def report_typos(files: list[Path], forms_path: Path) -> None:
     ranked = sorted(frequency.items(), key=lambda kv: -kv[1])[:3000]
     typos: dict[str, tuple[int, str]] = {}
     for word, count in ranked:
-        if word not in oracle:
+        if word not in known_forms:
             continue
         for variant in typo_variants(word):
-            if variant in oracle or variant[:1].upper() + variant[1:] in oracle:
+            if variant in known_forms or variant[:1].upper() + variant[1:] in known_forms:
                 continue
             typos.setdefault(variant, (count, word))
 
@@ -214,7 +214,7 @@ def main() -> int:
     parser.add_argument(
         "--forms",
         type=Path,
-        help="hunspell form list from `unmunch`; enables the typo section",
+        help="list of German word forms, one per line; enables the typo section",
     )
     args = parser.parse_args()
 

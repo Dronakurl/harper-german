@@ -280,8 +280,7 @@ impl Agreement {
     ///
     /// Unlike [`Self::agrees_with`] this does not treat an unknown axis as
     /// permissive: it returns what is actually shared, so chaining it across a
-    /// noun phrase narrows the possibilities the way LanguageTool's
-    /// `retainAll` does.
+    /// noun phrase narrows the possibilities word by word.
     pub fn intersect(&self, other: &Self) -> Self {
         Self {
             case: self.case & other.case,
@@ -567,8 +566,7 @@ mod tests {
         assert!(unknown.is_unknown());
     }
 
-    /// Chaining `intersect` down a noun phrase narrows the readings, the way
-    /// LanguageTool's `retainAll` does. Unlike `agrees_with` it does not treat
+    /// Chaining `intersect` down a noun phrase narrows the readings. Unlike `agrees_with` it does not treat
     /// an unknown side as permissive, so callers must check `is_unknown` first.
     #[test]
     fn intersect_narrows_the_readings() {

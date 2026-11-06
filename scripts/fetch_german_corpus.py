@@ -3,7 +3,7 @@
 
 The archived corpus is 264 random German Wikipedia articles, which in practice
 means biographies, places and events. Roughly 95% of what Harper still reports
-there is a proper name neither it nor hunspell knows, and no rule will ever fix
+there is a proper name its dictionary does not know, and no rule will ever fix
 that — it is a coverage question, and a dull one. The grammar never gets
 exercised because the sentences are short and appositive.
 

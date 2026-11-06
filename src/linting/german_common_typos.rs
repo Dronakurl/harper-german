@@ -196,8 +196,21 @@ impl Linter for GermanCommonTypos {
     fn lint(&mut self, document: &Document) -> Vec<Lint> {
         let mut lints = Vec::new();
 
+        let base = curated_german_dictionary();
         for word in document.iter_words() {
             let chars = document.get_span_content(&word.span);
+            // A word of the dictionary is no slip, whatever it opens with:
+            // *theoretisch* is not *Theorie* misspelled plus *tisch*. The
+            // hand-picked misspellings are words to it (*bischen*, *Packet*).
+            let hand_picked = {
+                let lower: String = chars.iter().flat_map(|c| c.to_lowercase()).collect();
+                HAND_PICKED_TYPOS
+                    .binary_search_by_key(&lower.as_str(), |(wrong, _)| wrong)
+                    .is_ok()
+            };
+            if !hand_picked && base.contains_word(chars) {
+                continue;
+            }
             let (correction, in_compound) = match Self::correction(chars) {
                 Some(correction) => (correction.to_string(), false),
                 None => match Self::compound_correction(chars) {

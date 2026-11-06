@@ -15,7 +15,7 @@ Issue https://github.com/Dronakurl/harper/issues/14.
 - `data/` – `dictionary.dict`, `annotations.json`, `compound_begin_forms.txt`, `wikidata_names.tsv`.
   The `suggestions` section of `annotations.json` ranks spelling suggestions (alternations, QWERTZ
   keyboard, letter frequency) through harper-core's `SuggestionHints`; change the table, not
-  `GermanSpellCheck`. It is written for this repository: do not copy hunspell's `de_DE.aff` (GPL).
+  `GermanSpellCheck`. It is written for this repository: do not copy rule or affix files of other spell checkers (licenses).
   Measure a change with the ignored test `suggestion_accuracy` (see its doc comment).
   `data/german.pack` (git-ignored, 30 MB) is the dictionary already expanded; `just bake-pack` writes it
   and `build.rs` embeds it in the module.

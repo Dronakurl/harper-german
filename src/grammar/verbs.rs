@@ -298,8 +298,8 @@ pub fn umlauted_stem(stem: &str) -> Option<String> {
 /// *gib*, *les* → *lies*, *tret* → *tritt*; *leb* → `None`.
 ///
 /// The dictionary decides: the third person on the raised stem has to carry
-/// the strong-present marker `%`, which `add_german_strong_imperatives.py`
-/// writes from hunspell's morphology. *liebt* is a verb but *lieben*'s, and
+/// the strong-present marker `%`, which the dictionary puts on the present of
+/// strong verbs. *liebt* is a verb but *lieben*'s, and
 /// *hiebt* one but *hauen*'s preterite, so *leb* and *heb* are not raised.
 /// The infinitive on the plain stem has to be a verb with no weak preterite.
 pub fn raised_stem(stem: &str) -> Option<String> {
