@@ -67,6 +67,7 @@ const FIXED_NOMINALIZATIONS: &[(&[&str], &str, &str, &[&str])] = &[
     (&["in", "der"], "nacht", "Nacht", &[]),
     (&["im"], "voraus", "Voraus", &[]),
     (&["als"], "letztes", "Letztes", &[]),
+    (&["als"], "erstes", "Erstes", &[]),
     (&["als"], "nächstes", "Nächstes", &[]),
     (&["zum"], "schluss", "Schluss", &[]),
     // *zu Hause* and *nach Hause*: the old dative of *Haus*, still a noun.
@@ -144,7 +145,14 @@ impl GermanFixedNominalization {
                 actual == *expected
             });
 
-            if matches && !Self::modifies_a_following_noun(tokens, index, document) {
+            // *Als erstes nach dem Krieg wurde es eingeführt*: an ordinal with
+            // its noun left out (*als erstes [Land] nach dem Krieg*), which a
+            // phrase behind it shows.
+            let elliptical = *prefix == ["als"]
+                && tokens
+                    .get(index + 1)
+                    .is_some_and(|next| next.kind.is_preposition());
+            if matches && !elliptical && !Self::modifies_a_following_noun(tokens, index, document) {
                 return Some(corrected);
             }
         }
@@ -504,6 +512,7 @@ mod tests {
             ("Ich gehe jetzt nach hause.", "hause"),
             ("Danke im voraus!", "voraus"),
             ("Er kam als letztes.", "letztes"),
+            ("Als erstes gehen wir einkaufen.", "erstes"),
             ("Gestern nachmittag war es kalt.", "nachmittag"),
             ("Zum ersten mal war ich dort.", "mal"),
             ("Das nächste mal komme ich früher.", "mal"),
