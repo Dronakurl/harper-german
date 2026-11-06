@@ -109,6 +109,59 @@ impl GermanPrepositionCase {
         }
     }
 
+    /// The genitive phrase for a masculine or neuter singular correction
+    /// (*des*, *eines*, *meines*): `None` when the correction is something
+    /// else, `Some(None)` when the noun's genitive cannot be formed, and the
+    /// span and text of the whole phrase otherwise. Adjectives between the
+    /// article and the noun end in *-en* in the dative and in the genitive
+    /// alike, so they stay as they are.
+    fn genitive_phrase(
+        &self,
+        tokens: &[&Token],
+        determiner_at: usize,
+        suggestions: &[Suggestion],
+        cases: CaseSet,
+        document: &Document,
+    ) -> Option<Option<(harper_core::Span<char>, String)>> {
+        if cases != CaseSet::from(Case::Genitive) || suggestions.len() != 1 {
+            return None;
+        }
+        let Suggestion::ReplaceWith(form) = &suggestions[0] else {
+            return None;
+        };
+        let form: String = form.iter().collect();
+        if !form.ends_with("es") {
+            return None;
+        }
+        let mut at = determiner_at + 1;
+        let mut middle = Vec::new();
+        loop {
+            if !tokens.get(at).is_some_and(|t| t.kind.is_whitespace()) {
+                return Some(None);
+            }
+            let Some(word) = tokens.get(at + 1).filter(|t| t.kind.is_word()) else {
+                return Some(None);
+            };
+            let text = document.get_span_content_str(&word.span);
+            if text.chars().next().is_some_and(char::is_uppercase) {
+                let genitive = [format!("{text}s"), format!("{text}es")]
+                    .into_iter()
+                    .find(|g| self.dictionary.contains_word_str(g));
+                let Some(genitive) = genitive else {
+                    return Some(None);
+                };
+                middle.push(genitive);
+                let span = harper_core::Span::new(tokens[determiner_at].span.start, word.span.end);
+                return Some(Some((span, format!("{form} {}", middle.join(" ")))));
+            }
+            if !text.ends_with("en") || middle.len() >= 3 {
+                return Some(None);
+            }
+            middle.push(text);
+            at += 2;
+        }
+    }
+
     /// German names of a set of cases, joined for the message. `article` is
     /// prefixed to each: *verlangt **den** Genitiv*, but *steht **im** Dativ*.
     fn label(cases: CaseSet, article: &str) -> String {
@@ -426,8 +479,27 @@ impl Linter for GermanPrepositionCase {
                     continue;
                 }
 
+                // *wegen dem Wetter* → *des* alone leaves *des Wetter*: the
+                // masculine and neuter genitive marks the noun too. The whole
+                // phrase is replaced when the noun's genitive is in the
+                // dictionary; when it cannot be formed, no half fix is offered.
+                let (span, suggestions) = match self.genitive_phrase(
+                    &tokens,
+                    index + 2,
+                    &suggestions,
+                    government.cases,
+                    document,
+                ) {
+                    Some(Some((span, phrase))) => (
+                        span,
+                        vec![Suggestion::ReplaceWith(phrase.chars().collect())],
+                    ),
+                    Some(None) => (tokens[index + 2].span, Vec::new()),
+                    None => (tokens[index + 2].span, suggestions),
+                };
+
                 lints.push(Lint {
-                    span: tokens[index + 2].span,
+                    span,
                     lint_kind: LintKind::Grammar,
                     suggestions,
                     message: format!(
@@ -515,13 +587,23 @@ mod tests {
 
     #[test]
     fn catches_the_dative_after_a_genitive_preposition() {
-        assert_eq!(fixes("Wegen dem Wetter bleiben wir zu Hause."), ["des"]);
-        assert_eq!(fixes("Trotz dem Regen gingen wir spazieren."), ["des"]);
+        assert_eq!(
+            fixes("Wegen dem Wetter bleiben wir zu Hause."),
+            ["des Wetters"]
+        );
+        assert_eq!(
+            fixes("Trotz dem Regen gingen wir spazieren."),
+            ["des Regens"]
+        );
+        assert_eq!(
+            fixes("Trotz dem schlechten Wetter gingen wir spazieren."),
+            ["des schlechten Wetters"]
+        );
     }
 
     #[test]
     fn catches_the_dative_after_waehrend() {
-        assert_eq!(fixes("Während dem Essen sprach niemand."), ["des"]);
+        assert_eq!(fixes("Während dem Essen sprach niemand."), ["des Essens"]);
     }
 
     #[test]
@@ -571,14 +653,19 @@ mod tests {
 
     #[test]
     fn catches_a_wrong_demonstrative() {
-        assert_eq!(fixes("Wegen diesem Problem kam er zu spät."), ["dieses"]);
+        assert_eq!(
+            fixes("Wegen diesem Problem kam er zu spät."),
+            ["dieses Problems"]
+        );
     }
 
     #[test]
     fn keeps_the_capitalization_of_the_determiner() {
-        // Only the determiner is replaced, so its own case is what matters;
-        // the preposition in front of it may be sentence-initial.
-        assert_eq!(fixes("Wegen dem Regen kam sie spät."), ["des"]);
+        // The determiner keeps its own case; the preposition in front of it
+        // may be sentence-initial.
+        assert_eq!(fixes("Wegen dem Regen kam sie spät."), ["des Regens"]);
+        // No genitive of the noun in the dictionary: no half fix.
+        assert_eq!(fixes("Wegen dem Xyzzy kam sie spät."), Vec::<String>::new());
     }
 
     #[test]

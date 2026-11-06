@@ -1,6 +1,7 @@
 //! Checks that a determiner carries the gender of the noun it introduces.
 
-use crate::morphology::Gender;
+use crate::grammar::prepositions::preposition_government;
+use crate::morphology::{Case, CaseSet, Gender};
 use crate::spell::lexical_classes::NUMERALS;
 use harper_core::{
     Document, Token, TokenKind, TokenStringExt,
@@ -447,7 +448,40 @@ impl Linter for GermanDeterminerGender {
                     continue;
                 }
 
-                let suggestions: Vec<Suggestion> = forms_with_gender(&candidates, gender)
+                // *mit den Kind*: behind a preposition the case is the
+                // preposition's, not the one the wrong article happened to
+                // spell. *den* reads as an accusative, but *mit* wants *dem*.
+                let governed = phrase
+                    .open
+                    .checked_sub(1)
+                    .filter(|&i| words[i].kind.is_preposition())
+                    .and_then(|i| {
+                        preposition_government(&document.get_span_content_str(&words[i].span))
+                    })
+                    .filter(|p| !p.also_a_conjunction && !p.also_an_infinitive_clause);
+                let source: Vec<DeterminerReading> = match governed {
+                    Some(preposition) => {
+                        let mut out: Vec<DeterminerReading> = Vec::new();
+                        for reading in &candidates {
+                            for case in [
+                                Case::Nominative,
+                                Case::Accusative,
+                                Case::Dative,
+                                Case::Genitive,
+                            ] {
+                                let candidate = DeterminerReading { case, ..*reading };
+                                if preposition.cases.contains(CaseSet::from(case))
+                                    && !out.contains(&candidate)
+                                {
+                                    out.push(candidate);
+                                }
+                            }
+                        }
+                        out
+                    }
+                    None => candidates.clone(),
+                };
+                let suggestions: Vec<Suggestion> = forms_with_gender(&source, gender)
                     .into_iter()
                     .map(|form| {
                         Suggestion::replace_with_match_case(
@@ -524,6 +558,21 @@ mod tests {
     fn the_correction_keeps_the_case_and_the_paradigm() {
         let found = lints("Ich habe die Hund gesehen.");
         assert!(found[0].1.iter().any(|s| s.contains("den")), "{found:?}");
+    }
+
+    #[test]
+    fn behind_a_preposition_the_correction_takes_its_case() {
+        let found = lints("Ich gehe mit den Kind spazieren.");
+        assert_eq!(found[0].1.len(), 1, "{found:?}");
+        assert!(found[0].1[0].contains("dem"), "{found:?}");
+        let found = lints("Wir gehen in die Haus.");
+        assert!(
+            found[0]
+                .1
+                .iter()
+                .all(|s| s.contains("das") || s.contains("dem")),
+            "{found:?}"
+        );
     }
 
     #[test]

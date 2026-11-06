@@ -671,8 +671,49 @@ impl<T: Dictionary> GermanSpellCheck<T> {
             }
         }
 
+        // *gesingt*, *geschreibt*: the weak participle of a strong verb. The
+        // strong one changes the vowel of the stem and ends in *-en*.
+        if let Some(strong) = self.strong_participle(word) {
+            suggestions.retain(|suggestion| *suggestion != strong);
+            suggestions.insert(0, strong);
+        }
+
         suggestions.truncate(5);
         suggestions
+    }
+
+    /// The strong participle for a weak one built on a strong verb:
+    /// *gesingt* → *gesungen*, *geschreibt* → *geschrieben*, *gelauft* →
+    /// *gelaufen*. The stem's vowel is swapped for each vowel a strong verb
+    /// can take, and only a participle the dictionary lists is offered.
+    fn strong_participle(&self, word: &[char]) -> Option<Vec<char>> {
+        const VOWELS: &[&str] = &["a", "e", "i", "o", "u", "ie", "ei", "au", "ä", "ö", "ü"];
+        let text: String = word.iter().collect();
+        let lower = text.to_lowercase();
+        let stem = lower.strip_prefix("ge")?.strip_suffix('t')?;
+        if stem.len() < 2 || !self.dictionary.contains_word_str(&format!("{stem}en")) {
+            return None;
+        }
+        let is_vowel = |c: char| "aeiouäöü".contains(c);
+        let start = stem.find(is_vowel)?;
+        let end = stem[start..]
+            .find(|c: char| !is_vowel(c))
+            .map_or(stem.len(), |i| start + i);
+        let (onset, coda) = (&stem[..start], &stem[end..]);
+        let found: Vec<String> = VOWELS
+            .iter()
+            .map(|vowel| format!("ge{onset}{vowel}{coda}en"))
+            .filter(|candidate| {
+                self.dictionary
+                    .get_word_metadata_str(candidate)
+                    .is_some_and(|m| m.is_verb() || m.is_adjective())
+            })
+            .collect();
+        // One strong participle, or the guess is not safe.
+        let [participle] = found.as_slice() else {
+            return None;
+        };
+        Some(participle.chars().collect())
     }
 }
 
@@ -856,6 +897,33 @@ impl<T: Dictionary> Linter for GermanSpellCheck<T> {
                         document,
                         |token| token.kind.is_determiner(),
                     ) {
+                        continue;
+                    }
+
+                    // *am 3ten Mai*: an ordinal written with an ending. The
+                    // ending alone is no word to correct; the number takes a
+                    // full stop instead.
+                    let lower: String = word_chars.iter().flat_map(|c| c.to_lowercase()).collect();
+                    if let Some(number) = index.checked_sub(1).map(|i| tokens[i])
+                        && matches!(number.kind, TokenKind::Number(_))
+                        && number.span.end == word.span.start
+                        && [
+                            "te", "ten", "ter", "tes", "tem", "ste", "sten", "ster", "stes", "stem",
+                        ]
+                        .contains(&lower.as_str())
+                    {
+                        let digits = document.get_span_content_str(&number.span);
+                        lints.push(Lint {
+                            span: harper_core::Span::new(number.span.start, word.span.end),
+                            lint_kind: LintKind::Formatting,
+                            suggestions: vec![Suggestion::ReplaceWith(
+                                format!("{digits}.").chars().collect(),
+                            )],
+                            priority: 20,
+                            message: format!(
+                                "Eine Ordnungszahl schreibt man mit Punkt: »{digits}.«, nicht »{digits}{lower}«."
+                            ),
+                        });
                         continue;
                     }
 
@@ -1059,6 +1127,27 @@ mod tests {
     }
 
     /// One edit that keeps the first letter beats everything that does not.
+    #[test]
+    fn a_weak_participle_of_a_strong_verb_gets_the_strong_one() {
+        assert_eq!(
+            suggestions_for("gesingt").first().map(String::as_str),
+            Some("gesungen")
+        );
+        assert_eq!(
+            suggestions_for("geschreibt").first().map(String::as_str),
+            Some("geschrieben")
+        );
+    }
+
+    #[test]
+    fn an_ordinal_with_an_ending_takes_a_full_stop() {
+        let dict = crate::spell::combined_german_dictionary();
+        let document = Document::new("Am 3ten Mai haben wir frei.", &PlainGerman, &dict);
+        let lints = GermanSpellCheck::new(dict.clone()).lint(&document);
+        assert_eq!(lints.len(), 1, "{lints:?}");
+        assert_eq!(document.get_span_content_str(&lints[0].span), "3ten");
+    }
+
     #[test]
     fn drops_far_fetched_suggestions() {
         assert_eq!(suggestions_for("Gaarten"), vec!["Garten"]);
