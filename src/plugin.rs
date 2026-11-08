@@ -202,7 +202,7 @@ impl LanguagePlugin for German {
 
         let chars: Vec<char> = req.text.chars().collect();
 
-        match &req.regions {
+        let lints = match &req.regions {
             None => self.lint_chars(&chars, &req.format, 0),
             Some(regions) => regions
                 .iter()
@@ -215,7 +215,8 @@ impl LanguagePlugin for German {
                     )
                 })
                 .collect(),
-        }
+        };
+        localize(lints, &chars, req.message_language.as_deref())
     }
 
     fn lint_descriptions(&self) -> BTreeMap<String, String> {
@@ -249,6 +250,49 @@ impl LanguagePlugin for German {
     }
 }
 
+/// Whether `tag` (a BCP 47 tag such as `en-GB`) is a variant of the language `primary`.
+fn is_language(tag: &str, primary: &str) -> bool {
+    tag.split(['-', '_'])
+        .next()
+        .is_some_and(|first| first.eq_ignore_ascii_case(primary))
+}
+
+/// Write the messages in the language of the host's interface when the plugin has them. Only
+/// the spelling messages exist in English so far; every other message stays German, as does
+/// every message for a language the plugin does not have.
+fn localize(mut lints: Vec<PluginLint>, chars: &[char], language: Option<&str>) -> Vec<PluginLint> {
+    if !language.is_some_and(|tag| is_language(tag, "en")) {
+        return lints;
+    }
+    for lint in &mut lints {
+        if lint.rule != "GermanSpellCheck" || lint.kind != "Spelling" {
+            continue;
+        }
+        let (start, end) = lint.span;
+        let Some(word) = chars.get(start..end) else {
+            continue;
+        };
+        let word: String = word.iter().collect();
+        let replacements: Vec<&str> = lint
+            .suggestions
+            .iter()
+            .filter_map(|s| match s {
+                harper_plugin_api::PluginSuggestion::ReplaceWith(w) => Some(w.as_str()),
+                _ => None,
+            })
+            .collect();
+        let did_you_mean = replacements.join(", ");
+        lint.message = if replacements.is_empty() {
+            format!("“{word}” is not a known word.")
+        } else if lint.message.contains("Tippfehler") {
+            format!("“{word}” is probably a typo. Did you mean: {did_you_mean}?")
+        } else {
+            format!("“{word}” may be misspelled. Did you mean: {did_you_mean}?")
+        };
+    }
+    lints
+}
+
 export_plugin!(German);
 
 #[cfg(test)]
@@ -268,6 +312,30 @@ mod tests {
         }
         assert!(!info.answers_to("English"));
         assert_eq!(info.dialect_named("ch").unwrap().id, "Swiss");
+    }
+
+    #[test]
+    fn spelling_messages_follow_the_message_language() {
+        let mut german = German::new();
+        let message = |german: &mut German, tag: Option<&str>| {
+            let mut req = LintRequest::plain("Das Hauss ist groß.");
+            req.message_language = tag.map(str::to_owned);
+            german
+                .lint(req)
+                .into_iter()
+                .find(|lint| lint.rule == "GermanSpellCheck")
+                .unwrap()
+                .message
+        };
+        let german_message = message(&mut german, None);
+        assert!(german_message.contains("Meinten Sie"), "{german_message}");
+        assert_eq!(message(&mut german, Some("de-AT")), german_message);
+        assert_eq!(message(&mut german, Some("sk")), german_message);
+        for tag in ["en", "en-GB", "en_US"] {
+            let english = message(&mut german, Some(tag));
+            assert!(english.contains("Did you mean"), "{english}");
+            assert!(english.contains("“Hauss”"), "{english}");
+        }
     }
 
     #[test]

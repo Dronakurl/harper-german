@@ -723,12 +723,21 @@ impl GermanSubordinateComma {
                 && matches!(tokens[at + 2].kind, TokenKind::Number(_));
             // *Montag 26. Mai*: the day as an ordinal and a month behind it,
             // no article. A bare number (*Montag 3 Stunden*) is no date.
-            let without_article = matches!(tokens[at + 1].kind, TokenKind::Number(_))
+            // The parser joins the point to the day ("26."); a separate point is accepted too.
+            let day_with_point = matches!(tokens[at + 1].kind, TokenKind::Number(_))
+                && document.get_span_content(&tokens[at + 1].span).last() == Some(&'.');
+            let day_then_point = matches!(tokens[at + 1].kind, TokenKind::Number(_))
                 && tokens
                     .get(at + 2)
-                    .is_some_and(|t| matches!(t.kind, TokenKind::Punctuation(Punctuation::Period)))
-                && Self::word_after(tokens[at + 2], document)
-                    .is_some_and(|t| Self::word_in(t, document, MONTHS));
+                    .is_some_and(|t| matches!(t.kind, TokenKind::Punctuation(Punctuation::Period)));
+            let without_article = if day_with_point {
+                Self::word_after(tokens[at + 1], document)
+                    .is_some_and(|t| Self::word_in(t, document, MONTHS))
+            } else {
+                day_then_point
+                    && Self::word_after(tokens[at + 2], document)
+                        .is_some_and(|t| Self::word_in(t, document, MONTHS))
+            };
             if with_article || without_article {
                 lints.push(Lint {
                     span: tokens[at].span,

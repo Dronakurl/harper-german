@@ -106,6 +106,12 @@ fn is_non_lexical_token(word: &[char]) -> bool {
         return true;
     }
 
+    // The parser joins an abbreviation with its stop ("bzw.", "z. B.", "Prof."): a word that
+    // ends in a full stop is one, and the dictionary has none of them.
+    if word.len() >= 2 && word.last() == Some(&'.') {
+        return true;
+    }
+
     // Anything with a digit in it is an identifier, not a word ("O2", "S12").
     if word.iter().any(char::is_ascii_digit) {
         return true;

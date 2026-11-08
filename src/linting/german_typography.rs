@@ -191,7 +191,10 @@ impl Linter for GermanNumberFormat {
 
             // *am 5 Mai*: a whole number from 1 to 31, a month behind it, a preposition or an
             // article in front.
-            let is_a_day = number.suffix.is_none()
+            // A number that already carries its point ("5.", joined by the parser) is fine.
+            let has_point = document.get_span_content(&token.span).last() == Some(&'.');
+            let is_a_day = !has_point
+                && number.suffix.is_none()
                 && number.precision == 0
                 && (1.0..=31.0).contains(&number.value.into_inner());
             if !is_a_day || index == 0 {
