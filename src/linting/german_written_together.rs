@@ -8,6 +8,25 @@ const SELB_ARTICLES: &[&str] = &["der", "die", "das", "den", "dem", "des"];
 /// contractions and correct apart, so they are not articles here.
 const SELB_FORMS: &[&str] = &["selbe", "selben"];
 
+const WEEKDAYS: &[&str] = &[
+    "Montag",
+    "Dienstag",
+    "Mittwoch",
+    "Donnerstag",
+    "Freitag",
+    "Samstag",
+    "Sonntag",
+];
+
+const TIMES_OF_DAY: &[&str] = &[
+    "Morgen",
+    "Vormittag",
+    "Mittag",
+    "Nachmittag",
+    "Abend",
+    "Nacht",
+];
+
 /// Prepositions that form one word with *einander*: *miteinander*, *voneinander*.
 const EINANDER_PREPOSITIONS: &[&str] = &[
     "an", "auf", "aus", "bei", "durch", "für", "gegen", "hinter", "in", "mit", "nach", "neben",
@@ -23,7 +42,9 @@ const EINANDER_PREPOSITIONS: &[&str] = &[
 /// * an article and *selbe(n)*: *die selben Rechte* → *dieselben*;
 /// * a preposition and *einander*: *mit einander* → *miteinander*;
 /// * *wieviel* and its forms, closed up before 1996: *wieviele* → *wie viele*. The ordinal
-///   *wievielte* is one word and stays.
+///   *wievielte* is one word and stays;
+/// * *statt dessen* before anything but a noun, and a weekday with a time of day: *Dienstag
+///   Abend* → *Dienstagabend*.
 #[derive(Default)]
 pub struct GermanWrittenTogether;
 
@@ -81,14 +102,46 @@ impl Linter for GermanWrittenTogether {
                 continue;
             }
             let second = document.get_span_content(&next.span);
+            // *Dienstag Abend* → *Dienstagabend*: a weekday and a time of day are one word.
+            let second_text: String = second.iter().collect();
+            if WEEKDAYS.contains(&first.iter().collect::<String>().as_str())
+                && TIMES_OF_DAY.contains(&second_text.as_str())
+            {
+                let joined: String = first
+                    .iter()
+                    .copied()
+                    .chain(second_text.to_lowercase().chars())
+                    .collect();
+                lints.push(Lint {
+                    span: Span::new(token.span.start, next.span.end),
+                    lint_kind: LintKind::Spelling,
+                    suggestions: vec![Suggestion::ReplaceWith(joined.chars().collect())],
+                    message: format!(
+                        "Wochentag und Tageszeit werden zusammengeschrieben: »{joined}«."
+                    ),
+                    priority: 31,
+                });
+                continue;
+            }
             // The second half in lower case only: *Die Selben* may be a name.
             if second.first().is_some_and(|c| c.is_uppercase()) {
                 continue;
             }
             let second_lower = lowercase(second);
 
-            let joins = (SELB_ARTICLES.contains(&first_lower.as_str())
-                && SELB_FORMS.contains(&second_lower.as_str()))
+            // *Statt dessen gingen wir* → *Stattdessen*; *statt dessen Bruder* is a genitive.
+            let stattdessen = first_lower == "statt"
+                && second_lower == "dessen"
+                && !tokens.get(at + 4).is_some_and(|t| {
+                    t.kind.is_word()
+                        && document
+                            .get_span_content(&t.span)
+                            .first()
+                            .is_some_and(|c| c.is_uppercase())
+                });
+            let joins = stattdessen
+                || (SELB_ARTICLES.contains(&first_lower.as_str())
+                    && SELB_FORMS.contains(&second_lower.as_str()))
                 || (EINANDER_PREPOSITIONS.contains(&first_lower.as_str())
                     && second_lower == "einander");
             if !joins {
@@ -146,6 +199,9 @@ mod tests {
             ["voneinander", "füreinander"]
         );
         assert_eq!(fixes("Mit einander geht es besser."), ["Miteinander"]);
+        assert_eq!(fixes("Statt dessen gingen wir ins Kino."), ["Stattdessen"]);
+        assert_eq!(fixes("Wir sehen uns Dienstag Abend."), ["Dienstagabend"]);
+        assert_eq!(fixes("Bis Montag Morgen!"), ["Montagmorgen"]);
     }
 
     #[test]
@@ -163,6 +219,9 @@ mod tests {
             "Der wievielte Tag ist heute?",
             "Wie viele Jahre dauert das?",
             "Die Selben sind eine Band.",
+            "Er kam statt dessen Bruder.",
+            "Sie kommt Dienstag, Abend ist schlecht.",
+            "Wir treffen uns am Dienstag abends.",
         ] {
             assert!(fixes(text).is_empty(), "{text}: {:?}", fixes(text));
         }

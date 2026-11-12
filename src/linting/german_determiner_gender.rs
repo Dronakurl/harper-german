@@ -405,6 +405,11 @@ impl Linter for GermanDeterminerGender {
                 if Self::is_not_a_gendered_noun(&words, phrase, &text, document) {
                     continue;
                 }
+                // *eine Email*: the writer means *E-Mail*, which `EMail` corrects, and its
+                // gender; the neuter is that of the enamel.
+                if head == "Email" {
+                    continue;
+                }
                 let Some((gender, surely_singular)) = self.nouns.gender_of(&head) else {
                     continue;
                 };

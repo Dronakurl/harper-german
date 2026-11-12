@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use crate::spell::compact_dict::CompactDictionary;
 
-use crate::morphology::{Agreement, Case, CaseSet, MorphologyExt};
+use crate::morphology::{Agreement, Case, CaseSet, Gender, MorphologyExt};
 use harper_core::{
     Document, Token, TokenKind, TokenStringExt,
     linting::{Lint, LintKind, Linter, Suggestion},
@@ -56,6 +56,10 @@ const ADVERBIAL_PREPOSITIONS: &[&str] = &[
     "jenseits",
     "diesseits",
 ];
+
+/// Dative prepositions that are often given a genitive, after the model of *wegen* and
+/// *trotz*: *entgegen des Plans*, *gemäß des Vertrags*.
+const DATIVE_GIVEN_A_GENITIVE: &[&str] = &["entgegen", "gemäß"];
 
 /// Catches a determiner in the wrong case after a preposition: *"**wegen dem**
 /// Wetter"* needs the genitive, *"**für dem** Kind"* the accusative.
@@ -160,6 +164,88 @@ impl GermanPrepositionCase {
             middle.push(text);
             at += 2;
         }
+    }
+
+    /// *entgegen des Plans* → *entgegen dem Plan*: the dative article and the noun without its
+    /// genitive ending, when the noun follows the article directly and its stem is a noun of the
+    /// dictionary. `None` otherwise, so no half fix is offered.
+    fn dative_phrase(
+        &self,
+        tokens: &[&Token],
+        determiner_at: usize,
+        suggestions: &[Suggestion],
+        document: &Document,
+    ) -> Option<(harper_core::Span<char>, String)> {
+        let [Suggestion::ReplaceWith(form)] = suggestions else {
+            return None;
+        };
+        let noun = tokens.get(determiner_at + 2).filter(|t| t.kind.is_word())?;
+        let text = document.get_span_content_str(&noun.span);
+        if !is_capitalized(&text) {
+            return None;
+        }
+        let stem = ["es", "s"]
+            .iter()
+            .filter_map(|ending| text.strip_suffix(ending))
+            .find(|stem| {
+                let chars: Vec<char> = stem.chars().collect();
+                self.dictionary
+                    .get_word_metadata(&chars)
+                    .is_some_and(|metadata| metadata.is_noun())
+            })?;
+        let form: String = form.iter().collect();
+        let span = harper_core::Span::new(tokens[determiner_at].span.start, noun.span.end);
+        Some((span, format!("{form} {stem}")))
+    }
+
+    /// *mit sein Fahrrad*, *mit ihr Hund*: bare *sein* and *ihr* after a dative preposition, in
+    /// front of a noun. As determiners they are left out of the tables, being the verb and the
+    /// pronoun far more often; in this position *sein* can only be the possessive, and *ihr* too
+    /// when the noun closes the clause (*mit ihr Eis essen* has the pronoun).
+    fn bare_possessive(
+        &self,
+        tokens: &[&Token],
+        preposition_at: usize,
+        governed: CaseSet,
+        document: &Document,
+    ) -> Option<Lint> {
+        if governed != CaseSet::DATIVE {
+            return None;
+        }
+        let determiner = tokens.get(preposition_at + 2)?;
+        let written = document.get_span_content_str(&determiner.span);
+        if written != "sein" && written != "ihr" {
+            return None;
+        }
+        let noun = tokens
+            .get(preposition_at + 4)
+            .filter(|t| t.kind.is_word() && tokens[preposition_at + 3].kind.is_whitespace())?;
+        let noun_text = document.get_span_content_str(&noun.span);
+        if !is_capitalized(&noun_text) {
+            return None;
+        }
+        let after = tokens[preposition_at + 5..]
+            .iter()
+            .find(|t| !t.kind.is_whitespace());
+        if written == "ihr" && after.is_some_and(|t| !matches!(t.kind, TokenKind::Punctuation(_))) {
+            return None;
+        }
+        let (gender, singular) = self.nouns.gender_of(&noun_text)?;
+        if !singular {
+            return None;
+        }
+        let fixed = match gender {
+            Gender::Feminine => format!("{written}er"),
+            _ => format!("{written}em"),
+        };
+        let preposition = document.get_span_content_str(&tokens[preposition_at].span);
+        Some(Lint {
+            span: determiner.span,
+            lint_kind: LintKind::Grammar,
+            suggestions: vec![Suggestion::ReplaceWith(fixed.chars().collect())],
+            message: format!("»{preposition}« verlangt den Dativ: »{fixed} {noun_text}«."),
+            priority: 31,
+        })
     }
 
     /// German names of a set of cases, joined for the message. `article` is
@@ -305,6 +391,12 @@ impl Linter for GermanPrepositionCase {
                     continue;
                 }
 
+                if let Some(lint) = self.bare_possessive(&tokens, index, government.cases, document)
+                {
+                    lints.push(lint);
+                    continue;
+                }
+
                 let Some(all_readings) = determiner_readings(&determiner_text) else {
                     continue;
                 };
@@ -417,7 +509,13 @@ impl Linter for GermanPrepositionCase {
 
                 // *in des Kaisers Namen*: a genitive in front of its noun is
                 // correct after any preposition.
-                if cases == CaseSet::GENITIVE && !government.cases.contains(CaseSet::GENITIVE) {
+                let genitive_by_analogy = cases == CaseSet::GENITIVE
+                    && DATIVE_GIVEN_A_GENITIVE.contains(&preposition_text.to_lowercase().as_str())
+                    && !word_at(index + 6).is_some_and(|word| is_capitalized(&word));
+                if cases == CaseSet::GENITIVE
+                    && !government.cases.contains(CaseSet::GENITIVE)
+                    && !genitive_by_analogy
+                {
                     continue;
                 }
 
@@ -483,13 +581,18 @@ impl Linter for GermanPrepositionCase {
                 // masculine and neuter genitive marks the noun too. The whole
                 // phrase is replaced when the noun's genitive is in the
                 // dictionary; when it cannot be formed, no half fix is offered.
-                let (span, suggestions) = match self.genitive_phrase(
-                    &tokens,
-                    index + 2,
-                    &suggestions,
-                    government.cases,
-                    document,
-                ) {
+                let phrase = if genitive_by_analogy {
+                    Some(self.dative_phrase(&tokens, index + 2, &suggestions, document))
+                } else {
+                    self.genitive_phrase(
+                        &tokens,
+                        index + 2,
+                        &suggestions,
+                        government.cases,
+                        document,
+                    )
+                };
+                let (span, suggestions) = match phrase {
                     Some(Some((span, phrase))) => (
                         span,
                         vec![Suggestion::ReplaceWith(phrase.chars().collect())],
@@ -649,6 +752,32 @@ mod tests {
     fn catches_a_wrong_possessive() {
         assert_eq!(fixes("Er kam mit seine Schwester."), ["seinen", "seiner"]);
         assert_eq!(fixes("Das ist für meinem Vorschlag."), ["meinen"]);
+    }
+
+    #[test]
+    fn catches_a_bare_sein_or_ihr() {
+        assert_eq!(fixes("Er fährt mit sein Fahrrad zur Arbeit."), ["seinem"]);
+        assert_eq!(fixes("Sie spielt mit ihr Hund."), ["ihrem"]);
+        assert_clean(&[
+            "Ich gehe mit ihr Eis essen.",
+            "Er will mit ihr Freunde besuchen.",
+            "Er fährt mit seinem Fahrrad.",
+        ]);
+    }
+
+    #[test]
+    fn catches_a_genitive_after_entgegen_and_gemaess() {
+        assert_eq!(fixes("Entgegen des Plans fuhren wir früher."), ["dem Plan"]);
+        assert_eq!(
+            fixes("Gemäß des Vertrags zahlen wir monatlich."),
+            ["dem Vertrag"]
+        );
+        assert_clean(&[
+            "Entgegen dem Plan fuhren wir früher.",
+            "Gemäß dem Vertrag zahlen wir monatlich.",
+            "Laut des Berichts ist alles gut.",
+            "Gemäß des Kaisers Befehl zogen sie ab.",
+        ]);
     }
 
     #[test]

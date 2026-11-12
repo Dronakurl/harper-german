@@ -1,0 +1,15 @@
+# The verb is "pleitegehen", one word wherever its parts meet: "wir sind
+# pleitegegangen". "Pleite gegangen" is the spelling from before the reform.
+expr main <(![der, einer, dieser, jener, seiner, ihrer, unserer, ihrer, deren, dessen] Pleite gegangen), (Pleite gegangen)>
+
+let message "»pleitegehen« wird zusammengeschrieben: »pleitegegangen«."
+let description "Schreibt »pleitegegangen« zusammen."
+let kind "Spelling"
+let becomes "pleitegegangen"
+let strategy "Exact"
+
+test "Wir sind Pleite gegangen." "Wir sind pleitegegangen."
+test "Die Firma ist pleite gegangen." "Die Firma ist pleitegegangen."
+
+allows "Wir sind pleitegegangen."
+allows "Nach der Pleite gegangen ist nur der Chef."

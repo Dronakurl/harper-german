@@ -16,15 +16,18 @@ pub fn rust_lint_group(
         german_adjective_form::GermanAdjectiveForm,
         german_colloquial::GermanColloquial,
         german_common_typos::GermanCommonTypos,
+        german_comparative_clause_comma::GermanComparativeClauseComma,
         german_compound_adjective_capitalization::GermanCompoundAdjectiveCapitalization,
         german_coordinating_comma::GermanCoordinatingComma,
         german_country_article::GermanCountryArticle,
         german_dass_article::GermanDassArticle,
         german_dative_plural::GermanDativePlural,
         german_determiner_gender::GermanDeterminerGender,
+        german_double_negation::GermanDoubleNegation,
         german_filler_words::GermanFillerWords,
         german_fixed_nominalization::GermanFixedNominalization,
         german_genitive_after_nominative_article::GermanGenitiveAfterNominativeArticle,
+        german_genitive_s::GermanGenitiveS,
         german_mid_sentence_capital::GermanMidSentenceCapital,
         german_modal_finite_sein::GermanModalFiniteSein,
         german_modal_zu_infinitive::GermanModalZuInfinitive,
@@ -119,6 +122,9 @@ pub fn rust_lint_group(
     group.add("GermanCoordinatingComma", GermanCoordinatingComma);
     group.add("GermanVorfeldComma", GermanVorfeldComma);
     group.add("GermanWeakNoun", GermanWeakNoun);
+    group.add("GermanGenitiveS", GermanGenitiveS::new());
+    group.add("GermanDoubleNegation", GermanDoubleNegation);
+    group.add("GermanComparativeClauseComma", GermanComparativeClauseComma);
     group.add("GermanNumberFormat", GermanNumberFormat);
     group.add("GermanCoupling", GermanCoupling);
     group.add("GermanApostrophe", GermanApostrophe);

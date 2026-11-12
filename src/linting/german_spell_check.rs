@@ -56,6 +56,11 @@ static GERMAN_HINTS: LazyLock<SuggestionHints> = LazyLock::new(|| {
 });
 
 /// Do the two words start with the same letter, ignoring case?
+/// The conjunctions and pronouns that take the clitic *'s* (*wenn's*, *wie's*) besides verbs.
+const CLITIC_HOSTS: &[&str] = &[
+    "wie", "wenn", "ob", "so", "da", "was", "als", "weil", "dass",
+];
+
 fn keeps_first_letter(misspelled: &[char], candidate: &[char]) -> bool {
     match (misspelled.first(), candidate.first()) {
         (Some(a), Some(b)) => a.to_lowercase().eq(b.to_lowercase()),
@@ -198,9 +203,6 @@ impl<T: Dictionary> GermanSpellCheck<T> {
     /// *war's*, *sag's*, *wenn's*? Only these hosts take the clitic; an
     /// English-style genitive (*Peter's*) is not accepted.
     fn is_cliticized_es(&self, word: &[char]) -> bool {
-        const HOSTS: &[&str] = &[
-            "wie", "wenn", "ob", "so", "da", "was", "als", "weil", "dass",
-        ];
         // The impersonal ones the Duden lists without the apostrophe, and that
         // no second person shares: *gehts*, *gibts*, *stimmts*.
         const WITHOUT_APOSTROPHE: &[&str] = &[
@@ -224,7 +226,7 @@ impl<T: Dictionary> GermanSpellCheck<T> {
             return false;
         }
         let lower: String = host.iter().flat_map(|c| c.to_lowercase()).collect();
-        HOSTS.contains(&lower.as_str())
+        CLITIC_HOSTS.contains(&lower.as_str())
             || self
                 .dictionary
                 .get_word_metadata(host)
@@ -237,6 +239,40 @@ impl<T: Dictionary> GermanSpellCheck<T> {
 
     pub fn new(dictionary: T) -> Self {
         Self::for_dialect(dictionary, GermanDialect::Standard)
+    }
+
+    /// *Anna's* → *Annas*, *Andrea's* → *Andreas*, *Hans'* stays: a capitalized noun or name with
+    /// an English genitive. The fix is always the name with *-s*, even where that spells another
+    /// name: the edit search would land on the genitive of the other one (*Andreas'*). A verb as
+    /// the host (*Geht's*) is the clitic *es* and is left to [`Self::is_cliticized_es`].
+    fn apostrophe_genitive(&self, word: &Token, chars: &[char]) -> Option<Lint> {
+        let [host @ .., '\'' | '’', 's'] = chars else {
+            return None;
+        };
+        if !host.first().is_some_and(|c| c.is_uppercase()) || host.len() < 2 {
+            return None;
+        }
+        let lower: String = host.iter().flat_map(|c| c.to_lowercase()).collect();
+        if CLITIC_HOSTS.contains(&lower.as_str()) {
+            return None;
+        }
+        let metadata = self.dictionary.get_word_metadata(host)?;
+        if !metadata.is_noun() || metadata.is_verb() {
+            return None;
+        }
+        let host: String = host.iter().collect();
+        let fixed = if host.ends_with(['s', 'ß', 'x', 'z']) {
+            format!("{host}'")
+        } else {
+            format!("{host}s")
+        };
+        Some(Lint {
+            span: word.span,
+            lint_kind: LintKind::Punctuation,
+            suggestions: vec![Suggestion::ReplaceWith(fixed.chars().collect())],
+            priority: 20,
+            message: format!("Der Genitiv eines Namens steht ohne Apostroph: »{fixed}«."),
+        })
     }
 
     pub fn for_dialect(dictionary: T, dialect: GermanDialect) -> Self {
@@ -999,6 +1035,12 @@ impl<T: Dictionary> Linter for GermanSpellCheck<T> {
                         }
                     }
 
+                    // *Anna's*, *Müller's*: the genitive of a name takes no apostrophe.
+                    if let Some(lint) = self.apostrophe_genitive(word, word_chars) {
+                        lints.push(lint);
+                        continue;
+                    }
+
                     // *geht's*, *gibt's*, *wie's*: the pronoun *es* cliticized
                     // onto a verb or a conjunction. The tokenizer keeps it on
                     // the word, so the host is what has to be a word.
@@ -1631,6 +1673,23 @@ mod tests {
             );
         }
         assert_eq!(spelling_reports("Das ist Peter's Auto."), ["Peter's"]);
+        assert_eq!(
+            spelling_reports("Wir treffen uns bei Müller's."),
+            ["Müller's"]
+        );
+        for (text, fix) in [
+            ("Das ist Andrea's Laden.", "Andreas"),
+            ("Das ist Anna's Fahrrad.", "Annas"),
+        ] {
+            let dict = combined_german_dictionary();
+            let document = Document::new(text, &PlainGerman, &dict);
+            let lints = GermanSpellCheck::new(dict).lint(&document);
+            let harper_core::linting::Suggestion::ReplaceWith(chars) = &lints[0].suggestions[0]
+            else {
+                panic!("{text}");
+            };
+            assert_eq!(chars.iter().collect::<String>(), fix, "{text}");
+        }
         assert_eq!(spelling_reports("Er war stehts bemüht."), ["stehts"]);
         assert_eq!(
             spelling_reports("Du machts es mir nicht leicht."),

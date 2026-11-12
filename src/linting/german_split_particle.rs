@@ -1,5 +1,8 @@
 use harper_core::linting::{Lint, LintKind, Linter, Suggestion};
+use harper_core::spell::Dictionary;
 use harper_core::{Document, Punctuation, Token, TokenKind, TokenStringExt};
+
+use crate::spell::curated_german_dictionary;
 
 /// Particles of separable verbs that are only ever written together with the
 /// verb when the two stand side by side.
@@ -19,6 +22,12 @@ const PARTICLES: &[&str] = &[
     "zurück", "weg", "vorbei", "heim", "fort", "hinaus", "heraus", "herein", "hinauf", "herauf",
     "hinunter", "herunter", "voraus", "empor",
 ];
+
+/// Particles that are prepositions too. Apart from a participle that closes the clause
+/// they are taken only when the joined word is in the dictionary: *ab gesagt.* → *abgesagt*,
+/// *an gekommen.* → *angekommen*, but *auf gepachteten Weiden* stays. *zu* is left out:
+/// *um nach Hause zu gehen* is the infinitive, and *zugehen* a word of its own.
+const PREPOSITION_PARTICLES: &[&str] = &["ab", "an", "auf", "aus", "ein", "mit", "vor", "nach"];
 
 /// Reports a separable particle written apart from the verb right behind it:
 /// *zurück gebracht* -> *zurückgebracht*, *weg werfen* -> *wegwerfen*.
@@ -88,6 +97,8 @@ impl GermanSplitParticle {
         let openers: &[&str] = match particle {
             "hinaus" => &["über", "darüber"],
             "heraus" => &["aus", "daraus"],
+            // *von der Erde aus gesehen*
+            "aus" => &["von", "vom"],
             "weg" => &["von", "vom", "davon"],
             _ => return false,
         };
@@ -108,6 +119,41 @@ impl GermanSplitParticle {
     }
 }
 
+impl GermanSplitParticle {
+    /// Is `verb` a participle at the end of its clause that the dictionary lists joined to
+    /// `particle`?
+    fn closing_participle_joins(
+        particle: &str,
+        verb: &Token,
+        next: Option<&Token>,
+        document: &Document,
+    ) -> bool {
+        let word = document.get_span_content_str(&verb.span);
+        let closes = next.is_none_or(|t| {
+            matches!(
+                t.kind,
+                TokenKind::Punctuation(
+                    Punctuation::Period
+                        | Punctuation::Comma
+                        | Punctuation::Question
+                        | Punctuation::Bang
+                )
+            )
+        });
+        if !closes
+            || !word.starts_with("ge")
+            || !(word.ends_with('t') || word.ends_with("en"))
+            || word.chars().count() < 5
+        {
+            return false;
+        }
+        let joined: Vec<char> = format!("{particle}{word}").chars().collect();
+        curated_german_dictionary()
+            .get_word_metadata(&joined)
+            .is_some_and(|metadata| metadata.is_verb())
+    }
+}
+
 impl Linter for GermanSplitParticle {
     fn lint(&mut self, document: &Document) -> Vec<Lint> {
         let mut lints = Vec::new();
@@ -123,9 +169,14 @@ impl Linter for GermanSplitParticle {
 
                 let particle_text: String =
                     document.get_span_content(&particle.span).iter().collect();
-                if !PARTICLES.contains(&particle_text.as_str())
-                    || !Self::verb_shaped(verb, tokens.get(index + 3).copied(), document)
-                {
+                let next = tokens.get(index + 3).copied();
+                let fits = if PREPOSITION_PARTICLES.contains(&particle_text.as_str()) {
+                    Self::closing_participle_joins(&particle_text, verb, next, document)
+                } else {
+                    PARTICLES.contains(&particle_text.as_str())
+                        && Self::verb_shaped(verb, next, document)
+                };
+                if !fits {
                     continue;
                 }
 
@@ -172,6 +223,25 @@ mod tests {
             .into_iter()
             .map(|lint| document.get_span_content_str(&lint.span))
             .collect()
+    }
+
+    #[test]
+    fn joins_a_prepositional_particle_before_the_end_of_the_clause() {
+        for (text, span) in [
+            ("Sie hat das Essen ab gesagt.", "ab gesagt"),
+            ("Er ist gestern an gekommen.", "an gekommen"),
+            ("Er ist mit gekommen, obwohl er müde war.", "mit gekommen"),
+        ] {
+            assert_eq!(flagged(text), [span], "{text}");
+        }
+        for text in [
+            "Sie weiden auf gepachteten Weiden.",
+            "Von der Erde aus gesehen, ist die Sonne groß.",
+            "Er will nach Hause zu gehen.",
+            "Er sagt ab.",
+        ] {
+            assert!(flagged(text).is_empty(), "{text}");
+        }
     }
 
     #[test]

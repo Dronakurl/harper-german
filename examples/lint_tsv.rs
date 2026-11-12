@@ -29,6 +29,7 @@ fn main() {
                     "end": lint.span.1,
                     "problem": problem,
                     "suggestions": lint.suggestions.len(),
+                    "fix": lint.suggestions.first(),
                 })
             );
         }

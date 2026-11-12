@@ -1,0 +1,22 @@
+# "pleite" after "sein" and "gehen" is the adjective: "die Firma ist pleite",
+# "sie ging pleite", and the verb "pleitegehen" is one word ("pleitegegangen").
+# "die Pleite" with a determiner is the noun and stays. Only a "Pleite" that
+# ends the clause is taken, like "Tod" in TotSein.
+expr form [bin, bist, ist, sind, seid, war, warst, waren, wart, wäre, wären, sei, geht, ging, gingen, gehen, gehe]
+
+expr main <[(@form Pleite(.)), (@form Pleite(,)), (@form [er, sie, es, wir, ihr, ich, du, man] Pleite(.)), (@form [er, sie, es, wir, ihr, ich, du, man] Pleite(,))], Pleite>
+
+let message "Hier ist das Adjektiv »pleite« gemeint und wird kleingeschrieben."
+let description "Schreibt »pleite« nach »sein« und »gehen« klein."
+let kind "Capitalization"
+let becomes "pleite"
+let strategy "Exact"
+
+test "Die Firma ist Pleite." "Die Firma ist pleite."
+test "Wir waren Pleite, als der Monat zu Ende war." "Wir waren pleite, als der Monat zu Ende war."
+test "Die Bank ging Pleite." "Die Bank ging pleite."
+
+allows "Die Firma ist pleite."
+allows "Die Pleite der Firma war absehbar."
+allows "Das war eine Pleite."
+allows "Das Konzert war eine einzige Pleite."

@@ -1,0 +1,17 @@
+# "angst und bange" after "sein", "werden" and "machen" is a pair of adjectives
+# and is written small: "mir ist angst und bange", "er macht mir angst und
+# bange". The noun "Angst" alone stays ("ich habe Angst"), see AngstHaben.
+expr main <[(Angst und Bange)], (Angst und Bange)>
+
+let message "»angst und bange« wird kleingeschrieben."
+let description "Schreibt die feste Fügung »angst und bange« klein."
+let kind "Capitalization"
+let becomes "angst und bange"
+let strategy "Exact"
+
+test "Mir ist Angst und Bange." "Mir ist angst und bange."
+test "Da wird einem Angst und Bange." "Da wird einem angst und bange."
+test "Mir ist angst und Bange." "Mir ist angst und bange."
+
+allows "Mir ist angst und bange."
+allows "Ich habe Angst."

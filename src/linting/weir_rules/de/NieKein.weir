@@ -1,0 +1,15 @@
+# "nie keine Zeit" negates twice; standard German says "nie Zeit". A deliberate
+# double negation is written with "nicht" ("nicht keiner"), not with "nie".
+expr main (nie [kein, keine, keinen, keinem, keiner, keines])
+
+let message "Doppelte Verneinung: »nie« verneint schon, »kein« fällt weg."
+let description "Ersetzt »nie kein« durch »nie«."
+let kind "Grammar"
+let becomes "nie"
+let strategy "MatchCase"
+
+test "Ich habe nie keine Zeit." "Ich habe nie Zeit."
+test "Er hat nie keinen Hunger." "Er hat nie Hunger."
+
+allows "Ich habe nie Zeit."
+allows "Ich habe keine Zeit."

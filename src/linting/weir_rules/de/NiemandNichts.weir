@@ -1,0 +1,21 @@
+# "Niemand hat nichts gesehen" negates twice and means "everybody saw
+# something". The second negation is "etwas": "Niemand hat etwas gesehen". Only
+# "niemand" and "keiner" directly before the finite verb are taken, so "Nicht
+# keiner kam" and "Ich habe nicht nichts getan" (both deliberate) stay.
+expr verb [hat, hatte, hätte, hat's, weiß, wusste, sagt, sagte, sah, sieht, hört, hörte, tut, tat, macht, machte, kann, konnte, will, wollte, wird, würde, bemerkte, merkte, ahnte, fand, findet, versteht, verstand, darf, durfte, muss, musste, soll, sollte]
+
+expr main <[(niemand @verb nichts ![zu, dagegen]), (keiner @verb nichts ![zu, dagegen])], nichts>
+
+let message "Doppelte Verneinung: nach »niemand« oder »keiner« heißt es »etwas«, nicht »nichts«."
+let description "Ersetzt »nichts« nach »niemand« oder »keiner« + Verb durch »etwas«."
+let kind "Grammar"
+let becomes "etwas"
+let strategy "MatchCase"
+
+test "Niemand hat nichts gesehen." "Niemand hat etwas gesehen."
+test "Keiner hat nichts gesagt." "Keiner hat etwas gesagt."
+
+allows "Niemand hat etwas gesehen."
+allows "Ich habe nicht nichts getan."
+allows "Keiner von uns hat etwas gesagt."
+allows "Niemand hat nichts zu verlieren."

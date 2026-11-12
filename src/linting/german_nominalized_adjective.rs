@@ -82,6 +82,42 @@ impl GermanNominalizedAdjective {
     }
 }
 
+impl GermanNominalizedAdjective {
+    /// *das schönste, was ich je gesehen habe*: a superlative behind *das* that a relative *was*
+    /// takes up is a noun. *die schnellste von allen* refers to a noun left out and stays small,
+    /// and so do *das meiste* and *das wenigste*, which work as pronouns (§ 58 (5)).
+    fn superlative_before_was(words: &[&Token], at: usize, document: &Document) -> Option<Lint> {
+        let adjective = words[at];
+        let word = lowercase_of(adjective, document);
+        let comma = words.get(at + 1)?;
+        if lowercase_of(words[at - 1], document) != "das"
+            || !starts_lowercase(adjective, document)
+            || !word.ends_with("ste")
+            || word.chars().count() < 5
+            || PRONOMINAL_STEMS.iter().any(|stem| word.starts_with(stem))
+            || matches!(word.as_str(), "meiste" | "wenigste" | "mindeste")
+            || !adjective.kind.is_adjective()
+            || adjective.kind.is_verb()
+            || document.get_span_content(&comma.span) != [',']
+            || lowercase_of(words.get(at + 2)?, document) != "was"
+        {
+            return None;
+        }
+        let mut fixed = document.get_span_content(&adjective.span).to_vec();
+        fixed[0] = fixed[0].to_uppercase().next().unwrap_or(fixed[0]);
+        let fixed_text: String = fixed.iter().collect();
+        Some(Lint {
+            span: adjective.span,
+            lint_kind: LintKind::Capitalization,
+            suggestions: vec![Suggestion::ReplaceWith(fixed)],
+            message: format!(
+                "Vor », was« ist der Superlativ ein Nomen und wird großgeschrieben: »das {fixed_text}«."
+            ),
+            priority: 31,
+        })
+    }
+}
+
 impl Linter for GermanNominalizedAdjective {
     fn lint(&mut self, document: &Document) -> Vec<Lint> {
         let mut lints = Vec::new();
@@ -92,6 +128,10 @@ impl Linter for GermanNominalizedAdjective {
                 .filter(|token| !token.kind.is_whitespace())
                 .collect();
             for at in 1..words.len() {
+                if let Some(lint) = Self::superlative_before_was(&words, at, document) {
+                    lints.push(lint);
+                    continue;
+                }
                 let quantifier = lowercase_of(words[at - 1], document);
                 let Some(&(_, ending)) = QUANTIFIERS.iter().find(|(q, _)| *q == quantifier) else {
                     continue;
@@ -161,6 +201,8 @@ mod tests {
             ("Ich wünsche dir alles gute zum Geburtstag.", "gute"),
             ("Nichts großes geschah.", "großes"),
             ("Es war wenig erfreuliches dabei.", "erfreuliches"),
+            ("Das war das schönste, was ich je gesehen habe.", "schönste"),
+            ("Das ist das beste, was mir passieren konnte.", "beste"),
         ] {
             assert_eq!(flagged(text), [word], "{text}");
         }
@@ -183,6 +225,9 @@ mod tests {
             "Alles gehört dir.",
             "Er hat nichts gesagt.",
             "Das ist alles zwangsweise eine Sache der Erziehung.",
+            "Das ist das Wichtigste, was du wissen musst.",
+            "Sie war die schnellste von allen.",
+            "Das ist das meiste, was wir tun können.",
         ] {
             assert!(flagged(text).is_empty(), "{text}");
         }

@@ -259,15 +259,38 @@ impl<T: Dictionary> GermanSentenceCapitalization<T> {
     }
 }
 
+/// Does the paragraph end with a full stop, a question mark or an exclamation mark?
+fn ends_sentence(paragraph: &[Token]) -> bool {
+    paragraph
+        .iter()
+        .rev()
+        .find(|t| !t.kind.is_whitespace() && !t.kind.is_paragraph_break() && !t.kind.is_quote())
+        .is_some_and(|t| {
+            matches!(
+                t.kind,
+                TokenKind::Punctuation(
+                    Punctuation::Period | Punctuation::Question | Punctuation::Bang
+                )
+            )
+        })
+}
+
 impl<T: Dictionary> Linter for GermanSentenceCapitalization<T> {
     /// A linter that checks to make sure the first word of each sentence is
     /// capitalized.
     fn lint(&mut self, document: &Document) -> Vec<Lint> {
         let mut lints = Vec::new();
+        let mut previous_ended_sentence = false;
 
         for paragraph in document.iter_paragraphs() {
-            // Allows short, label-like comments in code.
-            if paragraph.iter_sentences().count() == 1 {
+            let follows_sentence = previous_ended_sentence;
+            previous_ended_sentence = ends_sentence(paragraph);
+
+            // Allows short, label-like comments in code, unless the paragraph is a full sentence
+            // after one: then it starts a sentence like any other.
+            if paragraph.iter_sentences().count() == 1
+                && !(follows_sentence && previous_ended_sentence)
+            {
                 let only_sentence = paragraph.iter_sentences().next().unwrap();
 
                 if !only_sentence
@@ -367,6 +390,17 @@ mod tests {
             lint_count("Die Zahlen basieren auf den Daten von cassini.ehess und INSEE."),
             0
         );
+    }
+
+    #[test]
+    fn a_short_paragraph_after_a_sentence_starts_a_sentence() {
+        assert_eq!(
+            lint_count("Er kam. Dann ging er wieder.\n\nwir gehen heute ins Kino."),
+            1
+        );
+        // After a heading or a list item the line may be a label.
+        assert_eq!(lint_count("Überschrift\n\nwir gehen heute ins Kino."), 0);
+        assert_eq!(lint_count("Er kam. Dann ging er.\n\nsiehe unten"), 0);
     }
 
     #[test]

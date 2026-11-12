@@ -1,0 +1,26 @@
+# "leidtun" is one verb, so its "leid" is written small, also when the verb is
+# split: "es tut mir leid". The noun "das Leid" never stands between a form of
+# "tun" and its dative.
+expr tunform [tut, tat, tue, tust, tun, taten, tätest, täte, täten]
+
+expr dativ [mir, dir, ihm, ihr, uns, euch, ihnen]
+
+expr verstaerkung [sehr, so, wirklich, echt, aufrichtig, unendlich, schrecklich, furchtbar, total, ehrlich, ja]
+
+expr main <[(@tunform @dativ Leid), (@tunform @dativ @verstaerkung Leid), (@tunform es @dativ Leid), (@tunform @dativ @verstaerkung @verstaerkung Leid)], Leid>
+
+let message "In »leidtun« wird »leid« kleingeschrieben: »es tut mir leid«."
+let description "Schreibt »leid« in »es tut mir leid« klein."
+let kind "Capitalization"
+let becomes "leid"
+let strategy "Exact"
+
+test "Es tut mir Leid, dass ich zu spät bin." "Es tut mir leid, dass ich zu spät bin."
+test "Es tut mir sehr Leid." "Es tut mir sehr leid."
+test "Das tut uns wirklich Leid." "Das tut uns wirklich leid."
+test "Tut es dir Leid?" "Tut es dir leid?"
+test "Er tat mir so Leid." "Er tat mir so leid."
+
+allows "Es tut mir leid."
+allows "Er hat viel Leid erfahren."
+allows "Das Leid der Menschen ist groß."

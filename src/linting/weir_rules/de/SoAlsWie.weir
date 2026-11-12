@@ -1,0 +1,28 @@
+# Equality takes "wie" after "so" as after "genauso": "so groß wie sein
+# Vater", "doppelt so alt wie ich". See GenausoWie.
+#
+# "so bald als möglich" and "so schnell als möglich" are old but correct, and
+# "als" also names a role ("so klein als Kind"). So the adjective has to be one
+# of a list, and what follows "als" has to be the other side of a comparison: a
+# pronoun, a determiner, or one of the words that close one ("als gedacht").
+expr adjektiv [groß, gross, klein, alt, jung, gut, schlecht, schnell, langsam, hoch, tief, teuer, billig, lang, kurz, stark, schwach, schwer, leicht, klug, dumm, schön, reich, arm, warm, kalt, weit, breit, dick, dünn, laut, leise, viel, oft, wichtig, einfach, schwierig, hell, dunkel, früh, spät, gern, gerne, fleißig, müde, nett, freundlich, berühmt, beliebt]
+
+expr vergleich [ich, du, er, sie, es, wir, ihr, man, mein, meine, dein, deine, sein, seine, unser, unsere, euer, eure, der, die, das, ein, eine, gedacht, erwartet, befürchtet, gestern, vorher, früher, sonst, gewöhnlich, üblich]
+
+expr main <[(so @adjektiv als @vergleich)], als>
+
+let message "Bei Gleichheit vergleicht man mit »wie«: »so groß wie«."
+let description "Ersetzt »als« durch »wie« nach »so« + Adjektiv."
+let kind "Grammar"
+let becomes "wie"
+let strategy "MatchCase"
+
+test "Er ist so groß als sein Vater." "Er ist so groß wie sein Vater."
+test "Er ist doppelt so alt als ich." "Er ist doppelt so alt wie ich."
+test "Es war nicht so schwer als gedacht." "Es war nicht so schwer wie gedacht."
+
+allows "Er ist so groß wie sein Vater."
+allows "Komm so bald als möglich."
+allows "Lauf so schnell als möglich."
+allows "Er war so klein als Kind."
+allows "Er ist größer als sein Vater."
