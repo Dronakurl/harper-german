@@ -148,8 +148,6 @@ impl LanguagePlugin for German {
             plugin_version: env!("CARGO_PKG_VERSION").into(),
             abi: ABI_VERSION,
             harper_core_version: HARPER_CORE_VERSION.into(),
-            // `dispatch` fills in what the API crate this plugin is built with supports.
-            features: Vec::new(),
             dialects: vec![
                 DialectInfo {
                     id: "Standard".into(),
@@ -191,9 +189,7 @@ impl LanguagePlugin for German {
 
     fn lint(&mut self, req: LintRequest) -> Vec<PluginLint> {
         // The words belong to the request, so a host may lint several files in any order.
-        if let Some(words) = &req.user_words {
-            self.use_words(words);
-        }
+        self.use_words(req.user_words.as_deref().unwrap_or_default());
         // Like the words, the dialect belongs to the request.
         self.use_dialect(req.dialect.as_deref());
         if let Some(config) = &req.config {
@@ -234,19 +230,11 @@ impl LanguagePlugin for German {
             .collect()
     }
 
-    fn detect(text: &str) -> Option<f32> {
-        crate::language_detection::german_confidence(text)
-    }
-
-    fn detect_with(text: &str, english_ratio: Option<f32>) -> Option<f32> {
+    fn detect(text: &str, english_ratio: Option<f32>) -> Option<f32> {
         match english_ratio {
             Some(ratio) => crate::language_detection::german_confidence_given_english(text, ratio),
-            None => Self::detect(text),
+            None => crate::language_detection::german_confidence(text),
         }
-    }
-
-    fn set_user_words(&mut self, words: Vec<String>) {
-        self.use_words(&words);
     }
 }
 

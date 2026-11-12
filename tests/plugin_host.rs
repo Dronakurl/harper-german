@@ -103,8 +103,9 @@ fn user_words_silence_the_spell_checker() {
         "{before:?}"
     );
 
-    plugin.set_user_words(vec!["Harperlint".into()]).unwrap();
-    let after = plugin.lint(&LintRequest::plain(text)).unwrap();
+    let mut req = LintRequest::plain(text);
+    req.user_words = Some(vec!["Harperlint".into()]);
+    let after = plugin.lint(&req).unwrap();
     assert!(
         after.iter().all(|l| l.rule != "GermanSpellCheck"),
         "{after:?}"
@@ -212,8 +213,7 @@ fn flags(plugin: &LoadedPlugin, req: &LintRequest, word: &str) -> bool {
         .any(|l| l.rule == "GermanSpellCheck" && l.span.0 <= at && at < l.span.1)
 }
 
-/// The words come with the request: what one request brings does not leak into the next, and a
-/// request without words does not undo `set_user_words`.
+/// The words come with the request: what one request brings does not leak into the next.
 #[test]
 fn words_belong_to_the_request() {
     let Some(plugin) = load() else { return };
@@ -222,10 +222,7 @@ fn words_belong_to_the_request() {
     assert!(flags(&plugin, &request(text, &[]), "Quorblix"));
     assert!(!flags(&plugin, &request(text, &["Quorblix"]), "Quorblix"));
     assert!(flags(&plugin, &request(text, &[]), "Quorblix"));
-
-    plugin.set_user_words(vec!["Quorblix".into()]).unwrap();
-    assert!(!flags(&plugin, &LintRequest::plain(text), "Quorblix"));
-    assert!(flags(&plugin, &request(text, &[]), "Quorblix"));
+    assert!(flags(&plugin, &LintRequest::plain(text), "Quorblix"));
 }
 
 /// Several threads share one plugin and lint with different words at the same time.
