@@ -290,6 +290,13 @@ class Builder:
             if gen <= attested or unattested_tense:
                 flags.add(f)
                 covered |= gen
+        weak_too = any(lemma.endswith(v) for v in curated.WEAK_TOO)
+        if weak_too:
+            for f in "de":
+                gen = self.generated(lemma, f)
+                if gen:
+                    flags.add(f)
+                    covered |= gen
         part1 = {f for f, ft in lex.forms if PARTICIPLE1 in ft}
         gen = self.generated(lemma, "c")
         if part1 and part1 & gen:
@@ -333,7 +340,7 @@ class Builder:
                         covered |= gen
                         done_pret_stems.add(form)
                 irregular.append((form, extra))
-        if not pp and "d" in flags:
+        if (not pp and "d" in flags) or weak_too:
             pp.add(self.pp_regular(lemma))
         return {"flags": flags, "irregular": irregular, "pp": pp}
 

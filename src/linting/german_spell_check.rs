@@ -61,6 +61,26 @@ const CLITIC_HOSTS: &[&str] = &[
     "wie", "wenn", "ob", "so", "da", "was", "als", "weil", "dass",
 ];
 
+/// Dated or regional verb forms and their standard ones, which the edit search answers with a
+/// word that merely looks alike (*frug* → *Fug*, *gewunken* → *gesunken*).
+const DATED_VERB_FORMS: &[(&str, &str)] = &[
+    ("frug", "fragte"),
+    ("frugst", "fragtest"),
+    ("frugen", "fragten"),
+    ("buk", "backte"),
+    ("buken", "backten"),
+    ("gewunken", "gewinkt"),
+    ("gekreischen", "gekreischt"),
+];
+
+fn dated_verb_form(word: &[char]) -> Option<Vec<char>> {
+    let written: String = word.iter().collect();
+    DATED_VERB_FORMS
+        .iter()
+        .find(|(dated, _)| *dated == written)
+        .map(|(_, standard)| standard.chars().collect())
+}
+
 fn keeps_first_letter(misspelled: &[char], candidate: &[char]) -> bool {
     match (misspelled.first(), candidate.first()) {
         (Some(a), Some(b)) => a.to_lowercase().eq(b.to_lowercase()),
@@ -729,6 +749,7 @@ impl<T: Dictionary> GermanSpellCheck<T> {
         // but a rule, and which the edit search answers with other words
         // (*Muße*, *Schifahrt*).
         for systematic in [
+            dated_verb_form(word),
             self.strong_participle(word),
             self.strong_preterite(word),
             self.reformed_spelling(word),
@@ -1371,6 +1392,8 @@ mod tests {
     fn the_old_spelling_and_weak_preterites_get_the_right_word() {
         for (wrong, right) in [
             ("muß", "muss"),
+            ("frug", "fragte"),
+            ("gewunken", "gewinkt"),
             ("Schiffahrt", "Schifffahrt"),
             ("Eßzimmer", "Esszimmer"),
             ("Mißverständnis", "Missverständnis"),

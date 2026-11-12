@@ -722,3 +722,7 @@ Angeles
 # Verbs with a weak and a strong paradigm (*erschreckt* transitive, *erschrickt* intransitive): the weak one is
 # the one Harper checks against.
 WEAK_AND_STRONG = {"erschrecken", "senden", "schaffen", "bewegen", "hängen", "löschen", "wiegen", "saugen", "melken", "weben", "gären", "schleifen"}
+
+# Verbs whose weak forms stand beside the strong ones in their compounds as well: *sendete*/*sandte*,
+# *gewendet*/*gewandt*, *umgewendet*, *abgesendet*. Wikidata often lists only one paradigm.
+WEAK_TOO = {"senden", "wenden"}
