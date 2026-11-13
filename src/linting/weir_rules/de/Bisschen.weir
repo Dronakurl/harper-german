@@ -1,0 +1,15 @@
+# "ein bisschen" (= a little) is written small; "das Bisschen" as a noun is rare
+# and has no "ein" before a noun of quantity.
+expr main <([ein, das, dieses, kein] Bisschen [Hunger, Zeit, Geld, Glück, Ruhe, Angst, Mut, Spaß, Lust, Hilfe, Geduld, mehr, besser, weniger, später, früher, Wasser, Salz, Zucker, Platz, Sonne]), Bisschen>
+
+let message "»bisschen« (= ein wenig) wird kleingeschrieben."
+let description "Schreibt »ein Bisschen« vor einer Menge klein."
+let kind "Capitalization"
+let becomes "bisschen"
+let strategy "Exact"
+
+test "Ich habe ein Bisschen Hunger." "Ich habe ein bisschen Hunger."
+test "Das Bisschen Geld reicht nicht." "Das bisschen Geld reicht nicht."
+test "Warte ein Bisschen später." "Warte ein bisschen später."
+
+allows "Ich habe ein bisschen Hunger."

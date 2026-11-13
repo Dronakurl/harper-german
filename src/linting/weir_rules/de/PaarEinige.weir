@@ -1,0 +1,18 @@
+# "ein paar Freunde" (= some) is written small; "ein Paar" is two that belong
+# together (ein Paar Schuhe). Only before a plural that forms no pair.
+expr menge [Freunde, Tage, Minuten, Wochen, Monate, Jahre, Leute, Stunden, Euro, Sachen, Fragen, Bücher, Kinder, Menschen, Sekunden, Kilometer, Meter, Bilder, Fotos, Worte, Wörter, Zeilen, Gäste, Tipps, Ideen, Dinge, Mails, Nachrichten, Seiten, Schritte, Tage, Male, Probleme, Freundinnen, Kollegen]
+
+expr main <([ein, einige, ein] Paar @menge), Paar>
+
+let message "»ein paar« (einige) wird kleingeschrieben; »ein Paar« sind zwei Zusammengehörige."
+let description "Schreibt »ein Paar« vor einem Plural, der kein Paar bildet, klein."
+let kind "Capitalization"
+let becomes "paar"
+let strategy "Exact"
+
+test "Er hat ein Paar Freunde eingeladen." "Er hat ein paar Freunde eingeladen."
+test "Wir bleiben ein Paar Tage." "Wir bleiben ein paar Tage."
+test "Das dauert ein Paar Minuten." "Das dauert ein paar Minuten."
+
+allows "Er hat ein Paar Schuhe gekauft."
+allows "Er hat ein paar Freunde eingeladen."

@@ -1,0 +1,12 @@
+# "als Erster ins Ziel": the ordinal names a person and is capitalized.
+expr main <(als erster [ins, durchs, über, am, an, von, zum, zur, aus, in]), erster>
+
+let message "Als Nomen wird die Ordnungszahl großgeschrieben: »als Erster«."
+let description "Schreibt »als erster« vor einem Ziel oder Ort groß."
+let kind "Capitalization"
+let becomes "Erster"
+let strategy "Exact"
+
+test "Sie kam als erster ins Ziel." "Sie kam als Erster ins Ziel."
+allows "Sie kam als Erster ins Ziel."
+allows "Er war als erster Gast am Ziel."

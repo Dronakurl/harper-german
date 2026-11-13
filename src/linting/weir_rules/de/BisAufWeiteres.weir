@@ -1,0 +1,11 @@
+# "bis auf Weiteres" is a nominalization since 2006, like "des Weiteren".
+expr main <(bis auf weiteres), weiteres>
+
+let message "»bis auf Weiteres« schreibt man mit großem »W«."
+let description "Schreibt »bis auf weiteres« als »bis auf Weiteres«."
+let kind "Capitalization"
+let becomes "Weiteres"
+let strategy "Exact"
+
+test "Das Geschäft bleibt bis auf weiteres geschlossen." "Das Geschäft bleibt bis auf Weiteres geschlossen."
+allows "Das Geschäft bleibt bis auf Weiteres geschlossen."

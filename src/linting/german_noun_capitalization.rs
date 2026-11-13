@@ -206,6 +206,7 @@ fn has_non_noun_ending(s: &str) -> bool {
         || (s.ends_with("uelle") && n >= 6) // rituelle, aktuelle, individuelle
         || (s.ends_with("öse") && n >= 6)   // amouröse, nervöse, grandiose
         || (s.ends_with("frei") && n >= 7)  // latexfrei, barrierefrei, schadstofffrei
+        || s.ends_with("erlei")              // allerlei, vielerlei, keinerlei, zweierlei
         // High-precision finite-verb / participle endings. Corpus mining added
         // many of these to the dictionary as bare "~~Nh" nouns.
         || (s.ends_with("iert") && n >= 6)  // funktioniert, existiert, studiert

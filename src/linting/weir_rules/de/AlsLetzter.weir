@@ -1,0 +1,12 @@
+# "als Letzter ins Ziel": the ordinal names a person and is capitalized.
+expr main <(als letzter [ins, durchs, über, am, an, von, zum, zur, aus, in]), letzter>
+
+let message "Als Nomen wird die Ordnungszahl großgeschrieben: »als Letzter«."
+let description "Schreibt »als letzter« vor einem Ziel oder Ort groß."
+let kind "Capitalization"
+let becomes "Letzter"
+let strategy "Exact"
+
+test "Sie kam als letzter ins Ziel." "Sie kam als Letzter ins Ziel."
+allows "Sie kam als Letzter ins Ziel."
+allows "Er war als letzter Gast am Ziel."

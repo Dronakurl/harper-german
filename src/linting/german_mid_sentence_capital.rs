@@ -351,13 +351,37 @@ impl GermanMidSentenceCapital {
                 "des" | "eines" | "jedes" | "dieses" | "jenes"
             );
         let farewell = previous_lower == "bis" && AFTER_BIS.contains(&lower.as_str());
+        // *Wir haben Zwölf Gäste eingeladen*, *Er ist Dreißig geworden*: a numeral in
+        // mid-sentence before a noun or *werden* is no noun; with an article it is (*die Zwölf*).
+        let numeral = crate::spell::lexical_classes::NUMERALS.contains(&lower)
+            && !lower.starts_with("ein")
+            // *Millionen*, *Milliarden*, *Dutzend* are nouns.
+            && !["ion", "ionen", "iarde", "iarden", "dutzend", "dutzende"]
+                .iter()
+                .any(|ending| lower.ends_with(ending))
+            && !previous.kind.is_conjunction()
+            && !previous.kind.is_determiner()
+            && !previous.kind.is_preposition()
+            && next.is_some_and(|t| {
+                (t.kind.is_noun() && next_is_capitalized)
+                    || matches!(
+                        crate::grammar::noun_phrase::lowercase_of(t, document).as_str(),
+                        "geworden" | "werden" | "wird" | "jahre" | "alt"
+                    )
+            });
+        // *Die Beiden sind verheiratet*: *beide* behind the article, with no noun of its own.
+        let beide = matches!(lower.as_str(), "beiden" | "beide")
+            && previous.kind.is_determiner()
+            && !next_is_capitalized;
         if !(graded_adjective
             || bare_adjective
             || goes_to_do
             || finite_verb
             || day_adverb
             || recurring
-            || farewell)
+            || farewell
+            || numeral
+            || beide)
         {
             return None;
         }
@@ -431,6 +455,9 @@ mod tests {
             ("Die Produkte sind Top.", "Top"),
             ("Wir gehen heute Schwimmen.", "Schwimmen"),
             ("Sie geht Tanzen.", "Tanzen"),
+            ("Wir haben Zwölf Gäste eingeladen.", "Zwölf"),
+            ("Er ist Dreißig geworden.", "Dreißig"),
+            ("Die Beiden sind verheiratet.", "Beiden"),
         ] {
             assert_eq!(flagged(text), vec![word], "{text}");
         }
@@ -468,6 +495,9 @@ mod tests {
             "Wir gehen das Problem an.",
             "Er spricht gut Englisch.",
             "Das hat er zu Recht gesagt.",
+            "Die Zwölf ist meine Glückszahl.",
+            "Die beiden Kinder spielen.",
+            "Er würfelte eine Sechs.",
             "Das sagt Stark.",
             "Außerdem wurde Ehrlich mit Unterstützung bekannt.",
             "Dort trifft Rosa wieder auf Latimer.",
