@@ -20,6 +20,7 @@ pub mod german_foreign_stretch;
 pub mod german_genitive_after_nominative_article;
 pub mod german_genitive_s;
 pub mod german_mid_sentence_capital;
+pub mod german_missing_article;
 pub mod german_missing_zu;
 pub mod german_modal_finite_sein;
 pub mod german_modal_zu_infinitive;

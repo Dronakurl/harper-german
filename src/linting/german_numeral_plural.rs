@@ -101,9 +101,11 @@ impl GermanNumeralPlural {
             TokenKind::Word(_) => {
                 let word = lowercase_of(token, document);
                 !starts_uppercase(token, document)
-                    && NUMERALS.contains(&word)
-                    && !word.starts_with("ein")
-                    && word != "null"
+                    && ((NUMERALS.contains(&word) && !word.starts_with("ein") && word != "null")
+                        // *viele Sache*: the plural quantifiers count as well; not *einige*,
+                        // which is also a feminine singular (*einige Zeit*).
+                        || ["viele", "mehrere", "zahlreiche"]
+                            .contains(&word.as_str()))
             }
             _ => false,
         }
@@ -323,6 +325,7 @@ mod tests {
             ("Sie hat drei Katze.", "Katzen"),
             ("Wir haben zwei Hund.", "Hunde"),
             ("Er wartete 20 Minute.", "Minuten"),
+            ("Wir haben viele Sache gekauft.", "Sachen"),
         ] {
             assert_eq!(fixes(text), [format!("Replace with: “{fixed}”")], "{text}");
         }
@@ -343,6 +346,8 @@ mod tests {
             "Das steht auf Seite 5 Absatz 2.",
             "Vor zwei Wochen war ich krank.",
             "Seit drei Jahren wohnen wir hier.",
+            "Er hat viele Freunde.",
+            "Das kostet viel Geld.",
         ] {
             assert!(fixes(text).is_empty(), "{text}: {:?}", fixes(text));
         }

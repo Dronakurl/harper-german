@@ -31,6 +31,7 @@ pub fn rust_lint_group(
         german_genitive_after_nominative_article::GermanGenitiveAfterNominativeArticle,
         german_genitive_s::GermanGenitiveS,
         german_mid_sentence_capital::GermanMidSentenceCapital,
+        german_missing_article::GermanMissingArticle,
         german_missing_zu::GermanMissingZu,
         german_modal_finite_sein::GermanModalFiniteSein,
         german_modal_zu_infinitive::GermanModalZuInfinitive,
@@ -177,6 +178,7 @@ pub fn rust_lint_group(
         GermanCoordinatedSubject::default(),
     );
     group.add("GermanPoliteSie", GermanPoliteSie);
+    group.add("GermanMissingArticle", GermanMissingArticle::default());
     group.add("GermanDeterminerGender", GermanDeterminerGender::new());
     group.add(
         "GermanGenitiveAfterNominativeArticle",
