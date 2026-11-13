@@ -40,6 +40,7 @@ pub fn rust_lint_group(
         german_nominalized_infinitive::GermanNominalizedInfinitive,
         german_noun_capitalization::GermanNounCapitalization,
         german_numeral_plural::GermanNumeralPlural,
+        german_partitive_subject::GermanPartitiveSubject,
         german_perfect_auxiliary::GermanPerfectAuxiliary,
         german_polite_sie::GermanPoliteSie,
         german_preposition_case::GermanPrepositionCase,
@@ -183,6 +184,7 @@ pub fn rust_lint_group(
     group.add("GermanMissingArticle", GermanMissingArticle::default());
     group.add("GermanWeakAdjective", GermanWeakAdjective::default());
     group.add("GermanDoubledVerb", GermanDoubledVerb);
+    group.add("GermanPartitiveSubject", GermanPartitiveSubject::default());
     group.add("GermanDeterminerGender", GermanDeterminerGender::new());
     group.add(
         "GermanGenitiveAfterNominativeArticle",

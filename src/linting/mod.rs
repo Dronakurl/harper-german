@@ -29,6 +29,7 @@ pub mod german_nominalized_adjective;
 pub mod german_nominalized_infinitive;
 pub mod german_noun_capitalization;
 pub mod german_numeral_plural;
+pub mod german_partitive_subject;
 pub mod german_perfect_auxiliary;
 pub mod german_polite_sie;
 pub mod german_preposition_case;
