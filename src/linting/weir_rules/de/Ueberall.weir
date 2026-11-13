@@ -1,0 +1,14 @@
+# "überall" is one word. "über all die Jahre" is a preposition with "all", so only
+# "über all" before a word that cannot follow "all" is taken.
+expr main <(über all [nach, hin, herum, verstreut, gesucht, bekannt, gleich, zu]), (über all)>
+
+let message "»überall« wird zusammengeschrieben."
+let description "Zieht »über all« zu »überall« zusammen, wo kein »all die …« folgt."
+let kind "Spelling"
+let becomes "überall"
+let strategy "MatchCase"
+
+test "Er sucht über all nach dem Schlüssel." "Er sucht überall nach dem Schlüssel."
+test "Die Spielsachen liegen über all verstreut." "Die Spielsachen liegen überall verstreut."
+allows "Über all die Jahre blieb er treu."
+allows "Er sucht überall nach dem Schlüssel."

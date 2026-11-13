@@ -1,0 +1,16 @@
+# "tot" is the adjective: "tot umfallen", "tot aufgefunden", "tot geboren", "tot
+# daliegen". "Tod" is the noun and cannot stand in front of a participle like this.
+expr main <[(Tod [umgefallen, umfallen, umfiel, aufgefunden, geboren, umgekippt]), ([lag, lagen, liegt, liegen, lagst] Tod [auf, im, in, am, vor, neben, unter])], Tod>
+
+let message "Hier ist das Adjektiv »tot« gemeint, nicht das Nomen »Tod«."
+let description "Ersetzt »Tod« durch »tot« vor »umgefallen«, »aufgefunden« und nach »lag«."
+let kind "Spelling"
+let becomes "tot"
+let strategy "Exact"
+
+test "Er ist gestern Tod umgefallen." "Er ist gestern tot umgefallen."
+test "Der Vogel lag Tod auf der Straße." "Der Vogel lag tot auf der Straße."
+test "Er wurde Tod aufgefunden." "Er wurde tot aufgefunden."
+allows "Er ist gestern tot umgefallen."
+allows "Der Tod kam schnell."
+allows "Sie lag im Sterben."

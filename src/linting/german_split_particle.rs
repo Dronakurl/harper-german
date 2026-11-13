@@ -29,6 +29,11 @@ const PARTICLES: &[&str] = &[
 /// *um nach Hause zu gehen* is the infinitive, and *zugehen* a word of its own.
 const PREPOSITION_PARTICLES: &[&str] = &["ab", "an", "auf", "aus", "ein", "mit", "vor", "nach"];
 
+/// First parts of separable verbs that are nouns or adjectives elsewhere: *teil nehmen*,
+/// *statt finden*, *fertig gestellt*, *auseinander setzen*. Taken before an infinitive or a
+/// participle that closes the clause, when the dictionary lists the joined verb.
+const WORD_PARTICLES: &[&str] = &["teil", "statt", "fertig", "auseinander"];
+
 /// Reports a separable particle written apart from the verb right behind it:
 /// *zurück gebracht* -> *zurückgebracht*, *weg werfen* -> *wegwerfen*.
 ///
@@ -128,6 +133,17 @@ impl GermanSplitParticle {
         next: Option<&Token>,
         document: &Document,
     ) -> bool {
+        Self::closing_verb_joins(particle, verb, next, document, false)
+    }
+
+    /// [`Self::closing_participle_joins`], and with `infinitive` the infinitive too.
+    fn closing_verb_joins(
+        particle: &str,
+        verb: &Token,
+        next: Option<&Token>,
+        document: &Document,
+        infinitive: bool,
+    ) -> bool {
         let word = document.get_span_content_str(&verb.span);
         let closes = next.is_none_or(|t| {
             matches!(
@@ -140,11 +156,11 @@ impl GermanSplitParticle {
                 )
             )
         });
-        if !closes
-            || !word.starts_with("ge")
-            || !(word.ends_with('t') || word.ends_with("en"))
-            || word.chars().count() < 5
-        {
+        let participle = word.starts_with("ge")
+            && (word.ends_with('t') || word.ends_with("en"))
+            && word.chars().count() >= 5;
+        let is_infinitive = infinitive && word.ends_with('n') && word.chars().count() >= 4;
+        if !closes || !(participle || is_infinitive) || !word.chars().all(char::is_lowercase) {
             return false;
         }
         let joined: Vec<char> = format!("{particle}{word}").chars().collect();
@@ -172,6 +188,8 @@ impl Linter for GermanSplitParticle {
                 let next = tokens.get(index + 3).copied();
                 let fits = if PREPOSITION_PARTICLES.contains(&particle_text.as_str()) {
                     Self::closing_participle_joins(&particle_text, verb, next, document)
+                } else if WORD_PARTICLES.contains(&particle_text.as_str()) {
+                    Self::closing_verb_joins(&particle_text, verb, next, document, true)
                 } else {
                     PARTICLES.contains(&particle_text.as_str())
                         && Self::verb_shaped(verb, next, document)
@@ -231,6 +249,19 @@ mod tests {
             ("Sie hat das Essen ab gesagt.", "ab gesagt"),
             ("Er ist gestern an gekommen.", "an gekommen"),
             ("Er ist mit gekommen, obwohl er müde war.", "mit gekommen"),
+            ("Wir möchten gerne teil nehmen.", "teil nehmen"),
+            (
+                "Die Veranstaltung wird morgen statt finden.",
+                "statt finden",
+            ),
+            (
+                "Das Projekt wird bis Freitag fertig gestellt.",
+                "fertig gestellt",
+            ),
+            (
+                "Wir müssen uns damit auseinander setzen.",
+                "auseinander setzen",
+            ),
         ] {
             assert_eq!(flagged(text), [span], "{text}");
         }
@@ -239,8 +270,12 @@ mod tests {
             "Von der Erde aus gesehen, ist die Sonne groß.",
             "Er will nach Hause zu gehen.",
             "Er sagt ab.",
+            "Statt finden wir eine Lösung.",
+            "Er nimmt teil.",
+            "Wir sind fertig.",
+            "Ich habe den Teil genommen.",
         ] {
-            assert!(flagged(text).is_empty(), "{text}");
+            assert!(flagged(text).is_empty(), "{text}: {:?}", flagged(text));
         }
     }
 

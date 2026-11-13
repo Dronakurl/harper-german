@@ -1,0 +1,12 @@
+# "mit dem Rad fahren": the bicycle is "das Rad", "der Rat" is advice.
+expr main <([fährt, fahre, fahren, fährst, fahrt, fuhr, fuhren, gefahren, radelt] mit dem Rat), Rat>
+
+let message "Gemeint ist »das Rad« (Fahrrad), nicht »der Rat«."
+let description "Ersetzt »Rat« durch »Rad« in »mit dem Rat fahren«."
+let kind "Spelling"
+let becomes "Rad"
+let strategy "Exact"
+
+test "Er fährt mit dem Rat zur Arbeit." "Er fährt mit dem Rad zur Arbeit."
+allows "Er fährt mit dem Rad zur Arbeit."
+allows "Er half mit dem Rat eines Freundes."

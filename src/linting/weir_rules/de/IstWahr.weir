@@ -1,0 +1,15 @@
+# "Das ist nicht war": the adjective "wahr" (true), not "war" (was). "war" right
+# behind "ist" + a particle at the end of the sentence cannot be the verb.
+expr main <[(ist nicht war(.)), (ist leider war(.)), (ist doch war(.)), (ist wirklich war(.)), (ist schon war(.)), (ist also war(.)), (das ist war(.)), (nicht war(?))], war>
+
+let message "Gemeint ist das Adjektiv »wahr«, nicht »war« (von »sein«)."
+let description "Ersetzt »war« durch »wahr« nach »ist (nicht/leider/doch)« am Satzende."
+let kind "Spelling"
+let becomes "wahr"
+let strategy "Exact"
+
+test "Das ist nicht war." "Das ist nicht wahr."
+test "Das ist leider war." "Das ist leider wahr."
+test "Das ist war." "Das ist wahr."
+allows "Das ist nicht wahr."
+allows "Es ist nicht so, wie es war."

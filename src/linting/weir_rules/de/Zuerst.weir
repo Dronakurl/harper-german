@@ -1,0 +1,13 @@
+# "zuerst" is one word; "zu erst" reads as "zu" and the ordinal stem.
+expr main (zu erst)
+
+let message "»zuerst« wird zusammengeschrieben."
+let description "Zieht »zu erst« zu »zuerst« zusammen."
+let kind "Spelling"
+let becomes "zuerst"
+let strategy "MatchCase"
+
+test "Zu erst gehen wir essen." "Zuerst gehen wir essen."
+test "Er kam zu erst an." "Er kam zuerst an."
+allows "Zuerst gehen wir essen."
+allows "Er kam erst spät zu uns."

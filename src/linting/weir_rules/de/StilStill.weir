@@ -1,0 +1,14 @@
+# "der Stil" (style) with one "l"; "still" is the adjective. Behind a possessive or
+# "im" the noun is meant.
+expr main <([mein, dein, eigener, eigenen, guter, guten, neuer, neuen, im, diesem] Still), Still>
+
+let message "Gemeint ist das Nomen »Stil« (mit einem »l«)."
+let description "Ersetzt »Still« durch »Stil« hinter einem Possessivpronomen oder »im«."
+let kind "Spelling"
+let becomes "Stil"
+let strategy "Exact"
+
+test "Das ist nicht mein Still." "Das ist nicht mein Stil."
+test "Er schreibt im Still der Zeit." "Er schreibt im Stil der Zeit."
+allows "Das ist nicht mein Stil."
+allows "Sei doch mal still."

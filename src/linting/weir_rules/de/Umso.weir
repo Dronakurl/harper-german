@@ -1,0 +1,16 @@
+# Since 2006 "umso" is written as one word. "um so" stays apart in "um so die
+# Kosten zu senken" (in order to ... thereby), so only "um so" before a
+# comparative is taken.
+expr main <(um so [mehr, weniger, besser, schlechter, größer, kleiner, schlimmer, wichtiger, schneller, lieber, eher, leichter, schwerer, stärker, höher, länger, früher, später, öfter, älter, größere, größeren]), (um so)>
+
+let message "»umso« wird zusammengeschrieben."
+let description "Zieht »um so« vor einem Komparativ zu »umso« zusammen."
+let kind "Spelling"
+let becomes "umso"
+let strategy "MatchCase"
+
+test "Er freut sich um so mehr." "Er freut sich umso mehr."
+test "Um so besser!" "Umso besser!"
+test "Je früher, um so lieber." "Je früher, umso lieber."
+allows "Er freut sich umso mehr."
+allows "Wir sparen, um so die Kosten zu senken."

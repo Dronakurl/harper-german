@@ -1,0 +1,13 @@
+# "vorher" is one word.
+expr main (vor her)
+
+let message "»vorher« wird zusammengeschrieben."
+let description "Zieht »vor her« zu »vorher« zusammen."
+let kind "Spelling"
+let becomes "vorher"
+let strategy "MatchCase"
+
+test "Das habe ich vor her gewusst." "Das habe ich vorher gewusst."
+test "Vor her müssen wir packen." "Vorher müssen wir packen."
+allows "Das habe ich vorher gewusst."
+allows "Er steht vor ihr."

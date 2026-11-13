@@ -1,0 +1,14 @@
+# "leer" (empty) spelled like the stem of "lehren". Behind a copula or a degree word
+# "lehr" can only be the adjective.
+expr main <([ist, war, sind, waren, völlig, ganz, fast, halb, total, wieder, noch] lehr), lehr>
+
+let message "Gemeint ist das Adjektiv »leer«."
+let description "Ersetzt »lehr« durch »leer« nach »ist«, »völlig« und Ähnlichem."
+let kind "Spelling"
+let becomes "leer"
+let strategy "Exact"
+
+test "Der Raum war völlig lehr." "Der Raum war völlig leer."
+test "Die Flasche ist lehr." "Die Flasche ist leer."
+allows "Die Flasche ist leer."
+allows "Er wollte uns etwas lehren."

@@ -1,0 +1,13 @@
+# "nachher" is one word: "nach her" is no preposition with an object.
+expr main (nach her)
+
+let message "»nachher« wird zusammengeschrieben."
+let description "Zieht »nach her« zu »nachher« zusammen."
+let kind "Spelling"
+let becomes "nachher"
+let strategy "MatchCase"
+
+test "Wir sehen uns nach her." "Wir sehen uns nachher."
+test "Nach her gehen wir essen." "Nachher gehen wir essen."
+allows "Wir sehen uns nachher."
+allows "Er fragt nach ihr."
