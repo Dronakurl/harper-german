@@ -1,0 +1,19 @@
+# "Seid ihr …?": the verb "sein" in the second person plural is "seid", the
+# preposition is "seit". "Seit ihr" is only the preposition with a clause
+# behind it ("Seit ihr hier seid, …"), so only before words that cannot open
+# that clause.
+expr main <(seit ihr [morgen, heute, auch, schon, noch, alle, bereit, fertig, sicher, dabei, zufrieden, müde, wirklich, wieder, jetzt, gut, verrückt, sauer, krank, glücklich]), seit>
+
+let message "Hier ist das Verb »seid« (von »sein«) gemeint, nicht »seit«."
+let description "Ersetzt »seit ihr« durch »seid ihr«, wo kein Nebensatz folgt."
+let kind "Spelling"
+let becomes "seid"
+let strategy "MatchCase"
+
+test "Seit ihr morgen auch dabei?" "Seid ihr morgen auch dabei?"
+test "Seit ihr schon fertig?" "Seid ihr schon fertig?"
+test "Wann seit ihr wieder zu Hause?" "Wann seid ihr wieder zu Hause?"
+
+allows "Seid ihr morgen auch dabei?"
+allows "Seit ihr hier seid, ist es lustig."
+allows "Seit ihr weg seid, ist es still."

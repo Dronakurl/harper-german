@@ -173,6 +173,30 @@ impl Linter for GermanCoordinatingComma {
                         let Some(next) = tokens.get(index + 1) else {
                             continue;
                         };
+                        // *lecker aber teuer*: two predicative adjectives set against each other.
+                        // *klein aber fein* is a fixed pair and left as it is written.
+                        let bare_adjective = |t: &Token| {
+                            Self::is_word(t)
+                                && t.kind.is_adjective()
+                                && !t.kind.is_determiner()
+                                && document
+                                    .get_span_content(&t.span)
+                                    .first()
+                                    .is_some_and(|c| c.is_lowercase())
+                        };
+                        if word == "aber"
+                            && bare_adjective(previous)
+                            && bare_adjective(next)
+                            && Self::word(previous, document) != "klein"
+                            && tokens.get(index + 2).is_none_or(|t| !Self::is_word(t))
+                        {
+                            lints.push(Self::insert_comma_after(
+                                previous,
+                                "Vor »aber« steht ein Komma, auch zwischen zwei Adjektiven."
+                                    .to_owned(),
+                            ));
+                            continue;
+                        }
                         if !Self::is_word(next)
                             || !SUBJECT_PRONOUNS.contains(&Self::word(next, document).as_str())
                         {
@@ -299,6 +323,8 @@ mod tests {
             "Ich wollte kommen aber ich hatte keine Zeit.",
             "Ich bleibe zu Hause denn ich bin krank.",
             "Wir haben lange gewartet aber er kam nicht.",
+            "Das Essen war sehr lecker aber teuer.",
+            "Er ist arm aber glücklich.",
         ] {
             assert_eq!(lint_count(text), 1, "{text}");
         }

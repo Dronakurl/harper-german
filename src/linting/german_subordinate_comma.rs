@@ -478,7 +478,7 @@ impl GermanSubordinateComma {
         ];
         const BETWEEN: &[&str] = &[
             "mich", "dich", "ihn", "sie", "uns", "euch", "nicht", "genau", "auch", "noch", "nie",
-            "selbst", "schon", "es",
+            "selbst", "schon", "es", "du", "ihr",
         ];
         const QUESTION_WORDS: &[&str] = &[
             "wann", "warum", "weshalb", "weswegen", "wieso", "woher", "wohin", "wo", "wer", "wen",
@@ -487,6 +487,26 @@ impl GermanSubordinateComma {
         ];
         let mut lints = Vec::new();
         for (at, token) in tokens.iter().enumerate() {
+            // *Ich habe keine Ahnung was er meint*: the noun asks as the verb does.
+            if at > 1
+                && document.get_span_content_str(&tokens[at - 1].span) == "Ahnung"
+                && Self::word_in(tokens[at - 2], document, &["keine", "eine", "null", "kaum"])
+                && (Self::word_in(token, document, QUESTION_WORDS)
+                    || Self::word_in(token, document, &["was", "ob"]))
+                && tokens[at + 1..]
+                    .iter()
+                    .take_while(|t| matches!(t.kind, TokenKind::Word(_)))
+                    .any(|t| GermanRelativeClauseComma::is_verb_token(t, document))
+            {
+                lints.push(Lint {
+                    span: tokens[at - 1].span,
+                    lint_kind: LintKind::Punctuation,
+                    suggestions: vec![Suggestion::InsertAfter(vec![','])],
+                    priority: 28,
+                    message: "Vor dem indirekten Fragesatz steht ein Komma.".to_owned(),
+                });
+                continue;
+            }
             if !Self::word_in(token, document, QUESTION_WORDS)
                 || document
                     .get_span_content(&token.span)
@@ -1588,6 +1608,8 @@ mod tests {
             "Ja ich komme gerne.",
             "Nein das geht nicht.",
             "Ach so das wusste ich nicht.",
+            "Ich habe keine Ahnung was er meint.",
+            "Weißt du wann der Film anfängt?",
         ] {
             assert_eq!(lint_count(text), 1, "{text}");
         }

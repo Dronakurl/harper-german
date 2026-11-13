@@ -39,6 +39,7 @@ pub fn rust_lint_group(
         german_noun_capitalization::GermanNounCapitalization,
         german_numeral_plural::GermanNumeralPlural,
         german_perfect_auxiliary::GermanPerfectAuxiliary,
+        german_polite_sie::GermanPoliteSie,
         german_preposition_case::GermanPrepositionCase,
         german_preposition_pronoun::GermanPrepositionPronoun,
         german_question_mark::GermanQuestionMark,
@@ -175,6 +176,7 @@ pub fn rust_lint_group(
         "GermanCoordinatedSubject",
         GermanCoordinatedSubject::default(),
     );
+    group.add("GermanPoliteSie", GermanPoliteSie);
     group.add("GermanDeterminerGender", GermanDeterminerGender::new());
     group.add(
         "GermanGenitiveAfterNominativeArticle",
