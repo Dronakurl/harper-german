@@ -197,7 +197,6 @@ impl Linter for GermanCoordinatingComma {
                                     | "wenig"
                                     | "ganz"
                                     | "so"
-                                    | "sehr"
                             );
                         let second = if degree {
                             tokens.get(index + 2)
