@@ -132,6 +132,7 @@ const DATIVE_VERBS: &[&str] = &[
     "gehorchen",
     "nützen",
     "zustimmen",
+    "glauben",
 ];
 
 /// Verbs that take an accusative object with an infinitive of its own: in *lass
@@ -153,7 +154,7 @@ const STRONG_FORMS: &[(&str, &[&str])] = &[
         "sehen",
         &["sieh", "siehst", "sieht", "sah", "sahen", "gesehen"],
     ),
-    ("hören", &["gehört"]),
+    ("gehören", &["gehört", "gehörte", "gehörten"]),
     ("denken", &["dachte", "dachten", "dachtest", "gedacht"]),
     ("nachdenken", &["nachgedacht"]),
     (
@@ -472,6 +473,10 @@ impl GermanVerbCase {
         {
             return Vec::new();
         }
+        // *Ich glaube ihn zu kennen*: the accusative belongs to the infinitive.
+        if verb == "glauben" && clause.iter().any(|t| lowercase_of(t, document) == "zu") {
+            return Vec::new();
+        }
         let is_dative_verb =
             |t: &Token| t.kind.is_word() && self.lemmas(&lowercase_of(t, document)).contains(verb);
         let mut lints = Vec::new();
@@ -532,7 +537,19 @@ impl GermanVerbCase {
         verbs: &[String],
         document: &Document,
     ) -> Vec<Lint> {
-        const ACCUSATIVE_VERBS: &[&str] = &["fragen", "besuchen", "anrufen", "unterstützen"];
+        const ACCUSATIVE_VERBS: &[&str] = &[
+            "fragen",
+            "besuchen",
+            "anrufen",
+            "unterstützen",
+            "kennen",
+            "lieben",
+            "vermissen",
+            "treffen",
+            "verstehen",
+            "brauchen",
+            "einladen",
+        ];
         let Some(verb) = verbs
             .iter()
             .find(|v| ACCUSATIVE_VERBS.contains(&v.as_str()))
@@ -545,12 +562,18 @@ impl GermanVerbCase {
                     .get_span_content(&t.span)
                     .first()
                     .is_some_and(|c| c.is_lowercase())
-                && self.lemmas(&lowercase_of(t, document)).contains(verb)
+                && self
+                    .lemmas(&lowercase_of(t, document))
+                    .iter()
+                    // *rufe … an*: the verb without its particle, which the clause ends with.
+                    .any(|lemma| {
+                        lemma == verb || (verb.ends_with(lemma.as_str()) && lemma.len() > 3)
+                    })
         };
         let mut lints = Vec::new();
         for (at, token) in clause.iter().enumerate() {
             let written = document.get_span_content_str(&token.span);
-            let Some(&(dative, accusative)) = [("mir", "mich"), ("dir", "dich")]
+            let Some(&(dative, accusative)) = [("mir", "mich"), ("dir", "dich"), ("ihm", "ihn")]
                 .iter()
                 .find(|(d, _)| written == *d)
             else {
@@ -564,6 +587,80 @@ impl GermanVerbCase {
                 vec![accusative.to_owned()],
                 format!("»{verb}« verlangt den Akkusativ: »{accusative}«, nicht »{dative}«."),
             ));
+        }
+        lints
+    }
+
+    /// *Ich gebe ihn das Buch*: a verb of giving with a person and a thing takes the person in
+    /// the dative. The pronoun has to stand right behind the verb and an article of the
+    /// accusative right behind it, so *ich gebe ihn dem Mann* (the thing first) stays.
+    fn indirect_object(
+        &self,
+        clause: &[&Token],
+        verbs: &[String],
+        document: &Document,
+    ) -> Vec<Lint> {
+        const GIVING_VERBS: &[&str] = &[
+            "geben",
+            "schenken",
+            "zeigen",
+            "schicken",
+            "bringen",
+            "erklären",
+            "leihen",
+            "empfehlen",
+            "zurückgeben",
+            "mitbringen",
+            "verkaufen",
+            "anbieten",
+        ];
+        const GIVING_FORMS: &[&str] = &[
+            "gibt", "gibst", "gab", "gaben", "brachte", "brachten", "bot", "boten",
+        ];
+        let Some(verb) = verbs.iter().find(|v| GIVING_VERBS.contains(&v.as_str())) else {
+            return Vec::new();
+        };
+        let is_verb = |t: &Token| {
+            let word = lowercase_of(t, document);
+            t.kind.is_word()
+                && (GIVING_FORMS.contains(&word.as_str())
+                    || self.lemmas(&word).iter().any(|lemma| {
+                        lemma == verb || (verb.ends_with(lemma.as_str()) && lemma.len() > 3)
+                    }))
+        };
+        let mut lints = Vec::new();
+        for at in 1..clause.len().saturating_sub(1) {
+            let written = document.get_span_content_str(&clause[at].span);
+            let Some(&(dative, accusative)) =
+                DATIVE_TO_ACCUSATIVE.iter().find(|(_, a)| written == *a)
+            else {
+                continue;
+            };
+            let thing_follows = matches!(
+                lowercase_of(clause[at + 1], document).as_str(),
+                "das"
+                    | "den"
+                    | "einen"
+                    | "ein"
+                    | "eine"
+                    | "die"
+                    | "meinen"
+                    | "seinen"
+                    | "ihren"
+                    | "unseren"
+                    | "keinen"
+                    | "kein"
+                    | "keine"
+            );
+            if is_verb(clause[at - 1]) && thing_follows {
+                lints.extend(Self::report(
+                    clause[at],
+                    vec![dative.to_owned()],
+                    format!(
+                        "Bei »{verb}« steht die Person im Dativ: »{dative}«, nicht »{accusative}«."
+                    ),
+                ));
+            }
         }
         lints
     }
@@ -680,6 +777,13 @@ impl GermanVerbCase {
             "bewerben",
             "verlassen",
             "fürchten",
+            "interessieren",
+            "ärgern",
+            "langweilen",
+            "erkälten",
+            "verspäten",
+            "irren",
+            "verabreden",
         ];
         const BODY_PARTS: &[&str] = &[
             "Hände", "Hand", "Zähne", "Haare", "Bein", "Arm", "Gesicht", "Fuß", "Füße", "Kopf",
@@ -817,6 +921,7 @@ impl Linter for GermanVerbCase {
                 lints.extend(self.prepositional_object(&clause, &verbs, document));
                 lints.extend(self.dative_object(&clause, &verbs, document));
                 lints.extend(self.accusative_object(&clause, &verbs, document));
+                lints.extend(self.indirect_object(&clause, &verbs, document));
                 lints.extend(self.position(&clause, &verbs, document));
                 lints.extend(self.direction(&clause, &verbs, document));
                 lints.extend(Self::reflexive(&clause, &verbs, document));
@@ -893,6 +998,14 @@ mod tests {
         assert_eq!(fixed("Er wohnt in eine kleine Wohnung."), ["eine"]);
         assert_eq!(fixed("Ich danke Sie für Ihre Hilfe."), ["Sie"]);
         assert_eq!(fixed("Er fragt mir nach dem Weg."), ["mir"]);
+        assert_eq!(fixed("Ich kenne ihm nicht."), ["ihm"]);
+        assert_eq!(fixed("Ich gebe ihn das Buch morgen zurück."), ["ihn"]);
+        assert_eq!(fixed("Er zeigt mich den Weg."), ["mich"]);
+        assert_eq!(fixed("Ich frage ihm nach dem Weg."), ["ihm"]);
+        assert_eq!(fixed("Ich rufe dir morgen an."), ["dir"]);
+        assert_eq!(fixed("Das Buch gehört mich."), ["mich"]);
+        assert_eq!(fixed("Ich glaube dich nicht."), ["dich"]);
+        assert_eq!(fixed("Ich interessiere mir für Kunst."), ["mir"]);
         assert_eq!(fixed("Ich lege das Buch auf dem Tisch."), ["dem"]);
         assert_eq!(fixed("Er stellt die Vase in dem Schrank."), ["dem"]);
         assert_eq!(fixed("Ich freue mir auf den Urlaub."), ["mir"]);
@@ -923,6 +1036,17 @@ mod tests {
             "Danken Sie ihm.",
             "Er wohnt in einer kleinen Wohnung.",
             "Er fragt mich nach dem Weg.",
+            "Ich glaube ihn zu kennen.",
+            "Ich glaube dir nicht.",
+            "Das gehört mir.",
+            "Ich kenne ihn nicht.",
+            "Ich treffe ihn morgen.",
+            "Er hat ihm die Hand gegeben.",
+            "Ich sehe ihm beim Spielen zu.",
+            "Ich rufe dich morgen an.",
+            "Ich gebe ihn dem Mann.",
+            "Ich gebe ihm das Buch.",
+            "Er bringt mich nach Hause.",
             "Kannst du mir sagen, was er fragt?",
             "Er fragt sich, ob es stimmt.",
             "Sie hängt das Bild an die Wand.",
