@@ -14,6 +14,7 @@ pub mod german_dass_article;
 pub mod german_dative_plural;
 pub mod german_determiner_gender;
 pub mod german_double_negation;
+pub mod german_doubled_verb;
 pub mod german_filler_words;
 pub mod german_fixed_nominalization;
 pub mod german_foreign_stretch;

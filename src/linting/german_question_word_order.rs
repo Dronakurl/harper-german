@@ -166,6 +166,51 @@ impl Linter for GermanQuestionWordOrder {
                 });
             }
 
+            // *…, dass er morgen kommt nicht.*: in a verb-final clause *nicht* stands before the
+            // verb.
+            let mut clause_start = 0;
+            for at in 0..words.len() {
+                if words[at].kind.is_comma() {
+                    clause_start = at + 1;
+                    continue;
+                }
+                let ends = words.get(at + 1).is_none_or(|t| {
+                    matches!(t.kind, TokenKind::Punctuation(_)) && !t.kind.is_hyphen()
+                });
+                if !ends || at < clause_start + 3 || lower[at] != "nicht" {
+                    continue;
+                }
+                let opener = lower[clause_start].as_str();
+                if !matches!(
+                    opener,
+                    "dass"
+                        | "weil"
+                        | "wenn"
+                        | "ob"
+                        | "obwohl"
+                        | "als"
+                        | "damit"
+                        | "bevor"
+                        | "nachdem"
+                        | "falls"
+                        | "sodass"
+                ) {
+                    continue;
+                }
+                let verb = words[at - 1];
+                if !is_finite_verb(verb, document)
+                    || !PERSONAL_PRONOUNS.contains(&lower[clause_start + 1].as_str())
+                {
+                    continue;
+                }
+                lints.push(Self::swap(
+                    verb,
+                    words[at],
+                    document,
+                    "Im Nebensatz steht das Verb am Ende, hinter »nicht«.",
+                ));
+            }
+
             for at in 1..words.len().saturating_sub(3) {
                 if !words[at - 1].kind.is_comma() {
                     continue;
@@ -257,6 +302,7 @@ mod tests {
             ("Warum er hat das gemacht?", "hat er"),
             ("Es regnete, trotzdem wir gingen raus.", "gingen wir"),
             ("Trotzdem es regnete, gingen wir raus.", "Obwohl"),
+            ("Er sagt, dass er morgen kommt nicht.", "nicht kommt"),
             (
                 "Kannst du mir sagen, wo ist der Bahnhof?",
                 "der Bahnhof ist",
@@ -279,6 +325,9 @@ mod tests {
             "Wo ist der Bahnhof?",
             "Trotzdem gingen wir raus, weil es schön war.",
             "Trotzdem kam er, als es regnete.",
+            "Er sagt, dass er morgen nicht kommt.",
+            "Er kommt nicht.",
+            "Wenn du willst, komm nicht.",
         ] {
             assert!(fixes(text).is_empty(), "{text}: {:?}", fixes(text));
         }

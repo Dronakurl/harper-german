@@ -26,6 +26,7 @@ pub fn rust_lint_group(
         german_dative_plural::GermanDativePlural,
         german_determiner_gender::GermanDeterminerGender,
         german_double_negation::GermanDoubleNegation,
+        german_doubled_verb::GermanDoubledVerb,
         german_filler_words::GermanFillerWords,
         german_fixed_nominalization::GermanFixedNominalization,
         german_genitive_after_nominative_article::GermanGenitiveAfterNominativeArticle,
@@ -181,6 +182,7 @@ pub fn rust_lint_group(
     group.add("GermanPoliteSie", GermanPoliteSie);
     group.add("GermanMissingArticle", GermanMissingArticle::default());
     group.add("GermanWeakAdjective", GermanWeakAdjective::default());
+    group.add("GermanDoubledVerb", GermanDoubledVerb);
     group.add("GermanDeterminerGender", GermanDeterminerGender::new());
     group.add(
         "GermanGenitiveAfterNominativeArticle",
