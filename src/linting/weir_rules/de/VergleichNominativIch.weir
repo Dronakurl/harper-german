@@ -1,0 +1,23 @@
+# "Er ist größer als mir": the other side of a comparison with "sein" is the
+# subject's case, the nominative. Only after a form of "sein", so that "Er gab
+# ihm mehr als mir" (both datives) stays.
+expr sein [bin, bist, ist, sind, seid, war, warst, waren, wäre, wären]
+
+expr komparativ [besser, größer, kleiner, älter, jünger, schneller, langsamer, stärker, schwächer, klüger, schöner, reicher, ärmer, schwerer, leichter, länger, kürzer, fleißiger, lauter, ruhiger, netter, frecher, mutiger, glücklicher, erfolgreicher, schlechter, höher]
+
+expr main <[(@sein @komparativ als [mir, mich]), (@sein * @komparativ als [mir, mich]), (@sein so * wie [mir, mich]), (@sein genauso * wie [mir, mich])], [mir, mich]>
+
+let message "Im Vergleich nach »sein« steht der Nominativ: »ich«."
+let description "Ersetzt den Dativ oder Akkusativ im Vergleich nach »sein« durch den Nominativ."
+let kind "Grammar"
+let becomes "ich"
+let strategy "MatchCase"
+
+test "Er ist besser als mir." "Er ist besser als ich."
+test "Sie ist größer als mich." "Sie ist größer als ich."
+test "Er ist viel älter als mir." "Er ist viel älter als ich."
+test "Sie ist so groß wie mich." "Sie ist so groß wie ich."
+
+allows "Er ist besser als ich."
+allows "Er gab ihm mehr als mir."
+allows "Das gefällt dir besser als mir."
