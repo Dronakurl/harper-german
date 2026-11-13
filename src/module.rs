@@ -34,6 +34,7 @@ pub fn rust_lint_group(
         german_nominalized_adjective::GermanNominalizedAdjective,
         german_nominalized_infinitive::GermanNominalizedInfinitive,
         german_noun_capitalization::GermanNounCapitalization,
+        german_numeral_plural::GermanNumeralPlural,
         german_perfect_auxiliary::GermanPerfectAuxiliary,
         german_preposition_case::GermanPrepositionCase,
         german_preposition_pronoun::GermanPrepositionPronoun,
@@ -162,6 +163,7 @@ pub fn rust_lint_group(
     group.add("GermanAdjectiveForm", GermanAdjectiveForm::new());
     group.add("GermanPrepositionCase", GermanPrepositionCase::new());
     group.add("GermanDativePlural", GermanDativePlural::new());
+    group.add("GermanNumeralPlural", GermanNumeralPlural::new());
     group.add("GermanDeterminerGender", GermanDeterminerGender::new());
     group.add(
         "GermanGenitiveAfterNominativeArticle",

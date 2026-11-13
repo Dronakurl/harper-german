@@ -163,6 +163,11 @@ impl GermanDativePlural {
             Some(next) => {
                 !starts_uppercase(next, document)
                     && (closes_the_phrase(&lowercase_of(next, document))
+                        // *seit drei Jahre hier*: an adverb behind the noun.
+                        || (next.kind.is_adverb()
+                            && !next.kind.is_adjective()
+                            && !next.kind.is_noun()
+                            && !next.kind.is_verb())
                         || (verb_closes
                             && next.kind.is_verb()
                             && (!next.kind.is_adjective()
@@ -289,6 +294,14 @@ mod tests {
             .flat_map(|lint| lint.suggestions)
             .map(|suggestion| suggestion.to_string())
             .collect()
+    }
+
+    #[test]
+    fn a_dative_plural_before_an_adverb_is_reported() {
+        assert_eq!(
+            fixes("Wir arbeiten seit drei Jahre hier."),
+            ["Replace with: “Jahren”"]
+        );
     }
 
     #[test]

@@ -23,6 +23,7 @@ pub mod german_modal_zu_infinitive;
 pub mod german_nominalized_adjective;
 pub mod german_nominalized_infinitive;
 pub mod german_noun_capitalization;
+pub mod german_numeral_plural;
 pub mod german_perfect_auxiliary;
 pub mod german_preposition_case;
 pub mod german_preposition_pronoun;
