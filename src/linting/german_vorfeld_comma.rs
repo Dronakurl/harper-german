@@ -351,6 +351,115 @@ impl GermanVorfeldComma {
     }
 }
 
+impl GermanVorfeldComma {
+    fn remove(comma: &Token, message: &str) -> Lint {
+        Lint {
+            span: comma.span,
+            lint_kind: LintKind::Punctuation,
+            suggestions: vec![Suggestion::Remove],
+            priority: 28,
+            message: message.to_owned(),
+        }
+    }
+
+    /// Commas inside a comparison or a paired conjunction, which join no clauses:
+    ///
+    /// * *Sowohl Peter, als auch Maria*: *sowohl … als auch* joins two parts of one clause;
+    /// * *besser, als erwartet*: a comparative and *als* with a participle or an adverb that
+    ///   ends the sentence;
+    /// * *Ich habe, das Buch gelesen*: a comma between the auxiliary in second place and a
+    ///   phrase that ends on the participle.
+    fn comparison_comma(words: &[&Token], document: &Document) -> Vec<Lint> {
+        const CLOSERS: &[&str] = &[
+            "erwartet",
+            "gedacht",
+            "befürchtet",
+            "geplant",
+            "vorgesehen",
+            "üblich",
+            "sonst",
+            "vorher",
+            "früher",
+            "gewohnt",
+            "nötig",
+            "notwendig",
+            "angenommen",
+            "erhofft",
+        ];
+        const AUXILIARIES: &[&str] = &[
+            "habe", "hast", "hat", "haben", "habt", "hatte", "hatten", "bin", "bist", "ist",
+            "sind", "seid", "war", "waren",
+        ];
+        let comma = |t: &Token| matches!(t.kind, TokenKind::Punctuation(Punctuation::Comma));
+        let ends = |at: usize| {
+            words.get(at).is_none_or(|t| {
+                matches!(
+                    t.kind,
+                    TokenKind::Punctuation(
+                        Punctuation::Period | Punctuation::Bang | Punctuation::Question
+                    )
+                )
+            })
+        };
+        let mut lints = Vec::new();
+        let has_sowohl = words.iter().any(|t| Self::lower(t, document) == "sowohl");
+        for at in 1..words.len().saturating_sub(2) {
+            if !comma(words[at]) {
+                continue;
+            }
+            let next = Self::lower(words[at + 1], document);
+            let after = Self::lower(words[at + 2], document);
+            if has_sowohl && next == "als" && after == "auch" {
+                lints.push(Self::remove(
+                    words[at],
+                    "In »sowohl … als auch« steht vor »als auch« kein Komma.",
+                ));
+                continue;
+            }
+            let previous = Self::lower(words[at - 1], document);
+            let comparative = previous.ends_with("er")
+                && !Self::capitalized(words[at - 1], document)
+                && words[at - 1].kind.is_adjective();
+            if comparative && next == "als" && CLOSERS.contains(&after.as_str()) && ends(at + 3) {
+                lints.push(Self::remove(
+                    words[at],
+                    "Ein Vergleich mit »als« ohne eigenes Verb wird nicht mit Komma abgetrennt.",
+                ));
+                continue;
+            }
+            // *Ich habe, das Buch gelesen.*
+            if at == 2
+                && AUXILIARIES.contains(&previous.as_str())
+                && words[0].kind.is_pronoun()
+                && matches!(
+                    next.as_str(),
+                    "das" | "den" | "die" | "ein" | "eine" | "einen"
+                )
+                && let Some(last) = words.len().checked_sub(2)
+                && last > at + 2
+                && ends(last + 1)
+                && {
+                    let participle = Self::lower(words[last], document);
+                    participle.starts_with("ge")
+                        && (participle.ends_with('t') || participle.ends_with("en"))
+                }
+                && !words[at + 1..last].iter().any(|t| {
+                    comma(t)
+                        || (t.kind.is_verb()
+                            && !Self::capitalized(t, document)
+                            && !t.kind.is_determiner())
+                })
+            {
+                lints.push(Self::remove(
+                    words[at],
+                    "Zwischen dem Hilfsverb und seinem Objekt steht kein Komma.",
+                ));
+            }
+        }
+        lints
+    }
+}
+
 impl Linter for GermanVorfeldComma {
     fn lint(&mut self, document: &Document) -> Vec<Lint> {
         let mut lints = Vec::new();
@@ -362,6 +471,7 @@ impl Linter for GermanVorfeldComma {
             lints.extend(Self::check(&words, document));
             lints.extend(Self::adverb_comma(&words, document));
             lints.extend(Self::list_comma(&words, document));
+            lints.extend(Self::comparison_comma(&words, document));
         }
         lints
     }
@@ -383,6 +493,28 @@ mod tests {
         let dict = combined_german_dictionary();
         let document = Document::new(text, &PlainGerman, &dict);
         GermanVorfeldComma.lint(&document).len()
+    }
+
+    #[test]
+    fn a_comma_inside_a_comparison_or_pair_is_reported() {
+        for text in [
+            "Sowohl Peter, als auch Maria kommen.",
+            "Das Ergebnis war besser, als erwartet.",
+            "Es dauerte länger, als gedacht.",
+            "Ich habe, das Buch gelesen.",
+        ] {
+            assert_eq!(count(text), 1, "{text}");
+        }
+        for text in [
+            "Er ist größer, als ich dachte.",
+            "Das Ergebnis war besser als erwartet.",
+            "Ich habe, wie gesagt, das Buch gelesen.",
+            "Ich glaube, das Buch ist gut.",
+            "Sowohl Peter als auch Maria kommen.",
+            "Ich habe, das weißt du, keine Zeit.",
+        ] {
+            assert_eq!(count(text), 0, "{text}");
+        }
     }
 
     #[test]
