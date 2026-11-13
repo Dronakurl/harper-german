@@ -96,6 +96,20 @@ impl GermanRelativePronoun {
         if !RELATIVES.contains(&pronoun_text.as_str()) {
             return None;
         }
+        // *Die Kinder, dessen Eltern arbeiten*: a plural antecedent takes *deren*.
+        if pronoun_text == "dessen"
+            && self.nouns.is_surely_plural(&noun_text)
+            && determiner_readings(&lowercase_of(article, document))
+                .is_some_and(|readings| readings.iter().any(|r| r.gender.is_none()))
+        {
+            return Some(Lint {
+                span: pronoun.span,
+                lint_kind: LintKind::Agreement,
+                suggestions: vec![Suggestion::ReplaceWith("deren".chars().collect())],
+                priority: 31,
+                message: format!("»{noun_text}« ist ein Plural: Das Relativpronomen ist »deren«."),
+            });
+        }
         let (gender, surely_singular) = self.nouns.gender_of(&noun_text)?;
         // The article settles the number: it has to read as a singular of the
         // noun's gender, and not as a plural unless the noun is surely singular.
@@ -221,6 +235,10 @@ mod tests {
         assert_eq!(reported("Die Leute, wo ich kenne, sind nett."), ["wo"]);
         assert_eq!(
             reported("Die Frau, dessen Mann krank ist, kommt nicht."),
+            ["dessen"]
+        );
+        assert_eq!(
+            reported("Die Kinder, dessen Eltern arbeiten, bleiben länger."),
             ["dessen"]
         );
     }
