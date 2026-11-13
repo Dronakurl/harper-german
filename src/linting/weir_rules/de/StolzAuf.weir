@@ -1,0 +1,14 @@
+# "stolz auf": one is proud "auf" something. "über alle Maßen" is an idiom of its own.
+expr main <(stolz über ![alle, allen, alles]), über>
+
+let message "Man ist »stolz auf« etwas, nicht »stolz über«."
+let description "Ersetzt »stolz über« durch »stolz auf«."
+let kind "WordChoice"
+let becomes "auf"
+let strategy "MatchCase"
+
+test "Ich bin stolz über dich." "Ich bin stolz auf dich."
+test "Sie ist stolz über ihren Erfolg." "Sie ist stolz auf ihren Erfolg."
+
+allows "Ich bin stolz auf dich."
+allows "Er war stolz über alle Maßen."

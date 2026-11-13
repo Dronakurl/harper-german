@@ -1,0 +1,19 @@
+# "warten auf": one waits for someone "auf", not "für" (from English "wait for").
+# "für" stays when it names on whose behalf: "Ich warte für ihn auf den Bus", so
+# only before a pronoun that ends the sentence.
+expr warten [warte, wartest, wartet, warten, wartete, warteten, gewartet]
+
+expr main <[(@warten für dich(.)), (@warten für mich(.)), (@warten für ihn(.)), (@warten für sie(.)), (@warten für uns(.)), (@warten für euch(.)), (@warten für Sie(.)), (@warten gerne für), (@warten schon für)], für>
+
+let message "Man wartet »auf« jemanden, nicht »für« jemanden."
+let description "Ersetzt »warten für« durch »warten auf«."
+let kind "WordChoice"
+let becomes "auf"
+let strategy "MatchCase"
+
+test "Ich warte für dich." "Ich warte auf dich."
+test "Wir warten für euch." "Wir warten auf euch."
+test "Er wartet schon für dich." "Er wartet schon auf dich."
+
+allows "Ich warte auf dich."
+allows "Ich warte für ihn auf den Bus."

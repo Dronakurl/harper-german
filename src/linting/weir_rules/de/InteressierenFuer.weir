@@ -1,0 +1,19 @@
+# "sich interessieren für": the preposition is "für". "an" is carried over from
+# "Interesse an". "an der Uni" names a place, so not before an article.
+expr verb [interessiere, interessierst, interessiert, interessieren, interessierte, interessierten]
+
+expr refl [mich, dich, sich, uns, euch]
+
+expr main <(@verb @refl an ![der, dem, den, einer, einem, diesem, dieser]), an>
+
+let message "Man interessiert sich »für« etwas, nicht »an« etwas."
+let description "Ersetzt »sich interessieren an« durch »sich interessieren für«."
+let kind "WordChoice"
+let becomes "für"
+let strategy "MatchCase"
+
+test "Er interessiert sich an Musik." "Er interessiert sich für Musik."
+test "Ich interessiere mich an Kunst." "Ich interessiere mich für Kunst."
+
+allows "Er interessiert sich für Musik."
+allows "Er interessiert sich an der Uni für Physik."
