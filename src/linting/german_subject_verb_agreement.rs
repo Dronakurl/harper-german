@@ -496,6 +496,11 @@ impl<T: Dictionary> GermanSubjectVerbAgreement<T> {
             .nouns
             .gender_of(&head)
             .is_some_and(|(_, surely_singular)| surely_singular);
+        // *Die Familie wohnen*: a feminine noun that is surely a singular takes the singular
+        // reading of *die*.
+        if surely_singular && !genders.is_empty() && singular_genders.contains(genders) {
+            return Some(NumberSet::SINGULAR);
+        }
         (!genders.is_empty() && !genders.intersects(singular_genders) && !surely_singular)
             .then_some(NumberSet::PLURAL)
     }
@@ -1228,7 +1233,8 @@ fn is_copula(word: &str) -> bool {
 /// object, *Mehrere Studien zeigt das*.
 const PRONOUN_SUBJECTS: &[&str] = &[
     "alles", "nichts", "etwas", "vieles", "manches", "einiges", "beides", "man", "jemand",
-    "niemand", "jeder", "jede", "jedes", "keiner", "keines", "wer",
+    "niemand", "jeder", "jede", "jedes", "keiner", "keines", "wer", "alle", "viele", "beide",
+    "einige", "manche", "andere", "mehrere", "wenige",
 ];
 
 /// What else can be the subject of a clause that has a fronted dative, where
@@ -1660,6 +1666,23 @@ mod tests {
         assert_eq!(lint_count("Diese Regeln gilt überall."), 1);
         assert_eq!(lint_count("Die Frau spielt im Garten."), 0);
         assert_eq!(lint_count("Die Lehrerin kommt morgen."), 0);
+    }
+
+    /// A feminine noun that is surely singular takes the singular reading of *die*.
+    #[test]
+    fn die_before_a_feminine_singular_is_a_singular() {
+        for text in ["Die Familie wohnen in Berlin."] {
+            assert_eq!(lint_count(text), 1, "{text}");
+        }
+        for text in [
+            "Die Familie wohnt in Berlin.",
+            "Die Familie besuchen wir morgen.",
+            "Die Firma kennen alle.",
+            "Die Rechnung bezahlen die Eltern.",
+            "Die Familie sind wir.",
+        ] {
+            assert_eq!(lint_count(text), 0, "{text}");
+        }
     }
 
     /// A noun recorded only masculine or neuter cannot stand behind the

@@ -7,6 +7,7 @@ pub mod german_colloquial;
 pub mod german_common_typos;
 pub mod german_comparative_clause_comma;
 pub mod german_compound_adjective_capitalization;
+pub mod german_coordinated_subject;
 pub mod german_coordinating_comma;
 pub mod german_country_article;
 pub mod german_dass_article;

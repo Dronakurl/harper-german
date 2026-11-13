@@ -19,6 +19,7 @@ pub fn rust_lint_group(
         german_common_typos::GermanCommonTypos,
         german_comparative_clause_comma::GermanComparativeClauseComma,
         german_compound_adjective_capitalization::GermanCompoundAdjectiveCapitalization,
+        german_coordinated_subject::GermanCoordinatedSubject,
         german_coordinating_comma::GermanCoordinatingComma,
         german_country_article::GermanCountryArticle,
         german_dass_article::GermanDassArticle,
@@ -170,6 +171,10 @@ pub fn rust_lint_group(
     group.add("GermanBareStem", GermanBareStem::default());
     group.add("GermanMissingZu", GermanMissingZu);
     group.add("GermanQuestionWordOrder", GermanQuestionWordOrder);
+    group.add(
+        "GermanCoordinatedSubject",
+        GermanCoordinatedSubject::default(),
+    );
     group.add("GermanDeterminerGender", GermanDeterminerGender::new());
     group.add(
         "GermanGenitiveAfterNominativeArticle",
