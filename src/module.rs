@@ -14,6 +14,7 @@ pub fn rust_lint_group(
     use crate::linting::{
         german_absolute_superlative::GermanAbsoluteSuperlative,
         german_adjective_form::GermanAdjectiveForm,
+        german_bare_stem::GermanBareStem,
         german_colloquial::GermanColloquial,
         german_common_typos::GermanCommonTypos,
         german_comparative_clause_comma::GermanComparativeClauseComma,
@@ -164,6 +165,7 @@ pub fn rust_lint_group(
     group.add("GermanPrepositionCase", GermanPrepositionCase::new());
     group.add("GermanDativePlural", GermanDativePlural::new());
     group.add("GermanNumeralPlural", GermanNumeralPlural::new());
+    group.add("GermanBareStem", GermanBareStem::default());
     group.add("GermanDeterminerGender", GermanDeterminerGender::new());
     group.add(
         "GermanGenitiveAfterNominativeArticle",

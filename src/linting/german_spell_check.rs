@@ -75,9 +75,20 @@ const DATED_VERB_FORMS: &[(&str, &str)] = &[
     ("Naja", "Na ja"),
 ];
 
-/// Rare forms the dictionary has that are far more often a typo of a common word: the plural of
-/// *Kaff* is spelled like *Kaffee* without its last letter.
-const SHADOWED_FORMS: &[(&str, &str)] = &[("Kaffe", "Kaffee")];
+/// Forms the dictionary or the compound splitter accepts that are far more often a slip for a
+/// common word: the plural of *Kaff* is spelled like *Kaffee* without its last letter, and the
+/// weak participles of the mixed verbs (*gebrennt*, *gebringt*) cut into *ge* + a finite form.
+const SHADOWED_FORMS: &[(&str, &str)] = &[
+    ("Kaffe", "Kaffee"),
+    ("gebrennt", "gebrannt"),
+    ("gebringt", "gebracht"),
+    ("gebrecht", "gebrochen"),
+    ("gekennt", "gekannt"),
+    ("genennt", "genannt"),
+    ("gerennt", "gerannt"),
+    ("gewisst", "gewusst"),
+    ("verbrennt", "verbrannt"),
+];
 
 fn dated_verb_form(word: &[char]) -> Option<Vec<char>> {
     let written: String = word.iter().collect();
