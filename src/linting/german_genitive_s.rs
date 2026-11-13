@@ -57,6 +57,33 @@ impl GermanGenitiveS {
         {
             return None;
         }
+        // *eines Bronzestift*: a compound the dictionary does not list takes the genitive of its
+        // last element, a noun of four letters or more.
+        if self.nouns.gender_of(noun).is_none()
+            && self
+                .nouns
+                .dictionary()
+                .get_word_metadata(&noun.chars().collect::<Vec<_>>())
+                .is_none()
+        {
+            let chars: Vec<char> = noun.chars().collect();
+            return (1..chars.len().saturating_sub(3)).find_map(|at| {
+                let mut tail: Vec<char> = chars[at..].to_vec();
+                tail[0] = tail[0].to_uppercase().next()?;
+                let tail: String = tail.into_iter().collect();
+                let genitive = self.genitive_of_listed(&tail)?;
+                let ending = genitive.strip_prefix(tail.as_str())?;
+                Some(format!("{noun}{ending}"))
+            });
+        }
+        self.genitive_of_listed(noun)
+    }
+
+    /// [`Self::genitive_of`] for a noun the dictionary lists.
+    fn genitive_of_listed(&self, noun: &str) -> Option<String> {
+        if noun.ends_with(['e', 'n']) {
+            return None;
+        }
         // The number does not matter: behind *des* the noun is a singular, and a plural spelled
         // the same (*Zimmer*) has no genitive in *-s*.
         let (gender, _) = self.nouns.gender_of(noun)?;
@@ -194,6 +221,10 @@ mod tests {
             ("Der Preis des Haus ist hoch.", "Hauses"),
             ("Das Ende des Film war traurig.", "Films"),
             ("Die Tür des Zimmer ist offen.", "Zimmers"),
+            (
+                "Er war Leiter des Organisationsaufbau beim Verband.",
+                "Organisationsaufbaus",
+            ),
         ] {
             assert_eq!(fixes(text), [fix], "{text}");
         }
