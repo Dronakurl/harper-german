@@ -1,0 +1,22 @@
+# "Wir treffen sich morgen": the reflexive pronoun of the first person plural is
+# "uns". "sich" belongs to the third person only; directly behind "wir" and its
+# verb, or behind a verb and "wir", it cannot refer to anyone else.
+expr main <[(wir * sich), (* wir sich)], sich>
+
+let message "Zu »wir« gehört das Reflexivpronomen »uns«, nicht »sich«."
+let description "Ersetzt »sich« durch »uns« in einem Satz mit dem Subjekt »wir«."
+let kind "Grammar"
+let becomes "uns"
+let strategy "MatchCase"
+
+test "Wir treffen sich morgen." "Wir treffen uns morgen."
+test "Morgen treffen wir sich am Bahnhof." "Morgen treffen wir uns am Bahnhof."
+test "Wir freuen sich auf den Urlaub." "Wir freuen uns auf den Urlaub."
+test "Heute erholen wir sich." "Heute erholen wir uns."
+test "Weil wir sich beeilen, kommen wir an." "Weil wir uns beeilen, kommen wir an."
+
+allows "Wir treffen uns morgen."
+allows "Sie treffen sich morgen."
+allows "Wir sehen, wie sich die Lage ändert."
+allows "Die Kinder freuen sich."
+allows "Wir wissen, dass sich das lohnt."

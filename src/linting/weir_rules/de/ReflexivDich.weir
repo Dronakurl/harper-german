@@ -1,0 +1,19 @@
+# "Du freust dir": the accusative reflexive "dich" with verbs that never take a
+# dative one ("du kaufst dir" is right).
+expr verb [freust, interessierst, erinnerst, beeilst, verliebst, bedankst, entschuldigst, kümmerst, wunderst, schämst, gewöhnst, konzentrierst, verabschiedest, bewirbst, verabredest, ärgerst, langweilst, erkältest, verspätest, beschwerst, verlässt, irrst]
+
+expr main <[(du @verb dir), (@verb du dir)], dir>
+
+let message "Dieses Verb verlangt das Reflexivpronomen im Akkusativ: »dich« statt »dir«."
+let description "Ersetzt »dir« durch »dich« bei Verben mit Akkusativ-Reflexiv (sich freuen, sich interessieren …)."
+let kind "Grammar"
+let becomes "dich"
+let strategy "MatchCase"
+
+test "Du freust dir zu früh." "Du freust dich zu früh."
+test "Interessierst du dir für Musik?" "Interessierst du dich für Musik?"
+test "Du beeilst dir besser." "Du beeilst dich besser."
+
+allows "Du freust dich zu früh."
+allows "Du kaufst dir ein Buch."
+allows "Ich freue mich mit dir."

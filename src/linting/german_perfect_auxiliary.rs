@@ -52,6 +52,28 @@ const SEIN_PARTICIPLES: &[&str] = &[
     "zusammengebrochen",
 ];
 
+/// Verbs of motion that take *sein* for a movement somewhere and *haben* with an object (*Er
+/// hat das Auto gefahren*). Read with *sein* only when the clause names a destination with
+/// *nach* and has no object.
+const MOTION_PARTICIPLES: &[&str] = &[
+    "gelaufen",
+    "geflogen",
+    "gefahren",
+    "gerannt",
+    "geschwommen",
+    "gesprungen",
+    "geritten",
+    "geklettert",
+    "gewandert",
+    "gesegelt",
+    "geradelt",
+];
+
+/// The accusative pronouns: an object or a reflexive in the clause makes *sein* with a
+/// participle impossible (*Sie ist mich angerufen*, *Ich bin mich gefreut*). *uns* and *euch*
+/// are datives too (*Er ist uns gefolgt*).
+const ACCUSATIVE_PRONOUNS: &[&str] = &["mich", "dich", "ihn"];
+
 /// Past participles whose perfect is formed with *haben* and never with
 /// *sein*, and that have no state passive either: *ich habe gearbeitet*, *es
 /// hat gedauert*. A transitive verb is left out, because *sein* with its
@@ -167,20 +189,53 @@ impl GermanPerfectAuxiliary {
             return None;
         }
         let last = lower.len().checked_sub(1)?;
-        let (participle, auxiliary) = if HABEN_PARTICIPLES.contains(&lower[last].as_str()) {
+        // *Sie ist mich angerufen*: with an accusative pronoun in the clause any participle
+        // that is no verb of motion forms its perfect with *haben*.
+        // The pronoun stands between the auxiliary and the participle, not behind a preposition
+        // (*Für ihn ist … geplant*), and no other verb comes between them (*Ich bin … und ich
+        // fühle mich aufgehoben*).
+        let object_between = |auxiliary: usize, participle: usize| {
+            let (from, to) = (auxiliary.min(participle), auxiliary.max(participle));
+            (from + 1..to).any(|at| {
+                ACCUSATIVE_PRONOUNS.contains(&lower[at].as_str())
+                    && !clause[at - 1].kind.is_preposition()
+            }) && !(from + 1..to).any(|at| {
+                clause[at].kind.is_verb() && !ACCUSATIVE_PRONOUNS.contains(&lower[at].as_str())
+            })
+        };
+        let object = lower
+            .iter()
+            .skip(1)
+            .any(|word| ACCUSATIVE_PRONOUNS.contains(&word.as_str()));
+        let is_participle = |at: usize| {
+            HABEN_PARTICIPLES.contains(&lower[at].as_str())
+                || (object
+                    && !SEIN_PARTICIPLES.contains(&lower[at].as_str())
+                    && !MOTION_PARTICIPLES.contains(&lower[at].as_str())
+                    && lower[at].contains("ge")
+                    && clause[at].kind.is_verb()
+                    && matches!(&clause[at].kind, TokenKind::Word(Some(m)) if m
+                        .verb
+                        .as_ref()
+                        .and_then(|v| v.verb_forms)
+                        .is_some_and(|f| f.contains(harper_core::VerbFormFlags::PAST_PARTICIPLE))))
+        };
+        let (participle, auxiliary) = if is_participle(last) {
             // Main clause: auxiliary somewhere in front, participle last.
             let at = lower[..last]
                 .iter()
                 .position(|word| Self::haben_form(word).is_some())?;
             (last, at)
-        } else if last >= 1
-            && HABEN_PARTICIPLES.contains(&lower[last - 1].as_str())
-            && Self::haben_form(&lower[last]).is_some()
-        {
+        } else if last >= 1 && is_participle(last - 1) && Self::haben_form(&lower[last]).is_some() {
             (last - 1, last)
         } else {
             return None;
         };
+        if !HABEN_PARTICIPLES.contains(&lower[participle].as_str())
+            && !object_between(auxiliary, participle)
+        {
+            return None;
+        }
         let haben = Self::haben_form(&lower[auxiliary])?;
         let original = document.get_span_content(&clause[auxiliary].span);
         Some(Lint {
@@ -237,8 +292,26 @@ impl Linter for GermanPerfectAuxiliary {
                         .first()
                         .is_some_and(|c| c.is_uppercase())
                 });
+                // *Wir haben nach Hause gelaufen*, *Er hat nach Paris geflogen*: a destination
+                // and no object.
+                let destination = lower.iter().enumerate().any(|(at, word)| {
+                    word == "nach"
+                        && clause.get(at + 1).is_some_and(|next| {
+                            document
+                                .get_span_content(&next.span)
+                                .first()
+                                .is_some_and(|c| c.is_uppercase())
+                        })
+                }) && !lower.iter().any(|word| {
+                    [
+                        "den", "das", "die", "einen", "ein", "eine", "ihn", "es", "sie", "uns",
+                        "euch", "mich", "dich",
+                    ]
+                    .contains(&word.as_str())
+                });
                 let participle_ok = |word: &str| {
-                    SEIN_PARTICIPLES.contains(&word) && !(word == "passiert" && has_noun)
+                    (SEIN_PARTICIPLES.contains(&word) && !(word == "passiert" && has_noun))
+                        || (destination && MOTION_PARTICIPLES.contains(&word))
                 };
                 let Some(last) = clause.len().checked_sub(1) else {
                     continue;
@@ -306,6 +379,17 @@ mod tests {
         );
         assert_eq!(fixes("Was hat passiert?"), ["Replace with: “ist”"]);
         assert_eq!(
+            fixes("Wir haben nach Hause gelaufen."),
+            ["Replace with: “sind”"]
+        );
+        assert_eq!(
+            fixes("Er hat nach Paris geflogen."),
+            ["Replace with: “ist”"]
+        );
+        assert!(fixes("Er hat das Auto nach Paris gefahren.").is_empty());
+        assert!(fixes("Er hat die Kinder nach Hause gefahren.").is_empty());
+        assert!(fixes("Wir sind nach Hause gelaufen.").is_empty());
+        assert_eq!(
             fixes("Hast du gut eingeschlafen?"),
             ["Replace with: “Bist”"]
         );
@@ -318,6 +402,10 @@ mod tests {
             ["Replace with: “habe”"]
         );
         assert_eq!(fixes("Es ist lange gedauert."), ["Replace with: “hat”"]);
+        assert_eq!(fixes("Sie ist mich angerufen."), ["Replace with: “hat”"]);
+        assert_eq!(fixes("Ich bin mich gefreut."), ["Replace with: “habe”"]);
+        assert!(fixes("Er ist mich besuchen gekommen.").is_empty());
+        assert!(fixes("Sie ist mit uns gefahren.").is_empty());
         assert_eq!(
             fixes("Weil er gut geschlafen ist, war er wach."),
             ["Replace with: “hat”"]
