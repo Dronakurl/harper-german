@@ -100,6 +100,48 @@ impl<T: Dictionary> Linter for GermanVerbSecond<T> {
                         .as_str(),
                 )
             }));
+            // *Weil ich krank bin, ich bleibe zu Hause*: the main clause behind an opening
+            // subordinate clause starts with its verb, then the subject.
+            const OPENING_SUBORDINATORS: &[&str] = &[
+                "weil", "obwohl", "wenn", "als", "nachdem", "bevor", "falls", "während", "sobald",
+                "seitdem", "solange", "damit", "obgleich", "sofern",
+            ];
+            if let Some(first) = tokens.first()
+                && OPENING_SUBORDINATORS.contains(
+                    &document
+                        .get_span_content_str(&first.span)
+                        .to_lowercase()
+                        .as_str(),
+                )
+                && let Some(comma) = tokens.iter().position(|t| {
+                    matches!(
+                        t.kind,
+                        harper_core::TokenKind::Punctuation(harper_core::Punctuation::Comma)
+                    )
+                })
+                && let [pronoun, verb, ..] = &tokens[comma + 1..]
+                && matches!(pronoun.kind, harper_core::TokenKind::Word(_))
+                && matches!(verb.kind, harper_core::TokenKind::Word(_))
+                && let Some(subject) =
+                    subject_pronoun(&document.get_span_content_str(&pronoun.span))
+            {
+                let verb_text = document.get_span_content_str(&verb.span);
+                let readings = self.agreement.verb_features(&verb_text, verb);
+                if !readings.is_empty() && readings.iter().any(|r| subject.agrees_with(r)) {
+                    let pronoun_text = document.get_span_content_str(&pronoun.span);
+                    lints.push(Lint {
+                        span: harper_core::Span::new(pronoun.span.start, verb.span.end),
+                        lint_kind: LintKind::Grammar,
+                        suggestions: vec![Suggestion::ReplaceWith(
+                            format!("{verb_text} {pronoun_text}").chars().collect(),
+                        )],
+                        priority: 29,
+                        message: format!(
+                            "Hinter dem vorangestellten Nebensatz steht das Verb vor dem Subjekt: »{verb_text} {pronoun_text}«."
+                        ),
+                    });
+                }
+            }
             for start in starts.collect::<Vec<_>>() {
                 let [opener, pronoun, verb, ..] = &tokens[start..] else {
                     continue;
@@ -171,6 +213,9 @@ mod tests {
             "Leider ich habe keine Zeit.",
             "Das Wetter war schlecht, deshalb wir sind früh gefahren.",
             "Es regnet, trotzdem wir gehen raus.",
+            "Weil ich krank bin, ich bleibe zu Hause.",
+            "Obwohl es regnet, wir gehen spazieren.",
+            "Wenn du willst, ich kann kommen.",
         ] {
             assert_eq!(count(text), 1, "{text}");
         }
@@ -186,6 +231,9 @@ mod tests {
             "Gestern haben wir Fußball gespielt.",
             "Heute, ich weiß, ist es kalt.",
             "Heute ich gehen ins Kino.",
+            "Weil ich krank bin, bleibe ich zu Hause.",
+            "Wenn du willst, kannst du mitkommen.",
+            "Weil er, wie gesagt, krank ist, bleibt er.",
             "Dann ich.",
             "Jetzt ich und du.",
             "Hier ich bin nicht gemeint, sagt er.",

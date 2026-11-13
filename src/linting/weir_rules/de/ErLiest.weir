@@ -1,0 +1,22 @@
+# "Er ließt": the third person singular of "lesen" is "liest". "ließt" is only
+# "ihr ließt" (preterite, second person plural), so behind a singular subject
+# it is a mistake.
+expr main <([er, sie, es, man, wer, jeder, niemand, Peter, Anna, Mama, Papa] ließt), ließt>
+
+let message "Die dritte Person Singular von »lesen« heißt »liest«."
+let description "Ersetzt »ließt« durch »liest« hinter einem Subjekt im Singular."
+let kind "Spelling"
+let becomes "liest"
+let strategy "MatchCase"
+
+test "Er ließt jeden Tag die Zeitung." "Er liest jeden Tag die Zeitung."
+test "Sie ließt gern Bücher." "Sie liest gern Bücher."
+test "Es ließt sich gut." "Es liest sich gut."
+test "Man ließt das oft." "Man liest das oft."
+test "Wer ließt das Buch?" "Wer liest das Buch?"
+test "Mama ließt jeden Abend vor." "Mama liest jeden Abend vor."
+
+allows "Er liest jeden Tag die Zeitung."
+allows "Ihr ließt das Buch gestern."
+allows "Wir ließen das Buch liegen."
+allows "Ließt ihr das Buch?"

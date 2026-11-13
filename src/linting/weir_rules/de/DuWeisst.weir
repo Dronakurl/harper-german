@@ -1,0 +1,18 @@
+# "Du weist": the second person singular of "wissen" is "weißt". "weist" is a form of
+# "weisen" (er weist), so behind "du" it is a mistake.
+expr main <(du weist), weist>
+
+let message "Die zweite Person Singular von »wissen« heißt »weißt«."
+let description "Ersetzt »weist« durch »weißt« hinter »du«."
+let kind "Spelling"
+let becomes "weißt"
+let strategy "MatchCase"
+
+test "Du weist das doch." "Du weißt das doch."
+test "Was du weist, ist falsch." "Was du weißt, ist falsch."
+test "Du weist nicht viel darüber." "Du weißt nicht viel darüber."
+
+allows "Du weißt das doch."
+allows "Er weist den Weg."
+allows "Das Schild weist nach links."
+allows "Er weist ihn zurück."

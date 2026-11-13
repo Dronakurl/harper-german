@@ -20,6 +20,7 @@ pub mod german_fixed_nominalization;
 pub mod german_foreign_stretch;
 pub mod german_genitive_after_nominative_article;
 pub mod german_genitive_s;
+pub mod german_masculine_object;
 pub mod german_mid_sentence_capital;
 pub mod german_missing_article;
 pub mod german_missing_zu;

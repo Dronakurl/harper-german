@@ -31,6 +31,7 @@ pub fn rust_lint_group(
         german_fixed_nominalization::GermanFixedNominalization,
         german_genitive_after_nominative_article::GermanGenitiveAfterNominativeArticle,
         german_genitive_s::GermanGenitiveS,
+        german_masculine_object::GermanMasculineObject,
         german_mid_sentence_capital::GermanMidSentenceCapital,
         german_missing_article::GermanMissingArticle,
         german_missing_zu::GermanMissingZu,
@@ -186,6 +187,7 @@ pub fn rust_lint_group(
     group.add("GermanWeakAdjective", GermanWeakAdjective::default());
     group.add("GermanDoubledVerb", GermanDoubledVerb);
     group.add("GermanSonstComma", GermanSonstComma);
+    group.add("GermanMasculineObject", GermanMasculineObject::default());
     group.add("GermanPartitiveSubject", GermanPartitiveSubject::default());
     group.add("GermanDeterminerGender", GermanDeterminerGender::new());
     group.add(
