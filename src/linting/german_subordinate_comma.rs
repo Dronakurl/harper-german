@@ -475,10 +475,23 @@ impl GermanSubordinateComma {
             "überlegt",
             "überlegte",
             "entscheiden",
+            "sag",
+            "sagst",
+            "sagt",
+            "sagen",
+            "gesagt",
+            "erklären",
+            "erklärt",
+            "erkläre",
+            "zeig",
+            "zeigen",
+            "verrate",
+            "verrät",
+            "verraten",
         ];
         const BETWEEN: &[&str] = &[
             "mich", "dich", "ihn", "sie", "uns", "euch", "nicht", "genau", "auch", "noch", "nie",
-            "selbst", "schon", "es", "du", "ihr",
+            "selbst", "schon", "es", "du", "ihr", "mir", "dir", "ihm", "ihnen",
         ];
         const QUESTION_WORDS: &[&str] = &[
             "wann", "warum", "weshalb", "weswegen", "wieso", "woher", "wohin", "wo", "wer", "wen",
@@ -605,10 +618,16 @@ impl GermanSubordinateComma {
                 continue;
             }
             let finite_text: String = document.get_span_content(&finite.span).iter().collect();
-            let is_finite = finite_text.chars().next().is_some_and(char::is_lowercase)
-                && GermanRelativeClauseComma::is_verb_token(finite, document)
-                && !finite.kind.is_noun()
-                && !finite.kind.is_adjective();
+            // *Er sagte er habe keine Zeit*: the subjunctive forms of the reported speech.
+            const SUBJUNCTIVE: &[&str] = &[
+                "habe", "sei", "werde", "könne", "müsse", "wolle", "solle", "dürfe", "komme",
+                "gehe", "wisse", "mache", "sehe", "stehe", "bleibe", "finde", "wolle",
+            ];
+            let is_finite = SUBJUNCTIVE.contains(&finite_text.as_str())
+                || (finite_text.chars().next().is_some_and(char::is_lowercase)
+                    && GermanRelativeClauseComma::is_verb_token(finite, document)
+                    && !finite.kind.is_noun()
+                    && !finite.kind.is_adjective());
             if !is_finite {
                 continue;
             }

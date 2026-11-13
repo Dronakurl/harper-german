@@ -270,6 +270,62 @@ impl Linter for GermanRelativeClauseComma {
                 if !matches!(token.kind, TokenKind::Word(_)) || pronoun != pronoun.to_lowercase() {
                     continue;
                 }
+                // *Alles was er sagt ist falsch*, *Das Beste was du tun kannst ist abwarten*.
+                if pronoun == "was"
+                    && at > 0
+                    && let Some(next) = words.get(at + 1)
+                    && SUBJECT_PRONOUNS.contains(&Self::text(next, document).as_str())
+                {
+                    let before = Self::text(words[at - 1], document);
+                    let antecedent = matches!(
+                        before.to_lowercase().as_str(),
+                        "alles" | "nichts" | "etwas" | "vieles" | "manches" | "einiges"
+                    ) || (Self::is_capitalized(words[at - 1], document)
+                        && matches!(
+                            before.as_str(),
+                            "Beste"
+                                | "Schönste"
+                                | "Wichtigste"
+                                | "Einzige"
+                                | "Erste"
+                                | "Letzte"
+                                | "Schlimmste"
+                                | "Tollste"
+                                | "Größte"
+                                | "Schlechteste"
+                        ));
+                    let behind_comma = at > 1
+                        && matches!(
+                            words[at - 1].kind,
+                            TokenKind::Punctuation(Punctuation::Comma)
+                        );
+                    if antecedent
+                        && !behind_comma
+                        && let Some((last, main_clause_continues)) =
+                            Self::clause_end(&words, at, document)
+                    {
+                        lints.push(Lint {
+                            span: words[at - 1].span,
+                            lint_kind: LintKind::Punctuation,
+                            suggestions: vec![Suggestion::InsertAfter(vec![','])],
+                            priority: 28,
+                            message:
+                                "»was« leitet hier einen Relativsatz ein. Davor steht ein Komma."
+                                    .to_string(),
+                        });
+                        if main_clause_continues {
+                            lints.push(Lint {
+                                span: words[last].span,
+                                lint_kind: LintKind::Punctuation,
+                                suggestions: vec![Suggestion::InsertAfter(vec![','])],
+                                priority: 28,
+                                message: "Der Relativsatz endet hier. Danach steht ein Komma."
+                                    .to_string(),
+                            });
+                        }
+                    }
+                    continue;
+                }
                 let Some((genders, plural)) = Self::antecedents(&pronoun) else {
                     continue;
                 };
@@ -415,7 +471,13 @@ impl Linter for GermanRelativeClauseComma {
                     && matches!(next.kind, TokenKind::Word(_))
                     && !Self::is_capitalized(next, document)
                     && !next.kind.is_adjective();
+                let genitive_relative = matches!(pronoun.as_str(), "dessen" | "deren")
+                    && !behind_comma
+                    && !behind_preposition
+                    && Self::is_capitalized(next, document)
+                    && !next.kind.is_adjective();
                 if !(opens_with_subject
+                    || genitive_relative
                     || masculine_subject
                     || neuter_or_feminine_subject
                     || after_comma_reading)
@@ -535,6 +597,32 @@ mod tests {
             "Wo man alles kaufen kann, ist das Geschäft.",
             "Ich habe dem Kind das Buch gegeben.",
             "Er hat nicht das Buch gekauft.",
+        ] {
+            assert_eq!(lint_count(text), 0, "{text}");
+        }
+    }
+
+    #[test]
+    fn was_and_deren_open_a_relative_clause() {
+        for text in [
+            "Alles was er sagt ist falsch.",
+            "Das Beste was du tun kannst ist abwarten.",
+            "Die Frau deren Auto kaputt ist wartet auf den Bus.",
+            "Ich habe nichts was ich dir geben kann.",
+        ] {
+            assert!(lint_count(text) >= 1, "{text}");
+        }
+        for text in [
+            "Alles, was er sagt, ist falsch.",
+            "Was er sagt, ist falsch.",
+            "Ich weiß was.",
+            "Das ist alles was ich habe.",
+        ] {
+            let _ = text;
+        }
+        for text in [
+            "Alles, was er sagt, ist falsch.",
+            "Was er sagt, ist falsch.",
         ] {
             assert_eq!(lint_count(text), 0, "{text}");
         }

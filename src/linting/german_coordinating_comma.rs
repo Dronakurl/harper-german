@@ -184,11 +184,32 @@ impl Linter for GermanCoordinatingComma {
                                     .first()
                                     .is_some_and(|c| c.is_lowercase())
                         };
+                        // *gut aber ziemlich teuer*: a degree word in front of the second adjective.
+                        let degree = Self::is_word(next)
+                            && matches!(
+                                Self::word(next, document).as_str(),
+                                "ziemlich"
+                                    | "sehr"
+                                    | "etwas"
+                                    | "relativ"
+                                    | "recht"
+                                    | "zu"
+                                    | "wenig"
+                                    | "ganz"
+                                    | "so"
+                                    | "sehr"
+                            );
+                        let second = if degree {
+                            tokens.get(index + 2)
+                        } else {
+                            Some(next)
+                        };
+                        let end_at = index + if degree { 3 } else { 2 };
                         if word == "aber"
                             && bare_adjective(previous)
-                            && bare_adjective(next)
+                            && second.is_some_and(|t| bare_adjective(t))
                             && Self::word(previous, document) != "klein"
-                            && tokens.get(index + 2).is_none_or(|t| !Self::is_word(t))
+                            && tokens.get(end_at).is_none_or(|t| !Self::is_word(t))
                         {
                             lints.push(Self::insert_comma_after(
                                 previous,
@@ -324,6 +345,7 @@ mod tests {
             "Ich bleibe zu Hause denn ich bin krank.",
             "Wir haben lange gewartet aber er kam nicht.",
             "Das Essen war sehr lecker aber teuer.",
+            "Das Essen war sehr gut aber ziemlich teuer.",
             "Er ist arm aber glücklich.",
         ] {
             assert_eq!(lint_count(text), 1, "{text}");
