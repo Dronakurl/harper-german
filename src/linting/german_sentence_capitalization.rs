@@ -183,10 +183,9 @@ impl<T: Dictionary> GermanSentenceCapitalization<T> {
             return true;
         }
 
-        let mut preceding = tokens[..index]
-            .iter()
-            .rev()
-            .filter(|t| !t.kind.is_whitespace() && !t.kind.is_quote());
+        let mut preceding = tokens[..index].iter().rev().filter(|t| {
+            !t.kind.is_whitespace() && !t.kind.is_paragraph_break() && !t.kind.is_quote()
+        });
 
         // Only a full stop, a question mark or an exclamation mark ends a
         // sentence. After a colon, a comma or a bracket the line goes on the
