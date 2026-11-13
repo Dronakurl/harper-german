@@ -53,13 +53,20 @@ impl GermanRelativePronoun {
         let pronoun = words.get(comma + 1)?;
         let next = words.get(comma + 2)?;
         let noun_text = document.get_span_content_str(&noun.span);
+        // *dessen* and *deren* stand before the noun they own: *die Frau, deren Mann*.
+        let genitive = matches!(
+            document.get_span_content_str(&pronoun.span).as_str(),
+            "dessen" | "deren"
+        );
         if !noun_text.chars().next().is_some_and(char::is_uppercase)
             || !matches!(next.kind, TokenKind::Word(_))
-            || next.kind.is_noun() && !SUBJECTS.contains(&lowercase_of(next, document).as_str())
-            || document
-                .get_span_content(&next.span)
-                .first()
-                .is_some_and(|c| c.is_uppercase())
+            || (!genitive
+                && (next.kind.is_noun()
+                    && !SUBJECTS.contains(&lowercase_of(next, document).as_str())
+                    || document
+                        .get_span_content(&next.span)
+                        .first()
+                        .is_some_and(|c| c.is_uppercase())))
         {
             return None;
         }
@@ -130,7 +137,15 @@ impl GermanRelativePronoun {
 
         // The pronoun is the subject when no other subject opens the clause;
         // only then is its case, the nominative, known.
-        let suggestions = if SUBJECTS.contains(&next_lower.as_str()) {
+        let suggestions = if pronoun_text == "dessen" || pronoun_text == "deren" {
+            // The genitive: *die Frau, deren Mann*, *der Mann, dessen Frau*.
+            let other = if gender == Gender::Feminine {
+                "deren"
+            } else {
+                "dessen"
+            };
+            vec![Suggestion::ReplaceWith(other.chars().collect())]
+        } else if SUBJECTS.contains(&next_lower.as_str()) {
             Vec::new()
         } else {
             vec![Suggestion::ReplaceWith(
@@ -204,6 +219,10 @@ mod tests {
         );
         assert_eq!(reported("Ich kenne den Mann, die dort wohnt."), ["die"]);
         assert_eq!(reported("Die Leute, wo ich kenne, sind nett."), ["wo"]);
+        assert_eq!(
+            reported("Die Frau, dessen Mann krank ist, kommt nicht."),
+            ["dessen"]
+        );
     }
 
     #[test]
@@ -216,6 +235,7 @@ mod tests {
             "Die Stadt, wo ich wohne, ist klein.",
             "Die Kinder, die dort spielen, lachen.",
             "Das Haus, dessen Dach brennt, steht leer.",
+            "Die Frau, deren Mann krank ist, kommt nicht.",
             "Ich gab dem Kind, das dort stand, ein Eis.",
             "Man bezeichnet die Reaktion eines Tieres auf einen Reiz, die gleich erfolgt.",
             "Sie legen ihre Flügel über den Hinterleib, die diesen verdecken.",

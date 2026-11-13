@@ -234,9 +234,28 @@ impl NounGender {
             && ((agreement.number == NumberSet::SINGULAR
                 && (!spelled_like_a_plural || self.has_umlaut_plural(head, gender)))
                 || (agreement.number.contains(NumberSet::SINGULAR)
-                    && self.has_n_plural(head, gender)));
+                    && (self.has_n_plural(head, gender) || self.has_own_plural(head))));
 
         Some((gender, surely_singular))
+    }
+
+    /// Does `head` have a plural spelled differently, so that it is a singular itself? *Frau* →
+    /// *Frauen*, *Termin* → *Termine*. Only for a word that cannot be a plural by its ending:
+    /// one in *-e*, *-er*, *-el*, *-n* or *-s* may be one already (*Freunde* + *n* is a dative
+    /// plural).
+    fn has_own_plural(&self, head: &str) -> bool {
+        if head.ends_with(['e', 'n', 's', 'r', 'l']) || head.chars().count() < 3 {
+            return false;
+        }
+        [format!("{head}e"), format!("{head}en"), format!("{head}er")]
+            .iter()
+            .any(|candidate| {
+                self.dictionary
+                    .get_word_metadata(&candidate.chars().collect::<Vec<_>>())
+                    .is_some_and(|metadata| {
+                        metadata.is_noun() && metadata.noun_agreement().number == NumberSet::PLURAL
+                    })
+            })
     }
 
     /// Is `head` a feminine noun that takes *-n* in the plural, so that it cannot be one
