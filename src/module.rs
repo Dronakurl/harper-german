@@ -30,6 +30,7 @@ pub fn rust_lint_group(
         german_genitive_after_nominative_article::GermanGenitiveAfterNominativeArticle,
         german_genitive_s::GermanGenitiveS,
         german_mid_sentence_capital::GermanMidSentenceCapital,
+        german_missing_zu::GermanMissingZu,
         german_modal_finite_sein::GermanModalFiniteSein,
         german_modal_zu_infinitive::GermanModalZuInfinitive,
         german_nominalized_adjective::GermanNominalizedAdjective,
@@ -166,6 +167,7 @@ pub fn rust_lint_group(
     group.add("GermanDativePlural", GermanDativePlural::new());
     group.add("GermanNumeralPlural", GermanNumeralPlural::new());
     group.add("GermanBareStem", GermanBareStem::default());
+    group.add("GermanMissingZu", GermanMissingZu);
     group.add("GermanDeterminerGender", GermanDeterminerGender::new());
     group.add(
         "GermanGenitiveAfterNominativeArticle",

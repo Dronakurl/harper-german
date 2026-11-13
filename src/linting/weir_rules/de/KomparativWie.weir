@@ -1,0 +1,27 @@
+# Inequality is compared with "als": "größer als ich", "mehr Geld als er",
+# "nichts anderes als Betrug". "wie" after a comparative is colloquial.
+# Only comparatives of a list and "anders/anderes/mehr/weniger", and only
+# before a word that opens the other side of the comparison.
+expr komparativ [größer, kleiner, älter, jünger, besser, schlechter, schneller, langsamer, höher, tiefer, teurer, billiger, länger, kürzer, stärker, schwächer, schwerer, leichter, klüger, schöner, reicher, ärmer, wärmer, kälter, weiter, lauter, leiser, öfter, wichtiger, einfacher, schwieriger, früher, später, lieber, mehr, weniger, anders, anderes, andere, eher, besseres, größeres]
+
+expr vergleich [ich, du, er, sie, es, wir, ihr, man, mein, meine, dein, deine, sein, seine, unser, unsere, der, die, das, ein, eine, gedacht, erwartet, befürchtet, gestern, vorher, sonst, gewöhnlich, üblich, Betrug, Zufall, früher]
+
+expr main <[(@komparativ wie @vergleich), (@komparativ * wie @vergleich)], wie>
+
+let message "Nach einem Komparativ vergleicht man mit »als«, nicht mit »wie«."
+let description "Ersetzt »wie« durch »als« nach einem Komparativ und nach »anders«."
+let kind "Grammar"
+let becomes "als"
+let strategy "MatchCase"
+
+test "Er ist größer wie ich." "Er ist größer als ich."
+test "Er hat mehr Geld wie ich." "Er hat mehr Geld als ich."
+test "Das ist nichts anderes wie Betrug." "Das ist nichts anderes als Betrug."
+test "Es dauerte länger wie gedacht." "Es dauerte länger als gedacht."
+test "Sie ist älter wie er." "Sie ist älter als er."
+
+allows "Er ist größer als ich."
+allows "Er ist so groß wie ich."
+allows "Je länger, wie man sieht, desto besser."
+allows "Mehr wie diese gibt es nicht."
+allows "Er weiß besser, wie es geht."
