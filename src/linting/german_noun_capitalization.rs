@@ -900,6 +900,28 @@ impl<T: Dictionary> GermanNounCapitalization<T> {
             return false;
         }
 
+        // *das wappen*, *meine mutter*, *in der mitte*, *der ersten hälfte*: the head of a noun
+        // phrase whose small spelling is no word at all, and whose capital is a noun. The shape
+        // tests below would take *-en*, *-er* and *-te* for a verb or an adjective; but nothing
+        // reads the small spelling as one.
+        if np_role == noun_phrase::Role::Head
+            && self.dictionary.get_word_metadata_exact(&lower).is_none()
+        {
+            let mut capital = lower.clone();
+            capital[0] = capital[0].to_uppercase().next().unwrap_or(capital[0]);
+            if self
+                .dictionary
+                .get_word_metadata_exact(&capital)
+                .is_some_and(|m| {
+                    m.noun.as_ref().is_some_and(|n| n.is_proper != Some(true))
+                        && m.verb.is_none()
+                        && m.adjective.is_none()
+                })
+            {
+                return true;
+            }
+        }
+
         // Separable-prefix finite verb forms (herausrückt, zurückgeht, ...).
         if SEPARABLE_VERB_PREFIXES
             .iter()
@@ -1038,6 +1060,10 @@ impl<T: Dictionary> Linter for GermanNounCapitalization<T> {
                     let prev = i.checked_sub(1).map(|j| tokens[j]);
                     let next = tokens.get(i + 1).copied();
 
+                    // *im sachsen - anhaltischen Landkreis*: a piece of a compound split apart.
+                    if next.is_some_and(|n| n.kind.is_hyphen()) {
+                        continue;
+                    }
                     if Self::is_hyphen_compound_fragment(token, prev, next)
                         || Self::follows_language_gloss(&tokens, i, document)
                         || Self::in_foreign_stretch(&tokens, i, document)
@@ -1123,6 +1149,42 @@ mod tests {
 
     fn create_document(text: &str) -> Document {
         Document::new_markdown_default(text, &combined_german_dictionary())
+    }
+
+    fn flagged_words(text: &str) -> Vec<String> {
+        let document = create_document(text);
+        test_linter()
+            .lint(&document)
+            .iter()
+            .map(|lint| document.get_span_content_str(&lint.span))
+            .collect()
+    }
+
+    #[test]
+    fn a_phrase_head_with_a_verb_like_ending_is_a_noun() {
+        for (text, word) in [
+            ("Das wappen ist alt.", "wappen"),
+            ("Das ist meine mutter.", "mutter"),
+            ("In der mitte steht ein Baum.", "mitte"),
+        ] {
+            assert!(
+                flagged_words(text).contains(&word.to_string()),
+                "{text}: {:?}",
+                flagged_words(text)
+            );
+        }
+        for text in [
+            "Das essen wir morgen.",
+            "Die leben dort.",
+            "Er hat das alles gesagt.",
+            "Wir haben die besten.",
+        ] {
+            assert!(
+                flagged_words(text).is_empty(),
+                "{text}: {:?}",
+                flagged_words(text)
+            );
+        }
     }
 
     #[test]

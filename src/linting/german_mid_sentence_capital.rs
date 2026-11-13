@@ -281,7 +281,10 @@ impl GermanMidSentenceCapital {
             || (previous.kind.is_adverb()
                 && !previous.kind.is_noun()
                 && !previous.kind.is_preposition()
-                && !matches!(previous_lower.as_str(), "wie" | "als" | "namens" | "genannt")
+                && !matches!(
+                    previous_lower.as_str(),
+                    "wie" | "als" | "namens" | "genannt"
+                )
                 && at > 1
                 && words[at - 2].kind.is_verb())
             || (previous_lower == "das"
