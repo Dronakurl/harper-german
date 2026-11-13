@@ -67,6 +67,7 @@ pub fn rust_lint_group(
         german_verb_preposition::GermanVerbPreposition,
         german_verb_second::GermanVerbSecond,
         german_vorfeld_comma::GermanVorfeldComma,
+        german_weak_adjective::GermanWeakAdjective,
         german_weak_noun::GermanWeakNoun,
         german_wider_wieder::GermanWiderWieder,
         german_wording::{
@@ -179,6 +180,7 @@ pub fn rust_lint_group(
     );
     group.add("GermanPoliteSie", GermanPoliteSie);
     group.add("GermanMissingArticle", GermanMissingArticle::default());
+    group.add("GermanWeakAdjective", GermanWeakAdjective::default());
     group.add("GermanDeterminerGender", GermanDeterminerGender::new());
     group.add(
         "GermanGenitiveAfterNominativeArticle",
