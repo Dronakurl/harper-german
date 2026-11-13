@@ -12,7 +12,7 @@ use harper_core::{
 use crate::{
     grammar::determiners::{
         DeterminerReading, adjective_ending_after, determiner_readings, forms_with_gender,
-        stands_alone,
+        possessive_forms_with_gender, stands_alone,
     },
     grammar::noun_gender::{NounGender, trusted_head},
     grammar::noun_phrase::{self, Phrase, opens_relative_clause},
@@ -434,10 +434,44 @@ impl Linter for GermanDeterminerGender {
 
                 // *die* and *der* are plural readings too. They only rule the
                 // noun out when it cannot be one; *das* and *ein* never could.
+                // *Der Mädchen spielt im Garten*: a phrase that opens the sentence right before
+                // a finite verb in *-t* is its subject, so only the nominative readings count.
+                let subject = phrase.open == 0
+                    && words.get(phrase.end).is_some_and(|verb| {
+                        let word = noun_phrase::lowercase_of(verb, document);
+                        verb.kind.is_verb()
+                            && !verb.kind.is_adjective()
+                            && document
+                                .get_span_content(&verb.span)
+                                .first()
+                                .is_some_and(|c| c.is_lowercase())
+                            && (word.ends_with('t')
+                                || ["ist", "war", "hat", "wird"].contains(&word.as_str()))
+                            && !word.starts_with("ge")
+                    })
+                    // *Der SPD trat er bei*, *Dieser Behauptung widerspricht die …*: a subject
+                    // behind the verb makes the phrase in front a dative; so does a passive
+                    // (*Der Regierung war vorgeworfen worden*).
+                    && !words.get(phrase.end + 1).is_some_and(|next| {
+                        ((next.kind.is_pronoun() || next.kind.is_determiner())
+                            && !next.kind.is_preposition())
+                            || matches!(
+                                noun_phrase::lowercase_of(next, document).as_str(),
+                                "er" | "sie" | "es" | "ich" | "du" | "wir" | "ihr" | "man"
+                            )
+                    })
+                    && !words.iter().any(|w| {
+                        matches!(
+                            noun_phrase::lowercase_of(w, document).as_str(),
+                            "worden" | "vorgeworfen"
+                        ) || w.kind.is_verb()
+                            && noun_phrase::lowercase_of(w, document).starts_with("ge")
+                    });
                 let candidates: Vec<DeterminerReading> = readings
                     .iter()
                     .copied()
                     .filter(|reading| reading.gender.is_some() || !surely_singular)
+                    .filter(|reading| !subject || reading.case == Case::Nominative)
                     .collect();
                 if fits(&candidates, gender) {
                     self.lint_adjectives(
@@ -488,7 +522,14 @@ impl Linter for GermanDeterminerGender {
                     }
                     None => candidates.clone(),
                 };
-                let suggestions: Vec<Suggestion> = forms_with_gender(&source, gender)
+                let mut forms: Vec<String> = forms_with_gender(&source, gender)
+                    .into_iter()
+                    .map(str::to_owned)
+                    .collect();
+                if forms.is_empty() {
+                    forms = possessive_forms_with_gender(&source, gender);
+                }
+                let suggestions: Vec<Suggestion> = forms
                     .into_iter()
                     .map(|form| {
                         Suggestion::replace_with_match_case(
@@ -550,6 +591,26 @@ mod tests {
 
     fn reported(text: &str) -> Vec<String> {
         lints(text).into_iter().map(|(word, _)| word).collect()
+    }
+
+    #[test]
+    fn a_possessive_or_a_subject_article_meets_its_noun() {
+        assert_eq!(
+            lints("Er hat seine Buch vergessen.")[0].1,
+            ["Replace with: “sein”"]
+        );
+        assert_eq!(
+            lints("Sie hat ihre Auto verkauft.")[0].1,
+            ["Replace with: “ihr”"]
+        );
+        assert_eq!(reported("Der Mädchen spielt im Garten."), ["Der"]);
+        for text in [
+            "Der Mädchen Lachen war laut.",
+            "Der Kinder wegen blieb er.",
+            "Seine Bücher sind alt.",
+        ] {
+            assert!(reported(text).is_empty(), "{text}: {:?}", reported(text));
+        }
     }
 
     #[test]

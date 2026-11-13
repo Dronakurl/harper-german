@@ -642,6 +642,33 @@ pub fn forms_with_gender(readings: &[DeterminerReading], gender: Gender) -> Vec<
     out
 }
 
+/// [`forms_with_gender`] for the possessives whose bare form is not in the table (*sein*,
+/// *ihr*, see [`REGULARS`]): the form of *mein* in the same cell, with the stem put back.
+/// *seine Buch* → *sein*, *ihre Haus* → *ihr*.
+pub fn possessive_forms_with_gender(readings: &[DeterminerReading], gender: Gender) -> Vec<String> {
+    let Some(stem) = readings
+        .iter()
+        .map(|reading| reading.paradigm.stem())
+        .find(|stem| matches!(*stem, "sein" | "ihr"))
+    else {
+        return Vec::new();
+    };
+    let as_mein: Vec<DeterminerReading> = readings
+        .iter()
+        .map(|reading| DeterminerReading {
+            paradigm: Paradigm("mein"),
+            ..*reading
+        })
+        .collect();
+    forms_with_gender(&as_mein, gender)
+        .into_iter()
+        .filter_map(|form| {
+            form.strip_prefix("mein")
+                .map(|ending| format!("{stem}{ending}"))
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
