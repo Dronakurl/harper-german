@@ -87,7 +87,6 @@ const SHADOWED_FORMS: &[(&str, &str)] = &[
     ("genennt", "genannt"),
     ("gerennt", "gerannt"),
     ("gewisst", "gewusst"),
-    ("verbrennt", "verbrannt"),
 ];
 
 fn dated_verb_form(word: &[char]) -> Option<Vec<char>> {
