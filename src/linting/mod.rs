@@ -41,6 +41,7 @@ pub mod german_relative_clause_comma;
 pub mod german_relative_pronoun;
 pub mod german_repeated_words;
 pub mod german_sentence_capitalization;
+pub mod german_sonst_comma;
 pub mod german_spacing;
 pub mod german_spell_check;
 pub mod german_split_compound;

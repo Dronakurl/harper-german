@@ -52,6 +52,7 @@ pub fn rust_lint_group(
         german_relative_pronoun::GermanRelativePronoun,
         german_repeated_words::GermanRepeatedWords,
         german_sentence_capitalization::GermanSentenceCapitalization,
+        german_sonst_comma::GermanSonstComma,
         german_spacing::{GermanCommaFixes, GermanDoublePeriod, GermanSpaces},
         german_spell_check::GermanSpellCheck,
         german_split_compound::GermanSplitCompound,
@@ -184,6 +185,7 @@ pub fn rust_lint_group(
     group.add("GermanMissingArticle", GermanMissingArticle::default());
     group.add("GermanWeakAdjective", GermanWeakAdjective::default());
     group.add("GermanDoubledVerb", GermanDoubledVerb);
+    group.add("GermanSonstComma", GermanSonstComma);
     group.add("GermanPartitiveSubject", GermanPartitiveSubject::default());
     group.add("GermanDeterminerGender", GermanDeterminerGender::new());
     group.add(

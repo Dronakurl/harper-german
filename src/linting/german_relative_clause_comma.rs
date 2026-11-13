@@ -93,6 +93,11 @@ impl GermanRelativeClauseComma {
             "dessen" => Some((GenderSet::MASCULINE | GenderSet::NEUTER, false)),
             "deren" => Some((GenderSet::FEMININE, true)),
             "denen" => Some((GenderSet::empty(), true)),
+            // *ein Geschäft wo man alles kaufen kann*
+            "wo" => Some((
+                GenderSet::MASCULINE | GenderSet::FEMININE | GenderSet::NEUTER,
+                true,
+            )),
             _ => {
                 let readings = determiner_readings(pronoun)?;
                 let mut genders = GenderSet::empty();
@@ -286,8 +291,26 @@ impl Linter for GermanRelativeClauseComma {
                     .is_some_and(|i| {
                         matches!(words[i].kind, TokenKind::Punctuation(Punctuation::Comma))
                     });
-                let noun_at =
+                let mut noun_at =
                     pronoun_phrase_at.and_then(|i| i.checked_sub(if behind_comma { 2 } else { 1 }));
+                // *den Mann **nicht** den du meinst*, *ein Auto **gekauft** das sehr teuer war*:
+                // a negation or a participle between the noun and the pronoun. An article
+                // cannot follow either, so the pronoun is a relative one.
+                let mut skipped_participle = false;
+                if !behind_comma
+                    && !behind_preposition
+                    && let Some(i) = noun_at
+                    && i > 0
+                {
+                    let between = Self::text(words[i], document);
+                    let is_participle = between.starts_with("ge")
+                        && (between.ends_with('t') || between.ends_with("en"))
+                        && Self::is_verb(words[i], document);
+                    if between == "nicht" || is_participle {
+                        skipped_participle = is_participle;
+                        noun_at = Some(i - 1);
+                    }
+                }
                 let Some(noun_token) = noun_at.map(|i| words[i]) else {
                     continue;
                 };
@@ -381,7 +404,7 @@ impl Linter for GermanRelativeClauseComma {
                     )
                 });
                 let neuter_or_feminine_subject = !behind_preposition
-                    && !bracket_open
+                    && (!bracket_open || skipped_participle)
                     && matches!(pronoun.as_str(), "das" | "die")
                     && (next.kind.is_preposition() || Self::is_adverb(next, document))
                     && !Self::is_capitalized(next, document);
@@ -412,7 +435,7 @@ impl Linter for GermanRelativeClauseComma {
                 };
                 if !behind_comma {
                     lints.push(Lint {
-                        span: noun_token.span,
+                        span: words[pronoun_phrase_at.unwrap_or(at) - 1].span,
                         lint_kind: LintKind::Punctuation,
                         suggestions: vec![Suggestion::InsertAfter(vec![','])],
                         priority: 28,
@@ -492,6 +515,26 @@ mod tests {
             "Wir besuchten den Berg der Götter.",
             "Er will der Frau die in Rom gekauften Schuhe geben.",
             "Das ist ein Haus, das am See liegt.",
+        ] {
+            assert_eq!(lint_count(text), 0, "{text}");
+        }
+    }
+
+    #[test]
+    fn wo_a_negation_or_a_participle_in_front_of_the_pronoun() {
+        for text in [
+            "Dort ist ein Geschäft wo man alles kaufen kann.",
+            "Er hat ein Auto gekauft das sehr teuer war.",
+            "Ich kenne den Mann nicht den du meinst.",
+        ] {
+            assert_eq!(lint_count(text), 1, "{text}");
+        }
+        for text in [
+            "Dort ist ein Geschäft, wo man alles kaufen kann.",
+            "Ich weiß nicht wo er wohnt.",
+            "Wo man alles kaufen kann, ist das Geschäft.",
+            "Ich habe dem Kind das Buch gegeben.",
+            "Er hat nicht das Buch gekauft.",
         ] {
             assert_eq!(lint_count(text), 0, "{text}");
         }

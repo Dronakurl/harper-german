@@ -100,6 +100,33 @@ const VERBS: &[Governed] = &[
         preposition: &["an"],
         case: Case::Dative,
     },
+    Governed {
+        forms: &[
+            "warte", "wartest", "wartet", "warten", "wartete", "warteten", "gewartet",
+        ],
+        preposition: &["auf"],
+        case: Case::Accusative,
+    },
+    Governed {
+        forms: &[
+            "hoffe", "hoffst", "hofft", "hoffen", "hoffte", "hofften", "gehofft",
+        ],
+        preposition: &["auf"],
+        case: Case::Accusative,
+    },
+    Governed {
+        forms: &[
+            "antworte",
+            "antwortest",
+            "antwortet",
+            "antworten",
+            "antwortete",
+            "antworteten",
+            "geantwortet",
+        ],
+        preposition: &["auf"],
+        case: Case::Accusative,
+    },
 ];
 
 const REFLEXIVE: &[&str] = &["mich", "dich", "sich", "uns", "euch"];
@@ -122,6 +149,23 @@ const TIME_AND_PLACE: &[&str] = &[
     "Termin",
     "Bahnhof",
     "Tisch",
+    "Bahnsteig",
+    "Parkplatz",
+    "Flur",
+    "Gang",
+    "Hof",
+    "Markt",
+    "Eingang",
+    "Ausgang",
+    "Balkon",
+    "Flughafen",
+    "Gleis",
+    "Sofa",
+    "Stuhl",
+    "Weg",
+    "Land",
+    "Dach",
+    "Schiff",
 ];
 
 /// Dative singular forms where the verb asks for the accusative, and the accusative of each for
@@ -315,6 +359,9 @@ mod tests {
             "Sie sprechen über dem Thema.",
             "Wir arbeiten an das Projekt.",
             "Er zweifelt an das Ergebnis.",
+            "Wir warten auf dem Bus seit einer Stunde.",
+            "Ich hoffe auf einem Wunder.",
+            "Sie antwortet auf dem Brief.",
         ] {
             assert_eq!(count(text), 1, "{text}");
         }
@@ -331,6 +378,10 @@ mod tests {
             "Er denkt an dem Tisch nach.",
             "Wir sprechen über den Plan.",
             "Er arbeitet an das, was kommt.",
+            "Wir warten auf den Bus.",
+            "Wir warten auf dem Bahnsteig auf den Zug.",
+            "Ich warte auf dem Parkplatz.",
+            "Er hofft auf ein Wunder.",
         ] {
             assert_eq!(count(text), 0, "{text}");
         }

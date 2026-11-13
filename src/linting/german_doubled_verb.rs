@@ -124,6 +124,22 @@ impl Linter for GermanDoubledVerb {
                 };
                 if let Some(message) = message {
                     lints.push(Self::remove(words[at - 1], words[at], message));
+                } else if last == "gewesen"
+                    && words[at - 1].kind.is_verb()
+                    && previous.ends_with("en")
+                    && !previous.starts_with("ge")
+                    && !SEIN_PARTICIPLES.contains(&previous.as_str())
+                    && earlier.iter().any(|w| HABEN.contains(&w.as_str()))
+                    && !earlier.iter().any(|w| SEIN.contains(&w.as_str()))
+                {
+                    // *Ich habe meinen Freund besuchen gewesen*: a participle is missing.
+                    lints.push(Lint {
+                        span: Span::new(words[at - 1].span.start, words[at].span.end),
+                        lint_kind: LintKind::Grammar,
+                        suggestions: Vec::new(),
+                        message: format!("Hinter »{previous}« steht kein »gewesen«; das Perfekt braucht das Partizip."),
+                        priority: 31,
+                    });
                 }
             }
         }
@@ -158,6 +174,7 @@ mod tests {
             "Er hat sich gestern beim Sport verletzt gehabt.",
             "Ich habe das Auto gestern repariert gehabt.",
             "Er ist ins Krankenhaus gegangen worden.",
+            "Ich habe gestern meinen Freund besuchen gewesen.",
         ] {
             assert_eq!(count(text), 1, "{text}");
         }
@@ -171,6 +188,7 @@ mod tests {
             "Er hat immer Pech gehabt.",
             "Er würde kommen, wenn er könnte.",
             "Sie wird gewählt werden.",
+            "Wir sind einkaufen gewesen.",
         ] {
             assert_eq!(count(text), 0, "{text}");
         }
