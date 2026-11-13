@@ -1,6 +1,7 @@
 //! *mit den Kinder*, *seit drei Jahre*: the dative plural ends in *-n*.
 
-use crate::morphology::{Case, CaseSet, Number};
+use crate::morphology::{Case, CaseSet, MorphologyExt, Number, NumberSet};
+use harper_core::spell::Dictionary;
 use harper_core::{
     Document, Token, TokenKind, TokenStringExt,
     linting::{Lint, LintKind, Linter, Suggestion},
@@ -37,6 +38,13 @@ use crate::{
 ///
 /// Behind a preposition that does not take the dative — *für den Kinder* —
 /// the determiner is what is wrong, and `GermanPrepositionCase` says so.
+/// Plural determiners and quantifiers whose plural is a nominative or an accusative, never a
+/// dative: *die*, *meine*, *viele*.
+const NOMINATIVE_PLURAL: &[&str] = &[
+    "die", "diese", "jene", "meine", "deine", "seine", "ihre", "unsere", "eure", "keine", "viele",
+    "einige", "mehrere", "wenige", "manche", "solche", "beide",
+];
+
 pub struct GermanDativePlural {
     nouns: NounGender,
 }
@@ -177,6 +185,83 @@ impl GermanDativePlural {
         ends.then_some(at)
     }
 
+    /// The head behind the plural determiner at `at`, past its adjectives, when it is a dative
+    /// plural form and the phrase ends behind it.
+    fn non_dative_plural(&self, words: &[&Token], at: usize, document: &Document) -> Option<Lint> {
+        let mut head = at + 1;
+        while words
+            .get(head)
+            .is_some_and(|token| token.kind.is_adjective() && !starts_uppercase(token, document))
+        {
+            head += 1;
+        }
+        let noun = words.get(head)?;
+        if !starts_uppercase(noun, document) {
+            return None;
+        }
+        let ends = words.get(head + 1).is_none_or(|next| {
+            !matches!(next.kind, TokenKind::Word(_)) || !starts_uppercase(next, document)
+        });
+        let content = document.get_full_content();
+        if !ends || content.get(noun.span.end) == Some(&'-') {
+            return None;
+        }
+        let text = document.get_span_content_str(&noun.span);
+        // The form without its *-n* is recorded as a plural and nothing else (*Probleme*,
+        // *Freunde*), not a feminine singular whose plural this is (*Tasche*).
+        let plural_only = |form: &str| {
+            self.nouns
+                .dictionary()
+                .get_word_metadata(&form.chars().collect::<Vec<_>>())
+                .is_some_and(|metadata| {
+                    metadata.is_noun() && metadata.noun_agreement().number == NumberSet::PLURAL
+                })
+        };
+        // Weak masculine nouns spell every plural in *-en* (*Megalithen*, *Lombarden*), so only
+        // a neuter or masculine singular in a dictionary-known plural *-e* is trusted for the
+        // second path, and only when the singular is surely one: *Problem* → *Probleme*.
+        let strong_singular = |stem: &str| {
+            stem.strip_suffix('e').is_some_and(|singular| {
+                self.nouns
+                    .gender_of(singular)
+                    .is_some_and(|(gender, sure)| {
+                        sure && gender == crate::morphology::Gender::Neuter
+                    })
+            })
+        };
+        if !(self.nouns.is_dative_plural(&text)
+            || text
+                .strip_suffix('n')
+                .is_some_and(|stem| plural_only(stem) && strong_singular(stem)))
+        {
+            return None;
+        }
+        // *…, die optisch Fahrzeugen ähneln*: behind a comma *die* is a relative pronoun; a
+        // capital in front of a hyphen or a name of a region (*die Dolomiten*) is no plural of
+        // a common noun.
+        if at > 0 && words[at - 1].kind.is_comma() {
+            return None;
+        }
+        if noun.kind.is_proper_noun()
+            || words
+                .get(head + 1)
+                .is_some_and(|next| next.kind.is_hyphen())
+        {
+            return None;
+        }
+        let fixed = text.strip_suffix('n')?.to_owned();
+        Some(Lint {
+            span: noun.span,
+            lint_kind: LintKind::Grammar,
+            suggestions: vec![Suggestion::ReplaceWith(fixed.chars().collect())],
+            message: format!(
+                "»{text}« ist ein Dativ Plural; hinter »{}« steht »{fixed}«.",
+                document.get_span_content_str(&words[at].span)
+            ),
+            priority: 30,
+        })
+    }
+
     fn report(&self, head: &Token, document: &Document) -> Option<Lint> {
         let text = document.get_span_content_str(&head.span);
         if !self.nouns.lacks_dative_plural_n(&text) {
@@ -266,6 +351,15 @@ impl Linter for GermanDativePlural {
                     reported.push(head);
                     lints.push(lint);
                 }
+
+                // *die Problemen*, *viele Freunden*: a dative plural behind a plural determiner
+                // that is no dative.
+                if NOMINATIVE_PLURAL.contains(&word.as_str())
+                    && !after_a_dative_preposition
+                    && let Some(lint) = self.non_dative_plural(&words, at, document)
+                {
+                    lints.push(lint);
+                }
             }
         }
 
@@ -302,6 +396,27 @@ mod tests {
             fixes("Wir arbeiten seit drei Jahre hier."),
             ["Replace with: “Jahren”"]
         );
+    }
+
+    #[test]
+    fn a_dative_plural_behind_a_nominative_determiner_is_reported() {
+        assert_eq!(
+            fixes("Das sind die Problemen, die wir lösen müssen."),
+            ["Replace with: “Probleme”"]
+        );
+        assert_eq!(
+            fixes("Das waren seine besten Jahren."),
+            ["Replace with: “Jahre”"]
+        );
+        for text in [
+            "Ich spreche mit den Freunden.",
+            "Er hilft vielen Freunden.",
+            "Die Taschen sind voll.",
+            "Die Kindern-Gruppe spielt.",
+            "Die Lehrern gegenüber war er höflich.",
+        ] {
+            assert!(fixes(text).is_empty(), "{text}: {:?}", fixes(text));
+        }
     }
 
     #[test]
