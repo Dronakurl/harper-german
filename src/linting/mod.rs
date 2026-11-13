@@ -30,6 +30,7 @@ pub mod german_perfect_auxiliary;
 pub mod german_preposition_case;
 pub mod german_preposition_pronoun;
 pub mod german_question_mark;
+pub mod german_question_word_order;
 pub mod german_recommended_fusion;
 pub mod german_relative_clause_comma;
 pub mod german_relative_pronoun;

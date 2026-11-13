@@ -196,15 +196,15 @@ impl Linter for GermanMissingZu {
                             .filter(|token| starts_lowercase(token, document))
                             .map(|token| lowercase_of(token, document))
                             .collect();
-                        let governs = previous.iter().any(|word| {
+
+                        previous.iter().any(|word| {
                             ZU_GOVERNORS.iter().any(|stem| word.starts_with(stem))
                                 || ["bat", "baten", "bitte", "bittet"].contains(&word.as_str())
                         }) || (previous.last().is_some_and(|word| word == "vor")
                             && previous.iter().any(|word| {
                                 ["habe", "hast", "hat", "haben", "habt", "hatte", "hatten"]
                                     .contains(&word.as_str())
-                            }));
-                        governs
+                            }))
                     }
                     && !group.iter().any(|token| {
                         token.kind.is_pronoun()

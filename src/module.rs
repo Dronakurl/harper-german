@@ -41,6 +41,7 @@ pub fn rust_lint_group(
         german_preposition_case::GermanPrepositionCase,
         german_preposition_pronoun::GermanPrepositionPronoun,
         german_question_mark::GermanQuestionMark,
+        german_question_word_order::GermanQuestionWordOrder,
         german_recommended_fusion::GermanRecommendedFusion,
         german_relative_clause_comma::GermanRelativeClauseComma,
         german_relative_pronoun::GermanRelativePronoun,
@@ -168,6 +169,7 @@ pub fn rust_lint_group(
     group.add("GermanNumeralPlural", GermanNumeralPlural::new());
     group.add("GermanBareStem", GermanBareStem::default());
     group.add("GermanMissingZu", GermanMissingZu);
+    group.add("GermanQuestionWordOrder", GermanQuestionWordOrder);
     group.add("GermanDeterminerGender", GermanDeterminerGender::new());
     group.add(
         "GermanGenitiveAfterNominativeArticle",
