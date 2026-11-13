@@ -5092,7 +5092,7 @@ Abseitstoren/~~N
 abseitsverdächtig/~~JOQRSTqr
 abseitszuhalten/~~V
 absend/~~V
-absenden/~~GVcfij
+absenden/~~GVcdefij
 Absendeort/~~0HNXh
 Absendeorte/~~&
 Absendeorten/~~N
@@ -6391,7 +6391,7 @@ abwelktet/~~Vt
 abwend/~~V
 abwendbar/~~JOQRSTUWqr
 Abwendbarkeit/~~FNYh
-abwenden/~~GVcfijx
+abwenden/~~GVcdefijx
 abwendig/~~JOQRSTUWqr
 Abwendung/~~FNYh
 abwerben/~~Vcfij
@@ -18388,7 +18388,7 @@ Anwendbaren/~~N
 Anwendbarer/~~FMN
 Anwendbares/~~NZ
 Anwendbarkeit/~~FNYh
-anwenden/~~GVcfijx
+anwenden/~~GVcdefijx
 Anwender/~~EHKLMNh
 anwenderfreundlich/~~JOQRSTqr
 Anwenderin/~~FLNh
@@ -26020,7 +26020,7 @@ Aufweisen/~~N
 aufweisen/~~GVcfijx
 aufweiset/~~V
 aufwend/~~V
-aufwenden/~~GVcfij
+aufwenden/~~GVcdefij
 aufwendig/~~JOQRSTUWqr
 aufwendiger/~~JOQRST
 aufwerde/~~V
@@ -31130,7 +31130,7 @@ aussend/~~V
 Außendeich/~~HMNXh
 Außendeiche/~~&
 Außendeichen/~~N
-aussenden/~~GVcfij
+aussenden/~~GVcdefij
 Außendienst/~~AHMNh
 Außendienstler/~~EHMNh
 Außenflur/~~HMNXh
@@ -46963,7 +46963,7 @@ Beweislast/~~FNYh
 Beweismittel/~~EHNZh
 beweispflichtig/~~JOQRSTqr
 bewend/~~V
-bewenden/~~GVcfij
+bewenden/~~GVcdefij
 bewendet/~~Vg
 bewendete/~~J
 bewendetem/~~J
@@ -81330,7 +81330,7 @@ Einseitiger/~~FMN
 Einseitiges/~~NZ
 Einseitigkeit/~~FNYh
 einsend/~~V
-einsenden/~~GVcfij
+einsenden/~~GVcdefij
 Einsendetermin/~~0HMNXh
 Einsendetermine/~~&
 Einsendeterminen/~~N
@@ -82210,7 +82210,7 @@ einweis/~~%V
 einweisen/~~GVcfij
 einweiset/~~V
 einwend/~~V
-einwenden/~~GVcfij
+einwenden/~~GVcdefij
 Einwendung/~~FNYh
 einwerben/~~Vcfij
 einwerbest/~~%V
@@ -89917,7 +89917,7 @@ entselbstetest/~~Vt
 entselbstetet/~~Vt
 entsend/~~V
 Entsendegesetz/~~NZh
-entsenden/~~GVcfij
+entsenden/~~GVcdefij
 Entsendestaat/~~0HMNYh
 entsendet/~~Vg
 entsendete/~~J
@@ -90547,7 +90547,7 @@ entweihtest/~~Vt
 entweihtet/~~Vt
 Entweihung/~~FNYh
 entwend/~~V
-entwenden/~~GVcfij
+entwenden/~~GVcdefij
 entwendet/~~Vg
 entwendete/~~J
 entwendetem/~~J
@@ -107876,7 +107876,7 @@ fortwehet/~~V
 fortwehtest/~~Vt
 fortwehtet/~~Vt
 fortwend/~~V
-fortwenden/~~GVcfij
+fortwenden/~~GVcdefij
 fortwerfen/~~Vcfij
 fortwerfest/~~%V
 fortwerfet/~~V
@@ -149876,7 +149876,7 @@ hinwelken/~~GVcdefij
 hinwelktest/~~Vt
 hinwelktet/~~Vt
 hinwend/~~V
-hinwenden/~~GVcfij
+hinwenden/~~GVcdefij
 hinwerfen/~~Vcfij
 hinwerfest/~~%V
 hinwerfet/~~V
@@ -202901,7 +202901,7 @@ nachsend/~~V
 Nachsendeantrag/~~AHMNh
 Nachsendeanträge/~~&N
 Nachsendeanträgen/~~N
-nachsenden/~~GVcfij
+nachsenden/~~GVcdefij
 nachservier/~~V
 nachservieren/~~GVcdefijx
 nachservierest/~~V
@@ -210140,6 +210140,7 @@ oje/~~
 Ojeda/~~!8H
 ojemine/~~
 ojerum/~~
+ok/~~r
 OK-Mitglied/~~0HNZah
 OK-Mitglieder/~~&
 Okada/~~!8H
@@ -250862,7 +250863,7 @@ Sendeleiter/~~EHMNh
 Sendelizenz/~~FNYh
 Sendemast/~~AHMNh
 Sendeminute/~~EFNh
-senden/~~GVcfij
+senden/~~GVcdefij
 Sendenetz/~~0NXZh
 Sendenetze/~~&
 Sendenetzen/~~N
@@ -280124,7 +280125,7 @@ Umweltämter/~~&N
 Umweltämtern/~~N
 umweltökonomisch/~~JOQRSTqr
 umwend/~~V
-umwenden/~~GVcfij
+umwenden/~~GVcdefij
 Umwendung/~~FNYh
 umwerben/~~Vcfij
 umwerbest/~~%V
@@ -296661,7 +296662,7 @@ versemmlest/~~V
 versemmlet/~~V
 Versen/~~N
 versend/~~V
-versenden/~~GVcfij
+versenden/~~GVcdefij
 Versender/~~EHMNh
 versendet/~~Vg
 versendete/~~J
@@ -299521,7 +299522,7 @@ verwend/~~V
 verwendbar/~~JOQRSTUWqr
 Verwendbarkeit/~~FNYh
 verwende/~~V
-verwenden/~~GVcfijx
+verwenden/~~GVcdefijx
 Verwender/~~EHMNh
 verwendest/~~V
 verwendet/~~Vg
@@ -306865,7 +306866,7 @@ vorweisen/~~GVcfij
 vorweiset/~~V
 vorweltlich/~~JOQRSTqr
 vorwend/~~V
-vorwenden/~~GVcfij
+vorwenden/~~GVcdefij
 vorwerfbar/~~JOQRSTqr
 vorwerfen/~~Vcfijx
 vorwerfest/~~%V
@@ -311438,7 +311439,7 @@ wegsehest/~~%V
 wegsehet/~~V
 wegseid/~~V
 wegsend/~~V
-wegsenden/~~GVcfij
+wegsenden/~~GVcdefij
 wegsengen/~~GVcdefij
 wegsengest/~~V
 wegsenget/~~V
@@ -311728,7 +311729,7 @@ wegweisend/~~JOQRSTqr
 Wegweiser/~~EHMNh
 wegweiset/~~V
 wegwend/~~V
-wegwenden/~~GVcfij
+wegwenden/~~GVcdefij
 wegwerde/~~V
 wegwerden/~~V
 wegwerdet/~~V
@@ -314427,7 +314428,7 @@ wendeln/~~GVcdefij
 wendeltest/~~Vt
 wendeltet/~~Vt
 Wendeltreppe/~~EFNh
-wenden/~~GVcfij
+wenden/~~GVcdefij
 Wendepunkt/~~HMNXh
 Wendepunkte/~~&
 Wendepunkten/~~N
@@ -327166,7 +327167,7 @@ zurücksehnet/~~V
 zurücksehntest/~~Vt
 zurücksehntet/~~Vt
 zurücksend/~~V
-zurücksenden/~~GVcfij
+zurücksenden/~~GVcdefij
 zurücksetz/~~V
 zurücksetzen/~~GVcdefij
 zurücksetzet/~~V
@@ -327431,7 +327432,7 @@ zurückweis/~~%V
 zurückweisen/~~GVcfij
 zurückweiset/~~V
 zurückwend/~~V
-zurückwenden/~~GVcfij
+zurückwenden/~~GVcdefij
 zurückwerfen/~~Vcfij
 zurückwerfest/~~%V
 zurückwerfet/~~V
@@ -329831,7 +329832,7 @@ zusehest/~~%V
 zusehet/~~V
 zuseiten/~~P
 zusend/~~V
-zusenden/~~GVcfij
+zusenden/~~GVcdefij
 Zusender/~~EHMNh
 Zusendung/~~FNYh
 zusetz/~~V
@@ -330272,7 +330273,7 @@ zuweisen/~~GVcfij
 zuweiset/~~V
 Zuweisung/~~FNYh
 zuwend/~~V
-zuwenden/~~GVcfij
+zuwenden/~~GVcdefij
 Zuwendung/~~FNYh
 Zuwenig/~~AHNZh
 zuwerfen/~~Vcfij
@@ -335483,7 +335484,7 @@ Zərdab/~~!8H
 übersehest/~~%V
 übersehet/~~V
 übersend/~~V
-übersenden/~~GVcfij
+übersenden/~~GVcdefij
 übersensibel/~~JOQRSTqr
 übersetz/~~V
 übersetzbar/~~JOQRSTUWqr

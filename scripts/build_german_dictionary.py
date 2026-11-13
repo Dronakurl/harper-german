@@ -540,6 +540,8 @@ class Builder:
 
     def emit_verb(self, lemma, info, lex):
         flags = set(info["flags"])
+        if any(lemma.endswith(v) for v in curated.WEAK_TOO):
+            flags |= {"d", "e"}  # *sendete* beside *sandte*, whichever path the lexeme took
         if lemma.endswith("en") or lemma.endswith(("ern", "eln")):
             self.stems.add(lemma[:-2] if lemma.endswith("en") and not lemma.endswith(("ern", "eln")) else lemma[:-1])
         if self.generated(lemma, "c"):
