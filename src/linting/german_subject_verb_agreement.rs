@@ -1671,9 +1671,7 @@ mod tests {
     /// A feminine noun that is surely singular takes the singular reading of *die*.
     #[test]
     fn die_before_a_feminine_singular_is_a_singular() {
-        for text in ["Die Familie wohnen in Berlin."] {
-            assert_eq!(lint_count(text), 1, "{text}");
-        }
+        assert_eq!(lint_count("Die Familie wohnen in Berlin."), 1);
         for text in [
             "Die Familie wohnt in Berlin.",
             "Die Familie besuchen wir morgen.",
