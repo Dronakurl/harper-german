@@ -1,4 +1,5 @@
 use crate::grammar::determiners::determiner_readings;
+use crate::grammar::noun_phrase;
 use crate::grammar::verbs::{INFINITIVE_GROUP_OPENERS, has_zu_infix};
 use crate::linting::german_relative_clause_comma::GermanRelativeClauseComma;
 use harper_core::linting::{Lint, LintKind, Linter, Suggestion};
@@ -281,8 +282,23 @@ impl GermanSubordinateComma {
     /// of the sentence, its last verb is the main clause's.
     fn missing_comma_after_initial_clause(tokens: &[&Token], document: &Document) -> Option<Lint> {
         let first = tokens.first()?;
+        // *Wo du bist, ist mir egal*, *Was du sagst, stimmt*: a question word opens a
+        // subordinate clause when a subject follows it and the sentence asks nothing.
+        let question_word_clause = Self::word_in(first, document, &["wo", "was", "wer", "wie"])
+            && tokens.get(1).is_some_and(|next| {
+                Self::word_in(
+                    next,
+                    document,
+                    &["ich", "du", "er", "sie", "wir", "ihr", "man"],
+                ) || (Self::word_in(next, document, &["das", "der", "die", "es"])
+                    && first.span.start == 0)
+            })
+            && !tokens.last().is_some_and(|last| {
+                matches!(last.kind, TokenKind::Punctuation(Punctuation::Question))
+            });
         if !matches!(first.kind, TokenKind::Word(_))
-            || !Self::word_in(first, document, SENTENCE_INITIAL_SUBORDINATORS)
+            || !(Self::word_in(first, document, SENTENCE_INITIAL_SUBORDINATORS)
+                || question_word_clause)
         {
             return None;
         }
@@ -316,6 +332,115 @@ impl GermanSubordinateComma {
             message: format!(
                 "Der mit »{conjunction}« eingeleitete Nebensatz endet hier. Danach steht ein Komma."
             ),
+        })
+    }
+
+    /// *Statt zu arbeiten schläft er*, *Um zu gewinnen muss man trainieren*: an infinitive
+    /// group that opens the sentence ends at its infinitive, and the main clause's verb follows.
+    fn missing_comma_after_initial_infinitive_group(
+        tokens: &[&Token],
+        document: &Document,
+    ) -> Option<Lint> {
+        let first = tokens.first()?;
+        if !Self::word_in(first, document, INFINITIVE_GROUP_OPENERS) {
+            return None;
+        }
+        // The infinitive: the word behind *zu*, or one with its *zu* inside.
+        let infinitive = (1..tokens.len()).find(|&at| {
+            let word = noun_phrase::lowercase_of(tokens[at], document);
+            has_zu_infix(&word)
+                || (at > 1 && noun_phrase::lowercase_of(tokens[at - 1], document) == "zu")
+        })?;
+        if tokens[1..infinitive]
+            .iter()
+            .any(|t| matches!(t.kind, TokenKind::Punctuation(_)))
+        {
+            return None;
+        }
+        let next = tokens.get(infinitive + 1)?;
+        let next_word = noun_phrase::lowercase_of(next, document);
+        let finite = matches!(next.kind, TokenKind::Word(_))
+            && document
+                .get_span_content(&next.span)
+                .first()
+                .is_some_and(|c| c.is_lowercase())
+            && (GermanRelativeClauseComma::is_verb_token(next, document)
+                || crate::grammar::subjects::irregular_finite_verb_lemma(&next_word).is_some())
+            && !next.kind.is_adjective()
+            && !next.kind.is_adverb()
+            && next_word != "und";
+        finite.then(|| Lint {
+            span: tokens[infinitive].span,
+            lint_kind: LintKind::Punctuation,
+            suggestions: vec![Suggestion::InsertAfter(vec![','])],
+            priority: 28,
+            message: "Die Infinitivgruppe am Satzanfang endet hier. Danach steht ein Komma."
+                .to_owned(),
+        })
+    }
+
+    /// *Ja ich komme*, *Nein das geht nicht*, *Ach so das wusste ich nicht*: an answer particle
+    /// that opens the sentence is set off by a comma.
+    fn missing_comma_after_answer_particle(tokens: &[&Token], document: &Document) -> Option<Lint> {
+        let first = tokens.first()?;
+        let first_word = noun_phrase::lowercase_of(first, document);
+        let (particle_end, after) = match first_word.as_str() {
+            "ja" | "nein" | "okay" | "ok" | "tja" => (0, 1),
+            "ach"
+                if tokens
+                    .get(1)
+                    .is_some_and(|t| noun_phrase::lowercase_of(t, document) == "so") =>
+            {
+                (1, 2)
+            }
+            _ => return None,
+        };
+        let next = tokens.get(after)?;
+        if !matches!(next.kind, TokenKind::Word(_)) {
+            return None;
+        }
+        // *Ja doch*, *Nein danke*, *Ja gerne*, *Ja klar*: the particle with its own reinforcement.
+        if Self::word_in(
+            next,
+            document,
+            &[
+                "ja",
+                "nein",
+                "doch",
+                "danke",
+                "bitte",
+                "gerne",
+                "gern",
+                "klar",
+                "genau",
+                "sicher",
+                "natürlich",
+                "wohl",
+                "schon",
+                "eben",
+                "aber",
+                "so",
+                "und",
+                "oder",
+                "mal",
+            ],
+        ) {
+            return None;
+        }
+        let is_subject_or_verb = Self::word_in(
+            next,
+            document,
+            &[
+                "ich", "du", "er", "sie", "es", "wir", "ihr", "man", "das", "der", "die", "dies",
+                "da", "dann",
+            ],
+        ) || GermanRelativeClauseComma::is_verb_token(next, document);
+        is_subject_or_verb.then(|| Lint {
+            span: tokens[particle_end].span,
+            lint_kind: LintKind::Punctuation,
+            suggestions: vec![Suggestion::InsertAfter(vec![','])],
+            priority: 28,
+            message: "Nach einer Antwortpartikel am Satzanfang steht ein Komma.".to_owned(),
         })
     }
 
@@ -1198,6 +1323,10 @@ impl Linter for GermanSubordinateComma {
             if let Some(lint) = Self::missing_comma_after_initial_clause(&tokens, document) {
                 lints.push(lint);
             }
+            lints.extend(Self::missing_comma_after_initial_infinitive_group(
+                &tokens, document,
+            ));
+            lints.extend(Self::missing_comma_after_answer_particle(&tokens, document));
             lints.extend(Self::missing_comma_before_indirect_question(
                 &tokens, document,
             ));
@@ -1444,6 +1573,35 @@ mod tests {
             "Wenn auch nur kurz, er kam.",
             "Ich komme nur wenn du kommst.",
             "Vierteilige werden wenn möglich vermieden.",
+        ] {
+            assert_eq!(lint_count(text), 0, "{text}");
+        }
+    }
+
+    #[test]
+    fn an_opening_clause_group_or_particle_needs_a_comma() {
+        for text in [
+            "Wo du bist ist mir egal.",
+            "Was du sagst stimmt nicht.",
+            "Statt zu arbeiten schläft er.",
+            "Um zu gewinnen muss man trainieren.",
+            "Ja ich komme gerne.",
+            "Nein das geht nicht.",
+            "Ach so das wusste ich nicht.",
+        ] {
+            assert_eq!(lint_count(text), 1, "{text}");
+        }
+        for text in [
+            "Wo bist du?",
+            "Was du sagst?",
+            "Wie lange dauert das?",
+            "Ja doch.",
+            "Ja gerne komme ich.",
+            "Nein danke.",
+            "Um zu gewinnen, muss man trainieren.",
+            "Statt zu arbeiten und zu lernen, schläft er.",
+            "Ja, ich komme.",
+            "Wo du bist, ist mir egal.",
         ] {
             assert_eq!(lint_count(text), 0, "{text}");
         }
