@@ -82,6 +82,35 @@ fn spelling_slips(lower: &[char]) -> Vec<Vec<char>> {
             }
         }
     }
+    // *Rückgrad*, *Standpunkd*: the final consonant written as it sounds.
+    if let Some(&last) = lower.last() {
+        let voiced = match last {
+            'd' => Some('t'),
+            't' => Some('d'),
+            'g' => Some('k'),
+            'k' => Some('g'),
+            'b' => Some('p'),
+            'p' => Some('b'),
+            _ => None,
+        };
+        if let Some(other) = voiced {
+            let mut repaired = lower.to_vec();
+            *repaired.last_mut().unwrap() = other;
+            slips.push(repaired);
+        }
+    }
+    // *Geburtstagfeier*, *Wohnungtür*: the linking *s* after an element that always takes one.
+    const TAKES_S: &[&str] = &[
+        "ung", "heit", "keit", "schaft", "tion", "tät", "ling", "tum", "tag",
+    ];
+    for at in 3..lower.len().saturating_sub(3) {
+        if !vowel(lower[at]) && lower[at] != 's' {
+            let head: String = lower[..at].iter().collect();
+            if TAKES_S.iter().any(|ending| head.ends_with(ending)) {
+                slips.push(inserted(at, 's'));
+            }
+        }
+    }
     for (at, &c) in lower.iter().enumerate().skip(1) {
         let before = lower[at - 1];
         // *Kontrole*, *Komision*: the consonant after a short vowel doubled.
@@ -241,6 +270,8 @@ mod tests {
             ("Inbesondere", "Insbesondere"),
             ("Literaur", "Literatur"),
             ("Funkion", "Funktion"),
+            ("Rückgrad", "Rückgrat"),
+            ("Geburtstagfeier", "Geburtstagsfeier"),
         ] {
             assert!(
                 near(typo).contains(&word.to_string()),

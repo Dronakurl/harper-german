@@ -8827,6 +8827,7 @@ Agamogonie/~~AFNh
 Agapanthi/~~&N
 Agapanthus/~~AMNh
 Agape/~~EFNh
+Agar/~~AHMNh
 Agar-Agar/~~AHMNh
 Agartala/~~!8H
 Agassi/~~!8H
@@ -9751,6 +9752,7 @@ Aktienanteil/~~0HMNXh
 Aktienanteile/~~&
 Aktienanteilen/~~N
 Aktiengesellschaft/~~FNYh
+Aktienkapital/~~AHNZh
 Aktienmarkt/~~0AHMNh
 Aktienmuffel/~~EHMNh
 Aktienmärkte/~~&N
@@ -11075,6 +11077,7 @@ alltagsgeschichtlich/~~JOQRSTqr
 Alltagsgewand/~~0AHNZh
 Alltagsgewänder/~~&N
 Alltagsgewändern/~~N
+Alltagsleben/~~HNZh
 Alltagsmensch/~~MNYh
 alltagspraktisch/~~JOQRSTqr
 alltagspsychologisch/~~JOQRSTqr
@@ -11189,6 +11192,7 @@ Alpendosten/~~N
 Alpenglühen/~~ANZh
 Alpenrose/~~EFNh
 Alpensee/~~EHMNh
+Alpenveilchen/~~HNZh
 Alpenverein/~~0HMNXh
 Alpenvereine/~~&
 Alpenvereinen/~~N
@@ -11226,6 +11230,9 @@ alphanumerisch/~~JOQRSTqr
 Alpharetta/~~!8H
 Alphons/~~!8H
 Alphonse/~~!8H
+Alphorn/~~0AHNZh
+Alphörner/~~&N
+Alphörnern/~~N
 Alpignano/~~!8H
 alpin/~~JOQRSTUWqr
 Alpina/~~&N
@@ -11694,7 +11701,7 @@ Amapá/~~!8H
 Amar/~~!8H
 Amara/~~!8H
 Amaral/~~!8H
-Amarant/~~0AMNZh
+Amarant/~~0AHMNZh
 Amarante/~~MNZ
 amaranten/~~JOQRSTqr
 Amaranth/~~MNZh
@@ -14087,6 +14094,9 @@ Angelologie/~~EFNh
 Angelot/~~NZh
 Angelou/~~!8H
 Angelrute/~~EFNh
+Angelschnur/~~AFNh
+Angelschnüre/~~&N
+Angelschnüren/~~N
 angelst/~~V
 angelsächsisch/~~JOQRSTUWqr
 angelt/~~V
@@ -17732,6 +17742,8 @@ anthropomorphisierter/~~J
 anthropomorphisiertes/~~J
 anthropomorphisiertest/~~Vt
 anthropomorphisiertet/~~Vt
+Anthropomorphismen/~~N
+Anthropomorphismus/~~AMNh
 Anthroponym/~~HNXZh
 Anthroponyme/~~&
 Anthroponymen/~~N
@@ -17821,8 +17833,7 @@ antiferromagnetisch/~~JOQRSTqr
 antifeudal/~~JOQRSTqr
 Antifon/~~FNYh
 Antifone/~~EFNh
-Antigen/~~HNXZh
-Antigene/~~&
+Antigen/~~HNXh
 Antigua/~~!8H
 Antiguaner/~~EHKLMNh
 Antiguanerin/~~FLNh
@@ -20350,6 +20361,7 @@ Arbeitswillige/~~EFMNh
 Arbeitswilligem/~~FMN
 Arbeitswilliger/~~&FMN
 arbeitswissenschaftlich/~~JOQRSTqr
+Arbeitswoche/~~EFNh
 arbeitswütig/~~JOQRSTqr
 Arbeitszeit/~~FNYh
 Arbeitszeitbeginn/~~0HMNXh
@@ -20729,6 +20741,8 @@ Armand/~~!8H
 Armando/~~!8H
 Armani/~~!8H
 Armatur/~~FNYh
+Armaturenbrett/~~0HNZah
+Armaturenbretter/~~&
 Armawir/~~!8H
 Armbad/~~AHNZh
 Armband/~~0AHNZh
@@ -20754,6 +20768,7 @@ Armeebefehl/~~0HMNXh
 Armeebefehle/~~&
 Armeebefehlen/~~N
 armeeeigen/~~JOQRSTqr
+Armeekorps/~~NZh
 Armeestab/~~0AHMNh
 Armeestäbe/~~&N
 Armeestäben/~~N
@@ -21435,10 +21450,6 @@ Aspisviper/~~EFNh
 Asquith/~~!8H
 ASRock/~~!8H
 Ass/~~07NXZh
-Ausdruck/~~0AHMNh
-Ausdrücke/~~&N
-Ausschluss/~~0AMNh
-Ausschlüsse/~~&N
 aß/~~Vt
 Assab/~~!8H
 assai/~~r
@@ -22300,7 +22311,7 @@ Audiphonen/~~N
 Audismen/~~N
 Audismus/~~AMNh
 audistisch/~~JOQRSTUWqr
-Audit/~~MNZh
+Audit/~~HMNZh
 Auditeur/~~HMNXh
 Auditeure/~~&
 Auditeuren/~~N
@@ -26881,6 +26892,7 @@ Augenkontakt/~~0HMNXh
 Augenkontakte/~~&
 Augenkontakten/~~N
 augenkrank/~~JOQRSTqr
+Augenkrankheit/~~FNYh
 augenleidend/~~JOQRSTqr
 Augenlicht/~~HNZah
 Augenlichter/~~&
@@ -27557,6 +27569,7 @@ ausdrosch/~~Vt
 ausdroschen/~~Vt
 ausdroschst/~~Vt
 ausdroscht/~~Vt
+Ausdruck/~~0AHMNh
 ausdrucken/~~GVcdefij
 ausdrucksarm/~~JOQRSTqr
 ausdrucksfähig/~~JOQRSTqr
@@ -27590,6 +27603,7 @@ ausdräsche/~~Vst
 ausdrösche/~~Vst
 ausdrück/~~V
 ausdrückbar/~~JOQRSTqr
+Ausdrücke/~~&N
 ausdrücken/~~GVcdefijx
 ausdrückest/~~V
 ausdrücket/~~V
@@ -30855,6 +30869,7 @@ ausschlurfest/~~V
 ausschlurfet/~~V
 ausschlurftest/~~Vt
 ausschlurftet/~~Vt
+Ausschluss/~~0AHMNh
 Ausschlussgrund/~~0AHMNh
 Ausschlussgründe/~~&N
 Ausschlussgründen/~~N
@@ -30882,6 +30897,7 @@ ausschlüpftet/~~Vt
 ausschlürfen/~~GVcdefij
 ausschlürftest/~~Vt
 ausschlürftet/~~Vt
+Ausschlüsse/~~&N
 ausschmelzen/~~Vcfij
 ausschmier/~~V
 ausschmieren/~~GVcdefijx
@@ -31309,6 +31325,7 @@ aussperrest/~~V
 aussperret/~~V
 aussperrtest/~~Vt
 aussperrtet/~~Vt
+Aussperrung/~~FNYh
 ausspie/~~Vt
 ausspiel/~~V
 ausspielen/~~GVcdefij
@@ -33263,6 +33280,7 @@ autosemantisch/~~JOQRSTqr
 Autoservice/~~HMNbh
 Autosilo/~~HMNZbh
 Autostopperin/~~FLNh
+Autosuggestion/~~FNYh
 autosuggestiv/~~JOQRSTqr
 Autotaxen/~~N
 Autotaxi/~~HNZbh
@@ -33492,6 +33510,7 @@ Axishirschen/~~N
 Axminsterteppich/~~HMNXh
 Axminsterteppiche/~~&
 Axminsterteppichen/~~N
+Axone/~~&N
 Axonometrie/~~EFNh
 axonometrisch/~~JOQRSTqr
 Axt/~~AFNh
@@ -33749,6 +33768,7 @@ Backenbeine/~~&
 Backenbeinen/~~N
 backenbärtig/~~JOQRSTqr
 Backend/~~HNZbh
+Backenknochen/~~HMNh
 Backenstreich/~~0HMNXh
 Backenstreiche/~~&
 Backenstreichen/~~N
@@ -39942,6 +39962,9 @@ beiwohnet/~~V
 beiwohntest/~~Vt
 beiwohntet/~~Vt
 Beiwohnung/~~FNYh
+Beiwort/~~0AHNZh
+Beiwörter/~~&N
+Beiwörtern/~~N
 Beizapparat/~~0HMNXh
 Beizapparate/~~&
 Beizapparaten/~~N
@@ -46470,6 +46493,7 @@ Beutegütern/~~N
 Beutekunst/~~AFNh
 Beutel/~~EHMNh
 beutele/~~V
+Beutelmeise/~~EFNh
 Beutelmull/~~MNXh
 Beutelmulle/~~&
 beuteln/~~GVcdefij
@@ -46935,6 +46959,7 @@ Beweisgründen/~~N
 Beweisgänge/~~&N
 Beweisgängen/~~N
 beweiskräftig/~~JOQRSTUWqr
+Beweislast/~~FNYh
 Beweismittel/~~EHNZh
 beweispflichtig/~~JOQRSTqr
 bewend/~~V
@@ -47656,7 +47681,7 @@ BGBl./~~NZh
 BGH-Urteil/~~HNXZh
 BGH-Urteile/~~&
 BGH-Urteilen/~~N
-BH/~~!MNh
+BH/~~!HMNh
 BH-Bügel/~~EHMNh
 Bhaduri/~~!8H
 Bhagalpur/~~!8H
@@ -48159,7 +48184,9 @@ Bildgüte/~~EFNh
 bildhaft/~~JOQRSTUWqr
 Bildhaftigkeit/~~FNYh
 Bildhauer/~~EHKLMNh
+Bildhauerei/~~FNYh
 bildhauerisch/~~JOQRSTUWqr
+Bildhauerkunst/~~AFNh
 bildhübsch/~~JOQRSTUWqr
 Bildhübsche/~~FMNZ
 Bildhübschem/~~MNZ
@@ -48759,6 +48786,9 @@ Birkenhead/~~!8H
 Birkenpech/~~0NXZh
 Birkenpeche/~~&
 Birkenpechen/~~N
+Birkenpilz/~~0NXh
+Birkenpilze/~~&
+Birkenpilzen/~~N
 Birkenreis/~~0Nah
 Birkenreiser/~~&
 Birkenteer/~~0MNXh
@@ -50034,6 +50064,7 @@ Blutalkoholgehalte/~~&
 Blutalkoholgehalten/~~N
 Blutandrang/~~0AHMNh
 blutarm/~~JOQRSTUWqr
+Blutarmut/~~AFNh
 Blutbach/~~0AHMNh
 Blutbad/~~AHNZh
 Blutbank/~~FNYh
@@ -50089,6 +50120,8 @@ Blutgeschwüre/~~&
 Blutgeschwüren/~~N
 blutgetränkt/~~JOQRSTqr
 blutgierig/~~JOQRSTUWqr
+Bluthochdruck/~~0AHMNh
+Bluthochdrucke/~~MN
 Bluthund/~~0HMNXh
 Bluthunde/~~&
 Bluthunden/~~N
@@ -50200,6 +50233,7 @@ blutwenig/~~JOQRSTqr
 Blutwurst/~~AFNh
 Blutwürste/~~&N
 Blutwürsten/~~N
+Blutzeuge/~~EMNh
 Blutzuckergehalt/~~NZh
 blutüberströmt/~~JOQRSTqr
 Blyth/~~!8H
@@ -53250,6 +53284,9 @@ Brustkind/~~0HNZah
 Brustkinder/~~&
 Brustkorb/~~0AHMNh
 brustkrank/~~JOQRSTqr
+Brustkrebs/~~0MNXh
+Brustkrebse/~~&
+Brustkrebsen/~~N
 Brustkörbe/~~&N
 Brustkörben/~~N
 Brustlatz/~~0MNXh
@@ -53811,6 +53848,9 @@ buckelte/~~V
 buckelten/~~V
 buckeltest/~~Vt
 buckeltet/~~Vt
+Buckelwal/~~0HMNXh
+Buckelwale/~~&
+Buckelwalen/~~N
 Bucketlist/~~FNbh
 Bucketliste/~~EFNh
 Buckeye/~~!8H
@@ -53949,7 +53989,7 @@ Buhlschaft/~~FNYh
 buhltest/~~Vt
 buhltet/~~Vt
 Buhne/~~EFNh
-Buhruf/~~0MNXh
+Buhruf/~~0HMNXh
 Buhrufe/~~&
 Buhrufen/~~N
 buhst/~~V
@@ -57461,6 +57501,9 @@ Christensen/~~!8H
 Christentum/~~0AHNZh
 ChristenUnie/~~!8H
 Christer/~~!8H
+Christfest/~~0HNXZh
+Christfeste/~~&
+Christfesten/~~N
 Christgeschenk/~~0HNXZh
 Christgeschenke/~~&
 Christgeschenken/~~N
@@ -61590,6 +61633,7 @@ deaktivierter/~~J
 deaktiviertes/~~J
 deaktiviertest/~~Vt
 deaktiviertet/~~Vt
+Deaktivierung/~~FNYh
 Deakzentuierung/~~FNYh
 Deal/~~07HMNbh
 dealen/~~GVcdefij
@@ -63387,6 +63431,7 @@ demoralisiertest/~~Vt
 demoralisiertet/~~Vt
 Demoralisierung/~~FNYh
 Demoskop/~~MNYh
+Demoskopie/~~EFNh
 demoskopisch/~~JOQRSTqr
 Demotisch/~~AHNZh
 demotisch/~~JOQRSTqr
@@ -66536,7 +66581,7 @@ Dioxyd/~~0HNXZh
 Dioxyde/~~&N
 Dioxyden/~~N
 Dioxyds/~~NZ
-Dip/~~HMNbh
+Dip/~~07HMNbh
 DIP-Schalter/~~EHMNh
 Dipeptidase/~~EFNh
 Diphtherie/~~EFNh
@@ -66732,7 +66777,7 @@ Dirks/~~!8H
 Dirn/~~FNYh
 Dirnchen/~~HNZh
 Dirndel/~~NZh
-Dirndl/~~AHNZh
+Dirndl/~~07AHNZh
 Dirne/~~EFNh
 Dirnlein/~~HNZh
 Dirschau/~~!8H
@@ -67692,6 +67737,7 @@ dogmatisiertet/~~Vt
 Dogmatisierung/~~FNYh
 Dogmatismus/~~AMNh
 dogmatistisch/~~JOQRSTqr
+Dogmen/~~N
 Dogmengeschichte/~~EFNh
 dogmengeschichtlich/~~JOQRSTqr
 Dogmenstreit/~~MNh
@@ -68575,7 +68621,7 @@ downgraden/~~GVcdefij
 downgradetest/~~Vt
 downgradetet/~~Vt
 Downing/~~!8H
-Download/~~MNZh
+Download/~~HMNZh
 Download-Link/~~HMNbh
 downloadbar/~~JOQRSTUWqr
 downloaden/~~GVcdefijx
@@ -69261,6 +69307,9 @@ Dreiklang/~~0AHMNh
 Dreiklänge/~~&N
 Dreiklängen/~~N
 Dreikäsehoch/~~HMNbh
+Dreikönigsfest/~~0HNXZh
+Dreikönigsfeste/~~&
+Dreikönigsfesten/~~N
 Dreikönigstag/~~HMNXh
 Dreikönigstage/~~&
 Dreikönigstagen/~~N
@@ -70208,6 +70257,7 @@ Dudek/~~!8H
 dudel/~~*
 dudeln/~~GVcdefij
 Dudelsack/~~0AHMNh
+Dudelsackpfeifer/~~EHMNh
 Dudelsäcke/~~&N
 Dudelsäcken/~~N
 dudeltest/~~Vt
@@ -77006,6 +77056,7 @@ Eheskandalen/~~N
 ehest/~~r
 Ehestand/~~0AHMNh
 Ehestande/~~MN
+ehesten/~~r
 ehestens/~~r
 Ehesteuer/~~EFNh
 ehestmöglich/~~JOQRSTqr
@@ -83124,6 +83175,9 @@ Eisenbahnviadukte/~~&
 Eisenbahnviadukten/~~N
 Eisenbahnwagen/~~AHMNh
 Eisenbahnwerkstätten/~~Nh
+Eisenbahnzug/~~0AHMNh
+Eisenbahnzüge/~~&N
+Eisenbahnzügen/~~N
 Eisenband/~~0AHNZh
 Eisenberg/~~!8H
 Eisenbeschlag/~~0AHMNh
@@ -83242,13 +83296,16 @@ eiset/~~V
 Eisfeld/~~0HNZah
 Eisfelder/~~&
 eisfrei/~~JOQRSTUWqr
+Eisfuchs/~~0AMNh
+Eisfüchse/~~&N
+Eisfüchsen/~~N
 Eisgang/~~0AHMNh
 eisgekühlt/~~JOQRSTUWqr
 eisglatt/~~JOQRSTqr
 eisgrau/~~JOQRSTUWqr
 Eisgänge/~~&N
 Eisgängen/~~N
-Eishai/~~0MNXh
+Eishai/~~0HMNXh
 Eishaie/~~&
 Eishaien/~~N
 Eisheilige/~~EFMNh
@@ -83933,6 +83990,9 @@ Elektronenbeschüssen/~~N
 Elektronenhirn/~~0NXZh
 Elektronenhirne/~~&
 Elektronenhirnen/~~N
+Elektronenmikroskop/~~HNXZh
+Elektronenmikroskope/~~&
+Elektronenmikroskopen/~~N
 elektronenmikroskopisch/~~JOQRSTqr
 elektronenoptisch/~~JOQRSTqr
 Elektronenstrom/~~0AHMNh
@@ -84244,6 +84304,7 @@ Ellbogenrecht/~~NZh
 Ellbogenstütze/~~FNh
 Ellbogentaktik/~~FNh
 Elle/~~EFNh
+Ellenbogen/~~HMNh
 Ellenbogengelenk/~~0NXZh
 Ellenbogengelenke/~~&
 Ellenbogengelenken/~~N
@@ -95946,6 +96007,7 @@ erzog/~~Vst
 erzogen/~~OQRSTVg
 erzogst/~~V
 erzogt/~~V
+Erzpriester/~~EHMNh
 erzreaktionär/~~JOQRSTqr
 erzreich/~~JOQRSTqr
 Erzschalk/~~0HMNXh
@@ -96395,6 +96457,7 @@ Eszter/~~!8H
 Esztergom/~~!8H
 et/~~6
 Et-Zeichen/~~HNZh
+Eta/~~NZbh
 etablier/~~V
 etablieren/~~GVcdefijx
 etablierest/~~V
@@ -96413,7 +96476,6 @@ Etage/~~EFNh
 etagenförmig/~~JOQRSTqr
 Etagere/~~EFNh
 Etamin/~~MNZh
-Etamine/~~FNh
 Etappe/~~EFNh
 Etappendienst/~~0HMNXh
 Etappendienste/~~&
@@ -97755,6 +97817,8 @@ existenzial/~~JOQRSTqr
 Existenzialist/~~MNYh
 existenzialistisch/~~JOQRSTqr
 existenziell/~~JOQRSTqr
+Existenzminima/~~&N
+Existenzminimum/~~AHNZh
 existenzphilosophisch/~~JOQRSTqr
 existenzsichernd/~~JOQRSTqr
 Existenzweise/~~EFNh
@@ -103646,6 +103710,7 @@ filmhistorisch/~~JOQRSTqr
 filmisch/~~JOQRSTUWqr
 Filmkamera/~~FNbh
 Filmkitsch/~~0AHNh
+Filmmusik/~~FNYh
 filmogen/~~JOQRSTqr
 Filmografie/~~EFNh
 Filmographie/~~EFNh
@@ -108643,6 +108708,9 @@ Frauenmünder/~~&N
 Frauenmündern/~~N
 frauenpolitisch/~~JOQRSTqr
 Frauenrat/~~0AHMNh
+Frauenrecht/~~0HNXZh
+Frauenrechte/~~&
+Frauenrechten/~~N
 Frauenrechtler/~~EHKLMNh
 Frauenrechtlerin/~~FLNh
 frauenrechtlerisch/~~JOQRSTqr
@@ -108677,6 +108745,7 @@ Frauenvereinen/~~N
 Frauenwart/~~0HMNXh
 Frauenwarte/~~&
 Frauenwarten/~~N
+Frauenzeitschrift/~~FNYh
 Frauenzimmer/~~EHNZh
 frauenärztlich/~~JOQRSTqr
 Frauke/~~!8H
@@ -109794,6 +109863,7 @@ Friedensräten/~~N
 Friedensstifter/~~EHMNh
 Friedenstifter/~~EHMNh
 friedenstüchtig/~~JOQRSTqr
+Friedensverhandlung/~~FNYh
 Friedensvertrag/~~AHMNh
 friedensvertraglich/~~JOQRSTqr
 Friedensverträge/~~&N
@@ -110637,6 +110707,7 @@ Fuchsfell/~~0HNXZh
 Fuchsfelle/~~&
 Fuchsfellen/~~N
 Fuchsie/~~EFNh
+Fuchsjagd/~~FNYh
 Fuchsloch/~~AHNZh
 Fuchslöcher/~~&N
 Fuchslöchern/~~N
@@ -111355,6 +111426,7 @@ Fußriste/~~&
 Fußristen/~~N
 Fußrücken/~~HMNh
 Fußschemel/~~EHMNh
+Fußsohle/~~EFNh
 fußt/~~V
 fußte/~~V
 fußten/~~V
@@ -113324,6 +113396,7 @@ Gastfreundlichem/~~MNZ
 Gastfreundlichen/~~N
 Gastfreundlicher/~~FMN
 Gastfreundliches/~~NZ
+Gastfreundlichkeit/~~FNYh
 Gastfreundschaft/~~FNYh
 gastgebend/~~JOQRSTqr
 Gastgeber/~~EHKLMNh
@@ -114230,7 +114303,12 @@ Geburtsgewichten/~~N
 Geburtshelfer/~~EHKLMNh
 Geburtshelferin/~~FLNh
 geburtshilflich/~~JOQRSTqr
-Geburtsortprinzip/~~NZh
+Geburtsjahr/~~HNXZh
+Geburtsjahre/~~&
+Geburtsjahren/~~N
+Geburtsort/~~0HMNXh
+Geburtsorte/~~&
+Geburtsorten/~~N
 Geburtsschock/~~0HMNXbh
 Geburtsschocke/~~&
 Geburtsschocken/~~N
@@ -115887,6 +115965,7 @@ gegenüberstellter/~~J
 gegenüberstelltes/~~J
 gegenüberstelltest/~~Vt
 gegenüberstelltet/~~Vt
+Gegenüberstellung/~~FNYh
 gegenübertreten/~~GVcfij
 gegenüberzuliegen/~~V
 gegenüberzusehen/~~V
@@ -120875,6 +120954,7 @@ Geschäftsquartal/~~0HNXZh
 Geschäftsquartale/~~&
 Geschäftsquartalen/~~N
 Geschäftsraum/~~0AHMNh
+Geschäftsreise/~~EFNh
 Geschäftsräume/~~&N
 Geschäftsräumen/~~N
 Geschäftsrückgang/~~0HMNXh
@@ -121021,6 +121101,7 @@ geselltes/~~J
 geselltest/~~Vt
 geselltet/~~Vt
 gesemmelt/~~OQRSTVg
+gesendet/~~OQRSTVg
 gesengt/~~OQRSTVg
 Gesenk/~~0HNXZh
 Gesenke/~~&EHNZh
@@ -122217,6 +122298,7 @@ geurformt/~~OQRSTVg
 geurkundet/~~OQRSTVg
 geurlaubt/~~OQRSTVg
 geurscht/~~OQRSTVg
+geursendet/~~OQRSTVg
 geurteilt/~~OQRSTVg
 Geuse/~~EMNh
 geuzt/~~OQRSTVg
@@ -122436,6 +122518,7 @@ gewellnesst/~~OQRSTVg
 gewellt/~~OQRSTVg
 Gewende/~~EHNZh
 gewendelt/~~JOQRSTVgqr
+gewendet/~~OQRSTVg
 Gewerbe/~~EHNZh
 Gewerbeabfall/~~0AHMNh
 Gewerbeabfälle/~~&N
@@ -124979,6 +125062,7 @@ goldgierig/~~JOQRSTqr
 goldglänzend/~~JOQRSTqr
 Goldgrube/~~EFNh
 Goldgrund/~~0AHMNh
+Goldgräber/~~EHMNh
 Goldgräberei/~~FNh
 goldgrün/~~JOQRSTUWqr
 Goldgründe/~~&N
@@ -125287,6 +125371,9 @@ Gottessohnschaft/~~FNYh
 Gottestisch/~~0HMNXh
 Gottestische/~~&
 Gottestischen/~~N
+Gottesurteil/~~HNXZh
+Gottesurteile/~~&
+Gottesurteilen/~~N
 Gottesäcker/~~&N
 Gottesäckern/~~N
 Gottfried/~~HMNb
@@ -126677,10 +126764,14 @@ Großglockner/~~!8H
 Großheit/~~FNYh
 großherzig/~~JOQRSTqr
 Großherzigkeit/~~FNYh
+Großherzog/~~AHMNh
 großherzoglich/~~JOQRSTqr
+Großherzöge/~~&N
+Großherzögen/~~N
 Großhirn/~~0HNXZh
 Großhirne/~~&
 Großhirnen/~~N
+Großhändler/~~EHMNh
 großindustriell/~~JOQRSTqr
 Grossist/~~MNYh
 großjährig/~~JOQRSTqr
@@ -129964,6 +130055,7 @@ handgestrickt/~~JOQRSTqr
 handgesäumt/~~JOQRSTqr
 handgewebt/~~JOQRSTqr
 handgezwirnt/~~JOQRSTqr
+Handgranate/~~EFNh
 handgreiflich/~~JOQRSTUWqr
 Handgreiflichkeit/~~FNYh
 Handgriff/~~0HMNXh
@@ -130415,6 +130507,7 @@ Harem/~~HMNbh
 Harfe/~~EFNh
 Harfenist/~~KLMNYh
 Harfenistin/~~FLNh
+Harfenspieler/~~EHKLMNh
 Harfner/~~EHMNh
 Hargeysa/~~!8H
 Hargreaves/~~!8H
@@ -131790,6 +131883,7 @@ Heidelbeere/~~EFNh
 Heidelbeerkraut/~~0AHNZh
 Heidelberg/~~AHNZ
 Heidelberger/~~JOQRSTqr
+Heidelerche/~~EFNh
 Heidemann/~~!8H
 Heidemarie/~~!8H
 Heidemoor/~~0HNXZh
@@ -132700,6 +132794,7 @@ Hellmuth/~~!8H
 hellrosa/~~JOQRSTqr
 hellrot/~~JOQRSTqr
 hellsehen/~~GVcdefij
+Hellseher/~~EHKLMNh
 Hellseherei/~~FNYh
 hellseherisch/~~JOQRSTqr
 hellsichtig/~~JOQRSTqr
@@ -140915,6 +141010,7 @@ Herzanfällen/~~N
 herzbefreiend/~~JOQRSTqr
 herzbeklemmend/~~JOQRSTqr
 Herzbeschwerden/~~Nh
+Herzbeutel/~~EHMNh
 herzbewegend/~~JOQRSTqr
 Herzblatt/~~AHNZh
 Herzblätter/~~&N
@@ -145156,7 +145252,7 @@ hinbiet/~~%V
 hinbieten/~~GVcfij
 hinbin/~~V
 hinbist/~~V
-Hinblick/~~0HMNXh
+Hinblick/~~AHMNh
 hinblicken/~~GVcdefij
 hinblicktest/~~Vt
 hinblicktet/~~Vt
@@ -157250,6 +157346,8 @@ imperforabel/~~JOQRSTqr
 Imperforation/~~FNYh
 Imperia/~~!8H
 imperial/~~JOQRSTqr
+Imperialismen/~~N
+Imperialismus/~~AMNh
 Imperialist/~~MNYh
 imperialistisch/~~JOQRSTUWqr
 Imperien/~~N
@@ -157441,6 +157539,7 @@ Impresario/~~AHMNh
 Impressen/~~N
 Impression/~~FNYh
 impressionabel/~~JOQRSTUWqr
+Impressionismus/~~AMNh
 Impressionist/~~MNYh
 impressionistisch/~~JOQRSTqr
 Impressum/~~AHNZh
@@ -159546,6 +159645,7 @@ Instrumentalist/~~KLMNYh
 Instrumentalistin/~~FLNh
 instrumentalistisch/~~JOQRSTqr
 Instrumentalität/~~FNYh
+Instrumentalmusik/~~FNYh
 Instrumentar/~~NZh
 Instrumentarien/~~N
 instrumentarisieren/~~GVcdefijx
@@ -161054,6 +161154,7 @@ irradiiertest/~~Vt
 irradiiertet/~~Vt
 irrational/~~JOQRSTqr
 irrationalistisch/~~JOQRSTqr
+Irrationalität/~~AFNh
 irrationell/~~JOQRSTqr
 Irrawaddy/~~!8H
 irre/~~JOQRSTUVWqr
@@ -163098,6 +163199,7 @@ Jugendlichkeit/~~FNYh
 Jugendlichkeitswahn/~~0AHMNh
 Jugendlied/~~0HNZah
 Jugendlieder/~~&
+Jugendliteratur/~~FNYh
 Jugendnotdienst/~~0HMNXh
 Jugendnotdienste/~~&
 Jugendnotdiensten/~~N
@@ -164614,6 +164716,7 @@ Kamillianer/~~EHMNh
 Kamin/~~HMNXh
 Kamine/~~&
 Kaminen/~~N
+Kaminfeger/~~EHMNh
 kaminieren/~~GVcdefijx
 kaminierest/~~V
 kaminieret/~~V
@@ -164654,6 +164757,7 @@ Kammerer/~~!8H
 Kammergericht/~~0HNXZh
 Kammergerichte/~~&
 Kammergerichten/~~N
+Kammerherr/~~EMNYh
 Kammerjungfer/~~EFNh
 Kammerjäger/~~EHMNh
 kammerle/~~V
@@ -166189,6 +166293,9 @@ Kartoffelkäferbefall/~~0AHMNh
 Kartoffelkäferbefälle/~~&N
 Kartoffelkäferbefällen/~~N
 Kartoffellegemaschine/~~EFNh
+Kartoffelmehl/~~0HNXZh
+Kartoffelmehle/~~&
+Kartoffelmehlen/~~N
 Kartoffelmus/~~0NXZh
 Kartoffelmuse/~~&
 Kartoffelmusen/~~N
@@ -168413,6 +168520,7 @@ Kindergottesdiensten/~~N
 Kindergärten/~~N
 Kindergärtnerin/~~FLNh
 Kinderhand/~~AFNh
+Kinderheilkunde/~~AFNh
 Kinderhort/~~0HMNXh
 Kinderhorte/~~&
 Kinderhorten/~~N
@@ -168450,6 +168558,7 @@ Kinderlosen/~~N
 Kinderloser/~~FMN
 Kinderloses/~~NZ
 Kinderlosigkeit/~~FNYh
+Kinderlähmung/~~FNYh
 Kinderlätze/~~&N
 Kinderlätzen/~~N
 Kindermann/~~!8H
@@ -168493,6 +168602,9 @@ Kinderschutzbünde/~~&N
 Kinderschutzbünden/~~N
 Kindersex/~~0AMNh
 kindersicher/~~JOQRSTqr
+Kindersitz/~~0MNXh
+Kindersitze/~~&
+Kindersitzen/~~N
 Kinderskilift/~~0HMNXh
 Kinderskilifte/~~&
 Kinderskiliften/~~N
@@ -168508,6 +168620,7 @@ Kinderspitäler/~~&N
 Kinderspitälern/~~N
 Kindersportwagen/~~HMNh
 Kindersportwägen/~~N
+Kindersprache/~~EFNh
 Kinderstrumpf/~~0AHMNh
 Kinderstrümpfe/~~&N
 Kinderstrümpfen/~~N
@@ -169675,7 +169788,7 @@ klebet/~~V
 Klebeverband/~~0AHMNh
 Klebeverbände/~~&N
 Klebeverbänden/~~N
-Klebezettel/~~MNh
+Klebezettel/~~HMNh
 Klebharz/~~NZh
 Klebkraut/~~HNZh
 Klebmittel/~~HNZh
@@ -175167,6 +175280,7 @@ konzertiertest/~~Vt
 konzertiertet/~~Vt
 Konzertierung/~~FNYh
 Konzertina/~~FNbh
+Konzertmeister/~~EHKLMNh
 konzertmäßig/~~JOQRSTqr
 Konzertplakat/~~0HNXZh
 Konzertplakate/~~&
@@ -175286,6 +175400,9 @@ kooptiertest/~~Vt
 kooptiertet/~~Vt
 Kooptierung/~~FNYh
 Koordinate/~~EFNh
+Koordinatensystem/~~HNXZh
+Koordinatensysteme/~~&
+Koordinatensystemen/~~N
 Koordination/~~FNYh
 Koordinator/~~HKLMNYh
 Koordinatorin/~~FLNh
@@ -176408,7 +176525,7 @@ Krailen/~~N
 Krain/~~AHNZ
 Krainburg/~~NZ
 Krakau/~~AHNZ
-Krake/~~FMNh
+Krake/~~EFHMNh
 Krakeel/~~AHMNh
 krakeele/~~V
 krakeelen/~~GVcdefij
@@ -176568,6 +176685,7 @@ Krankenhäusern/~~N
 Krankenkasse/~~EFNh
 Krankenlager/~~EHNZh
 Krankenmobilien/~~Nh
+Krankenpflege/~~AFNh
 Krankenpfleger/~~EHKLMNh
 Krankenpflegerin/~~FLNh
 Krankenschwester/~~EFNh
@@ -177462,7 +177580,7 @@ Kriekente/~~FNh
 Kriens/~~!8H
 Krifteler/~~JOQRSTqr
 Krikotomie/~~EFNh
-Krill/~~0AHMNZh
+Krill/~~07AHMNZh
 Krim/~~!8H
 Krimgebirge/~~!8H
 Krimi/~~HMNbh
@@ -178502,6 +178620,7 @@ Kuhdung/~~AHMNh
 Kuhfuß/~~0AMNh
 Kuhfüße/~~&N
 Kuhfüßen/~~N
+Kuhglocke/~~EFNh
 kuhhandeln/~~GVcdefij
 kuhhandeltest/~~Vt
 kuhhandeltet/~~Vt
@@ -178910,6 +179029,7 @@ kunstempfänglich/~~JOQRSTqr
 Kunsterziehung/~~FNYh
 kunstfeindlich/~~JOQRSTqr
 kunstfertig/~~JOQRSTUWqr
+Kunstform/~~FNYh
 kunstfremd/~~JOQRSTqr
 Kunstfreund/~~0HMNXh
 Kunstfreunde/~~&
@@ -179010,6 +179130,7 @@ kunstvoll/~~JOQRSTUWqr
 Kunstwerk/~~0HNXZh
 Kunstwerke/~~&
 Kunstwerken/~~N
+Kunstwissenschaft/~~FNYh
 kunstwissenschaftlich/~~JOQRSTqr
 Kunstämter/~~&N
 Kunstämtern/~~N
@@ -179623,7 +179744,7 @@ Kwame/~~!8H
 Kwango/~~!8H
 Kwara/~~!8H
 Kwarazchelia/~~!8H
-Kwass/~~AMNh
+Kwass/~~7AMNh
 KwaZulu-Natal/~~!8H
 Kwaśniewski/~~!8H
 kWh/~~2
@@ -181368,6 +181489,7 @@ Landesvereinen/~~N
 Landesvergleich/~~0HMNXh
 Landesvergleiche/~~&
 Landesvergleichen/~~N
+Landesverrat/~~AHMNh
 landesverräterisch/~~JOQRSTqr
 landesverwiesen/~~JOQRSTqr
 Landesväter/~~&N
@@ -182773,6 +182895,7 @@ lebensverlängernd/~~JOQRSTqr
 Lebensverläufe/~~&N
 Lebensverläufen/~~N
 lebensverneinend/~~JOQRSTqr
+Lebensversicherung/~~FNYh
 lebensvoll/~~JOQRSTUWqr
 Lebensvorgang/~~0AHMNh
 Lebensvorgänge/~~&N
@@ -182813,6 +182936,7 @@ Lebenszyklus-Analyse/~~FNh
 lebensüberdrüssig/~~JOQRSTqr
 lebenzerstörend/~~JOQRSTqr
 Leber/~~EFNh
+Leberblümchen/~~HNZh
 Leberecht/~~!8H
 Leberfleck/~~HMNXh
 Leberflecke/~~&
@@ -185745,6 +185869,7 @@ Literaturabschnitten/~~N
 literaturbegeistert/~~JOQRSTqr
 Literaturerbe/~~AHNZh
 literaturfähig/~~JOQRSTqr
+Literaturgeschichte/~~EFNh
 literaturgeschichtlich/~~JOQRSTqr
 literaturhistorisch/~~JOQRSTqr
 literaturkritisch/~~JOQRSTqr
@@ -188013,6 +188138,7 @@ Lumpenhund/~~0HMNXh
 Lumpenhunde/~~&
 Lumpenhunden/~~N
 Lumpenpack/~~AHNZh
+Lumpensammler/~~EHKLMNh
 Lumperei/~~FNYh
 lumpest/~~V
 lumpet/~~V
@@ -188229,7 +188355,7 @@ luvtest/~~Vt
 luvtet/~~Vt
 Luvua/~~!8H
 luvwärts/~~r
-Lux/~~NZh
+Lux/~~7NZh
 lux/~~3
 Luxation/~~FNYh
 Luxembourg/~~!8H
@@ -188846,7 +188972,7 @@ lösest/~~V
 löset/~~V
 löslich/~~JOQRSTUWqr
 Löslichkeit/~~FNYh
-Löss/~~0MNXh
+Löss/~~07MNXh
 Lößablagerung/~~FNYh
 Lößboden/~~MNh
 Lößdecke/~~ENh
@@ -191379,6 +191505,9 @@ Maschinenelementen/~~N
 maschinengeklöppelt/~~JOQRSTqr
 maschinengeschrieben/~~JOQRSTqr
 maschinengestrickt/~~JOQRSTqr
+Maschinengewehr/~~HNXZh
+Maschinengewehre/~~&
+Maschinengewehren/~~N
 Maschinenkode/~~HMNbh
 Maschinenkunde/~~AFNh
 maschinenlesbar/~~JOQRSTqr
@@ -191513,6 +191642,7 @@ masselos/~~JOQRSTUWqr
 Massemaß/~~0NXZh
 Massemaße/~~&
 Massemaßen/~~N
+Massemmediums/~~NZ
 Maßen/~~N
 maßen/~~6V
 Massenabfütterung/~~FNYh
@@ -191539,6 +191669,8 @@ Massenimporte/~~&
 Massenimporten/~~N
 massenkompatibel/~~JOQRSTqr
 massenmedial/~~JOQRSTqr
+Massenmedien/~~N
+Massenmedium/~~ANZh
 Massenmord/~~HMNXh
 Massenmorde/~~&
 Massenmorden/~~N
@@ -192907,6 +193039,9 @@ Meerrettichen/~~N
 Meersalat/~~0HMNXh
 Meersalate/~~&
 Meersalaten/~~N
+Meersalz/~~0NXZh
+Meersalze/~~&
+Meersalzen/~~N
 Meerschaum/~~0AHMNh
 Meerschwein/~~HNXZh
 Meerschweinchen/~~HNZh
@@ -194033,6 +194168,7 @@ Messerstichen/~~N
 Messerverbot/~~0HNXZh
 Messerverbote/~~&
 Messerverboten/~~N
+Messerwerfer/~~EHMNh
 Messeservice/~~HMNbh
 messest/~~V
 messet/~~V
@@ -195073,6 +195209,7 @@ Militärkabinette/~~&
 Militärkabinetten/~~N
 Militärkamarilla/~~FNbh
 Militärkamarillen/~~N
+Militärmusik/~~FNYh
 Militärnachrichtendienst/~~0HMNXh
 Militärnachrichtendienste/~~&
 Militärnachrichtendiensten/~~N
@@ -197224,7 +197361,10 @@ Mittelwegen/~~N
 Mittelwertvergleich/~~0HMNXh
 Mittelwertvergleiche/~~&
 Mittelwertvergleichen/~~N
+Mittelwort/~~AHNZh
 Mittelwägen/~~N
+Mittelwörter/~~&N
+Mittelwörtern/~~N
 mittelwüchsig/~~JOQRSTqr
 Mittelägypten/~~!8H
 Mittelöl/~~0NXZh
@@ -205925,6 +206065,7 @@ Neuromen/~~N
 neuromuskulär/~~JOQRSTqr
 Neuron/~~AHNZh
 neuronal/~~JOQRSTqr
+Neuronen/~~N
 Neuropath/~~MNYh
 Neuropathie/~~EFNh
 neuropathisch/~~JOQRSTqr
@@ -213200,6 +213341,7 @@ Paradiesäpfel/~~&N
 Paradiesäpfeln/~~N
 Paradigma/~~AHNZh
 paradigmatisch/~~JOQRSTqr
+Paradigmen/~~N
 Paradigmenwechsel/~~EHMNh
 Paradis/~~!8H
 Paradise/~~!8H
@@ -213902,6 +214044,7 @@ partiertes/~~J
 partiertest/~~Vt
 partiertet/~~Vt
 partieweise/~~r
+Partikel/~~EFHNh
 Partikel-Probenahmeleitung/~~FNYh
 Partikeldetektor/~~HMNYh
 Partikelfilter/~~MNZh
@@ -216821,6 +216964,7 @@ pflanzenhaft/~~JOQRSTqr
 Pflanzenharz/~~0NXZh
 Pflanzenharze/~~&
 Pflanzenharzen/~~N
+Pflanzenkrankheit/~~FNYh
 Pflanzenkunde/~~AFNh
 Pflanzenlexika/~~&N
 Pflanzenlexiken/~~N
@@ -220766,6 +220910,7 @@ porzellanen/~~JOQRSTqr
 Porzellangeschirr/~~0HNXZh
 Porzellangeschirre/~~&
 Porzellangeschirren/~~N
+Porzellanmanufaktur/~~FNYh
 Porzellanschild/~~0HNZah
 Porzellanschilder/~~&
 Porzellanservice/~~EHNZh
@@ -229099,6 +229244,7 @@ Rechtschreibereform/~~FNh
 Rechtschreibfehler/~~EHMNh
 Rechtschreibkontrolle/~~EFNh
 rechtschreiblich/~~JOQRSTqr
+Rechtschreibprüfung/~~FNYh
 Rechtschreibrat/~~AHMNh
 Rechtschreibreform/~~FNYh
 Rechtschreibregel/~~EFNh
@@ -232856,6 +233002,7 @@ Restaurantwägen/~~N
 Restaurateur/~~HMNXh
 Restaurateure/~~&
 Restaurateuren/~~N
+Restauration/~~FNYh
 Restaurationsarbeit/~~FNYh
 Restaurationsbetrieb/~~0HMNXh
 Restaurationsbetriebe/~~&
@@ -251344,6 +251491,7 @@ setzte/~~V
 setzten/~~V
 setztest/~~Vt
 setztet/~~Vt
+Setzung/~~FNYh
 Setzungsfuge/~~EFNh
 Setúbal/~~!8H
 Seuche/~~EFNh
@@ -255889,6 +256037,7 @@ Spektakulum/~~AHNZh
 spektakulär/~~JOQRSTUWqr
 spektakulös/~~JOQRSTqr
 Spektator/~~HMNYh
+Spektra/~~&N
 spektral/~~JOQRSTqr
 spektralanalytisch/~~JOQRSTqr
 Spektralapparat/~~0HMNXh
@@ -272846,6 +272995,7 @@ Traulichkeit/~~FNYh
 Traum/~~07AHMNh
 Trauma/~~AHNZh
 traumartig/~~JOQRSTqr
+Traumata/~~&N
 Traumatin/~~AHNZh
 traumatisch/~~JOQRSTUWqr
 traumatisieren/~~GVcdefijx
@@ -272863,6 +273013,7 @@ Traumatisierung/~~FNYh
 Traumatologie/~~AFNh
 traumatologisch/~~JOQRSTqr
 Traumbann/~~0AHMNh
+Traumen/~~N
 traumgewandelt/~~OQRSTVg
 traumhaft/~~JOQRSTUWqr
 Trauminet/~~HMNbh
@@ -306744,8 +306895,7 @@ Vorwitzigen/~~N
 Vorwitziger/~~FMN
 Vorwitziges/~~NZ
 vorwog/~~Vst
-Vorwort/~~0HNXZh
-Vorworte/~~&
+Vorwort/~~0HNXh
 Vorwurf/~~0AHMNh
 vorwurfsfrei/~~JOQRSTqr
 vorwurfsvoll/~~JOQRSTUWqr
@@ -328775,7 +328925,7 @@ zusammenschludertest/~~Vt
 zusammenschludertet/~~Vt
 zusammenschludre/~~V
 zusammenschlug/~~Vst
-Zusammenschluss/~~0AMNh
+Zusammenschluss/~~AHMNh
 zusammenschläfst/~~%V
 zusammenschläft/~~%V
 zusammenschlägst/~~%V

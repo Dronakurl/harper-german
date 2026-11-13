@@ -71,7 +71,13 @@ const DATED_VERB_FORMS: &[(&str, &str)] = &[
     ("buken", "backten"),
     ("gewunken", "gewinkt"),
     ("gekreischen", "gekreischt"),
+    ("naja", "na ja"),
+    ("Naja", "Na ja"),
 ];
+
+/// Rare forms the dictionary has that are far more often a typo of a common word: the plural of
+/// *Kaff* is spelled like *Kaffee* without its last letter.
+const SHADOWED_FORMS: &[(&str, &str)] = &[("Kaffe", "Kaffee")];
 
 fn dated_verb_form(word: &[char]) -> Option<Vec<char>> {
     let written: String = word.iter().collect();
@@ -255,6 +261,25 @@ impl<T: Dictionary> GermanSpellCheck<T> {
             // whose form the dictionary carries no reading for.
             || GermanRelativeClauseComma::infinitive_is_a_verb(&lower)
             || GermanRelativeClauseComma::infinitive_is_a_verb(&format!("{lower}t"))
+    }
+
+    /// *Erzählens*, *Wanderns*: a capitalized infinitive with the genitive *-s*.
+    fn is_nominalized_infinitive_genitive(&self, word: &[char]) -> bool {
+        let [first, rest @ .., 'n', 's'] = word else {
+            return false;
+        };
+        if !first.is_uppercase() || rest.len() < 3 {
+            return false;
+        }
+        let infinitive: Vec<char> = first
+            .to_lowercase()
+            .chain(rest.iter().copied())
+            .chain(['n'])
+            .collect();
+        self.dictionary
+            .get_word_metadata(&infinitive)
+            .is_some_and(|metadata| metadata.is_verb())
+            && matches!(infinitive[infinitive.len() - 2], 'e' | 'l' | 'r')
     }
 
     pub fn new(dictionary: T) -> Self {
@@ -1000,6 +1025,21 @@ impl<T: Dictionary> Linter for GermanSpellCheck<T> {
                     // not list got in as a compound, and a typo often cuts
                     // too (*zusamen* is *zu* + *Samen*): it is still reported
                     // when it is a slip away from a plain word.
+                    let written: String = word_chars.iter().collect();
+                    if let Some((_, meant)) =
+                        SHADOWED_FORMS.iter().find(|(form, _)| *form == written)
+                    {
+                        lints.push(Lint {
+                            span: word.span,
+                            lint_kind: LintKind::Spelling,
+                            suggestions: vec![Suggestion::ReplaceWith(meant.chars().collect())],
+                            priority: 20,
+                            message: format!(
+                                "»{written}« ist vermutlich ein Tippfehler für »{meant}«."
+                            ),
+                        });
+                        continue;
+                    }
                     if self.dictionary.contains_word(word_chars)
                         && !self.is_lowercase_name(word_chars)
                     {
@@ -1083,6 +1123,12 @@ impl<T: Dictionary> Linter for GermanSpellCheck<T> {
                     if crate::linting::german_colloquial::is_colloquial(
                         &word_chars.iter().collect::<String>(),
                     ) {
+                        continue;
+                    }
+
+                    // *des Erzählens*, *beim Schließen des Wirkens*: the genitive of a
+                    // nominalized infinitive, which the word list does not spell out.
+                    if self.is_nominalized_infinitive_genitive(word_chars) {
                         continue;
                     }
 
@@ -1362,6 +1408,18 @@ mod tests {
     }
 
     /// One edit that keeps the first letter beats everything that does not.
+    #[test]
+    fn the_genitive_of_a_nominalized_infinitive_is_a_word() {
+        for text in [
+            "Die Kunst des Erzählens ist alt.",
+            "Die Lehre des Erkennens und des Wirkens.",
+            "Das Ende des Wanderns kam früh.",
+        ] {
+            assert!(lint_text(text).is_empty(), "{text}: {:?}", lint_text(text));
+        }
+        assert!(!lint_text("Die Kunst des Erzählnes ist alt.").is_empty());
+    }
+
     #[test]
     fn an_abbreviation_without_its_stop_gets_one() {
         let dict = crate::spell::combined_german_dictionary();

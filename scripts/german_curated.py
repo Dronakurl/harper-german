@@ -514,6 +514,7 @@ LATIN_PLURALS = """
 Jungs Mädels Korpora Charakteristika Pronomina Termini Visa Themata Schemata Dogmata Stigmata Lexika Praktika Prinzipien
 Medien Studien Zentren Museen Kommata Aromata Stadien Individuen Materialien Ministerien Kriterien Indizes
 Indices Matrizen Zyklen Genera Species Opera Tempora Modi Casus Foci Radii Nuclei Alumni Rezepte
+Paradigmen Dogmen Neuronen Spektra Axone Traumata Traumen
 """.split()
 
 # Common adjectives Wikidata has no lexeme for.
@@ -603,6 +604,15 @@ Mitteilung F Mitteilungen
 Ausschluss M Ausschlüsse
 Zusammenschluss M Zusammenschlüsse
 Halbwertzeit F Halbwertzeiten
+Krake M Kraken
+Partikel F Partikeln
+Partikel N =
+Setzung F Setzungen
+Restauration F Restaurationen
+Deaktivierung F Deaktivierungen
+Aktivierung F Aktivierungen
+Rechtschreibprüfung F Rechtschreibprüfungen
+Irrationalität F -
 """.strip().splitlines()
 
 CORE_ADVERBS = """
@@ -610,6 +620,8 @@ schweizweit vonstatten anderthalb eineinhalb deutschlandweit europaweit bundeswe
 puncto petto alledem alldem sonstwo drein wohler
 infrage
 nochmal
+ehesten
+ok
 """.split()
 
 CORE_ADJECTIVES = """
