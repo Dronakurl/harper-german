@@ -167,16 +167,23 @@ impl NounGender {
                     .number
                     .contains(NumberSet::SINGULAR)
             });
-        ["nen", "en", "n"].iter().any(|ending| {
-            head.strip_suffix(ending).is_some_and(|singular| {
-                singular.chars().count() >= 3
-                    && match self.gender_of(singular) {
-                        Some((Gender::Feminine, true)) => true,
-                        Some((Gender::Masculine, true)) => !own_singular,
-                        _ => false,
-                    }
+        // *nach langem Suchen*, *Essen war ok*: an infinitive used as a noun spells like the
+        // plural of a feminine noun (*Suche*, *Esse*) and is a neuter singular.
+        let infinitive = self
+            .dictionary
+            .get_word_metadata(&lower_chars)
+            .is_some_and(|metadata| metadata.is_verb());
+        !infinitive
+            && ["nen", "en", "n"].iter().any(|ending| {
+                head.strip_suffix(ending).is_some_and(|singular| {
+                    singular.chars().count() >= 3
+                        && match self.gender_of(singular) {
+                            Some((Gender::Feminine, true)) => true,
+                            Some((Gender::Masculine, true)) => !own_singular,
+                            _ => false,
+                        }
+                })
             })
-        })
     }
 
     /// Is `head` the dative plural of a plural marked `&`? *Kindern* ←
@@ -223,11 +230,45 @@ impl NounGender {
         // An acronym inflects for nothing: *die AGB*.
         let acronym = head.chars().all(|c| !c.is_lowercase());
         let spelled_like_a_plural = SAME_AS_PLURAL.iter().any(|ending| lower.ends_with(ending));
-        let surely_singular = agreement.number == NumberSet::SINGULAR
-            && !acronym
-            && (!spelled_like_a_plural || self.has_umlaut_plural(head, gender));
+        let surely_singular = !acronym
+            && ((agreement.number == NumberSet::SINGULAR
+                && (!spelled_like_a_plural || self.has_umlaut_plural(head, gender)))
+                || (agreement.number.contains(NumberSet::SINGULAR)
+                    && self.has_n_plural(head, gender)));
 
         Some((gender, surely_singular))
+    }
+
+    /// Is `head` a feminine noun that takes *-n* in the plural, so that it cannot be one
+    /// itself? *Tasche*/*Taschen*, *Schwester*/*Schwestern*. A feminine plural never spells
+    /// like its singular. A masculine or neuter one is left open: *Gästen* and *Lehrern* are
+    /// dative plurals of plurals.
+    fn has_n_plural(&self, head: &str, gender: Gender) -> bool {
+        // *Pläne*, *Köpfe*: an umlaut plural in *-e* of a noun without the umlaut, which the
+        // word list sometimes gives a feminine reading of its own.
+        let umlaut_plural = head.strip_suffix('e').is_some_and(|stem| {
+            let plain: String = stem
+                .chars()
+                .map(|c| match c {
+                    'ä' => 'a',
+                    'ö' => 'o',
+                    'ü' => 'u',
+                    other => other,
+                })
+                .collect();
+            plain != stem
+                && self
+                    .dictionary
+                    .get_word_metadata(&plain.chars().collect::<Vec<_>>())
+                    .is_some_and(|metadata| metadata.is_noun())
+        });
+        gender == Gender::Feminine
+            && !umlaut_plural
+            && head.ends_with(['e', 'r', 'l'])
+            && self
+                .dictionary
+                .get_word_metadata(&format!("{head}n").chars().collect::<Vec<_>>())
+                .is_some_and(|metadata| metadata.is_noun())
     }
 
     /// Is the plural of `head` the umlauted form, so that `head` itself cannot

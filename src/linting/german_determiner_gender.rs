@@ -417,7 +417,9 @@ impl Linter for GermanDeterminerGender {
                 // noun, not the feminine *Falle*.
                 if let Some(stem) = head.strip_suffix('e')
                     && let Some((stem_gender, _)) = self.nouns.gender_of(stem)
-                    && fits(readings, stem_gender)
+                    && readings
+                        .iter()
+                        .any(|r| r.case == Case::Dative && r.gender == Some(stem_gender))
                 {
                     continue;
                 }
@@ -548,6 +550,26 @@ mod tests {
 
     fn reported(text: &str) -> Vec<String> {
         lints(text).into_iter().map(|(word, _)| word).collect()
+    }
+
+    #[test]
+    fn an_article_with_another_reading_still_meets_a_singular_noun() {
+        for (text, word) in [
+            ("Ich habe das Liste vergessen.", "das"),
+            ("Kennst du meinen Schwester?", "meinen"),
+            ("Er hat seinen Tasche verloren.", "seinen"),
+        ] {
+            assert_eq!(reported(text), vec![word], "{text}");
+        }
+        for text in [
+            "Er wohnt in diesem Hause.",
+            "Die Taschen sind voll.",
+            "Wir haben den Listen nichts entnommen.",
+            "Sie hilft den Schwestern.",
+            "Am Ende der Straße.",
+        ] {
+            assert!(reported(text).is_empty(), "{text}: {:?}", reported(text));
+        }
     }
 
     #[test]
