@@ -15,6 +15,9 @@ pub const INFINITIVE_GROUP_OPENERS: &[&str] = &["um", "ohne", "statt", "anstatt"
 const SEPARABLE_PREFIXES: &[&str] = &[
     "an", "auf", "aus", "ab", "ein", "mit", "vor", "nach", "her", "hin", "weg", "zurück", "fest",
     "los", "vorbei", "teil", "dar", "bei", "zusammen", "fern", "frei", "heim", "kennen",
+    // The ones of direction, in full and spoken: *herauszufinden*, *rauszubringen*.
+    "heraus", "hinaus", "herein", "hinein", "herunter", "hinunter", "herauf", "hinauf", "raus",
+    "rein", "runter", "rauf", "rüber", "fort", "weiter",
 ];
 
 /// The separable verb a particle at the end of a clause and a finite verb
