@@ -57,6 +57,7 @@ pub mod german_verb_case;
 pub mod german_verb_cluster;
 pub mod german_verb_preposition;
 pub mod german_verb_second;
+pub mod german_viel_plural;
 pub mod german_vorfeld_comma;
 pub mod german_weak_adjective;
 pub mod german_weak_noun;

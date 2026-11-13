@@ -550,11 +550,13 @@ impl GermanVerbCase {
             "brauchen",
             "einladen",
         ];
-        let Some(verb) = verbs
+        let verb = match verbs
             .iter()
             .find(|v| ACCUSATIVE_VERBS.contains(&v.as_str()))
-        else {
-            return Vec::new();
+        {
+            Some(verb) => verb,
+            None if verbs.iter().any(|v| v == "sehen") => &"sehen".to_owned(),
+            None => return Vec::new(),
         };
         let is_verb = |t: &Token| {
             t.kind.is_word()
@@ -579,9 +581,32 @@ impl GermanVerbCase {
             else {
                 continue;
             };
-            if !at.checked_sub(1).is_some_and(|i| is_verb(clause[i])) {
+            // *Ich habe ihm gestern gesehen*: the participle of *sehen* behind the pronoun, with
+            // at most two words between. *Sie sah ihm ins Gesicht* has the dative, so *sehen*
+            // is only read from the participle.
+            let participle_follows = (1..=3).any(|k| {
+                clause
+                    .get(at + k)
+                    .is_some_and(|t| document.get_span_content_str(&t.span) == "gesehen")
+                    && clause[at + 1..at + k].iter().all(|t| {
+                        t.kind.is_word()
+                            && document
+                                .get_span_content(&t.span)
+                                .first()
+                                .is_some_and(|c| c.is_lowercase())
+                    })
+            });
+            let next_to_verb = !ACCUSATIVE_VERBS.contains(&verb.as_str())
+                || at.checked_sub(1).is_some_and(|i| is_verb(clause[i]));
+            let next_to_verb = next_to_verb && ACCUSATIVE_VERBS.contains(&verb.as_str());
+            if !next_to_verb && !participle_follows {
                 continue;
             }
+            let verb = if participle_follows {
+                &"sehen".to_owned()
+            } else {
+                verb
+            };
             lints.extend(Self::report(
                 token,
                 vec![accusative.to_owned()],
@@ -999,6 +1024,8 @@ mod tests {
         assert_eq!(fixed("Ich danke Sie für Ihre Hilfe."), ["Sie"]);
         assert_eq!(fixed("Er fragt mir nach dem Weg."), ["mir"]);
         assert_eq!(fixed("Ich kenne ihm nicht."), ["ihm"]);
+        assert_eq!(fixed("Ich habe ihm gestern gesehen."), ["ihm"]);
+        assert_eq!(fixed("Ich habe dir gesehen."), ["dir"]);
         assert_eq!(fixed("Ich gebe ihn das Buch morgen zurück."), ["ihn"]);
         assert_eq!(fixed("Er zeigt mich den Weg."), ["mich"]);
         assert_eq!(fixed("Ich frage ihm nach dem Weg."), ["ihm"]);
@@ -1020,6 +1047,8 @@ mod tests {
     fn leaves_the_right_case_and_the_places_alone() {
         for text in [
             "Ich erinnere mich an dich.",
+            "Sie sah ihm ins Gesicht.",
+            "Ich habe ihn gestern gesehen.",
             "Ich warte auf dem Bahnsteig auf den Zug.",
             "Er freute sich auf dem Balkon über das Wetter.",
             "An dem Tag dachte er an seine Mutter.",

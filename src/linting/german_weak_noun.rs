@@ -67,6 +67,29 @@ impl Linter for GermanWeakNoun {
                 .collect();
             for (at, word) in words.iter().enumerate() {
                 let written = document.get_span_content_str(&word.span);
+                // *des Nachbars*, *des Präsident*: the genitive is weak as well.
+                if at > 0
+                    && lowercase_of(words[at - 1], document) == "des"
+                    && let Some((_, form)) = WEAK_NOUNS
+                        .iter()
+                        .find(|(base, _)| *base == written || format!("{base}s") == written)
+                    && !document
+                        .get_full_content()
+                        .get(word.span.end)
+                        .is_some_and(|c| *c == '-')
+                    && *form != written
+                {
+                    lints.push(Lint {
+                        span: word.span,
+                        lint_kind: LintKind::Agreement,
+                        suggestions: vec![Suggestion::ReplaceWith(form.chars().collect())],
+                        priority: 31,
+                        message: format!(
+                            "»{written}« wird schwach gebeugt: nach »des« heißt es »{form}«."
+                        ),
+                    });
+                    continue;
+                }
                 let Some((_, oblique_form)) = WEAK_NOUNS.iter().find(|(base, _)| *base == written)
                 else {
                     continue;
@@ -153,6 +176,9 @@ mod tests {
         );
         assert_eq!(reported("Sie traf den Student in der Mensa."), ["Student"]);
         assert_eq!(reported("Wir haben einen neuen Kunde."), ["Kunde"]);
+        assert_eq!(reported("Der Hund des Nachbars bellt."), ["Nachbars"]);
+        assert_eq!(reported("Das Haus des Präsident ist groß."), ["Präsident"]);
+        assert_eq!(reported("Das Auto des Kunde steht da."), ["Kunde"]);
     }
 
     #[test]
@@ -165,6 +191,8 @@ mod tests {
             "Die Präsident-Wahl beginnt.",
             "Sie gab den Kindern den Ball, der Junge lachte.",
             "Ich zahlte den Preis, den Herr Holtz genannt hatte.",
+            "Der Hund des Nachbarn bellt.",
+            "Das Haus des Präsidenten ist groß.",
         ] {
             assert!(reported(text).is_empty(), "{text}: {:?}", reported(text));
         }

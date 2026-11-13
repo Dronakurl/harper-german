@@ -32,16 +32,9 @@ const ARTICLES: &[(&str, &str)] = &[
 /// * *es gibt*: *Gibt es hier ein Supermarkt?*.
 ///
 /// Everything else is left to the nominative: *Das ist ein Brief*, *Ein Brief kam*.
+#[derive(Default)]
 pub struct GermanMasculineObject {
     nouns: NounGender,
-}
-
-impl Default for GermanMasculineObject {
-    fn default() -> Self {
-        Self {
-            nouns: NounGender::new(),
-        }
-    }
 }
 
 impl GermanMasculineObject {

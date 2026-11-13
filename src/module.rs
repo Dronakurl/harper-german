@@ -70,6 +70,7 @@ pub fn rust_lint_group(
         german_verb_cluster::GermanVerbCluster,
         german_verb_preposition::GermanVerbPreposition,
         german_verb_second::GermanVerbSecond,
+        german_viel_plural::GermanVielPlural,
         german_vorfeld_comma::GermanVorfeldComma,
         german_weak_adjective::GermanWeakAdjective,
         german_weak_noun::GermanWeakNoun,
@@ -187,6 +188,7 @@ pub fn rust_lint_group(
     group.add("GermanWeakAdjective", GermanWeakAdjective::default());
     group.add("GermanDoubledVerb", GermanDoubledVerb);
     group.add("GermanSonstComma", GermanSonstComma);
+    group.add("GermanVielPlural", GermanVielPlural::default());
     group.add("GermanMasculineObject", GermanMasculineObject::default());
     group.add("GermanPartitiveSubject", GermanPartitiveSubject::default());
     group.add("GermanDeterminerGender", GermanDeterminerGender::new());

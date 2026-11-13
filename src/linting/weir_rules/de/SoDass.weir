@@ -1,0 +1,23 @@
+# "so müde das ich einschlafe": behind "so" + adjective, "das" starts a result
+# clause with a subject pronoun, which is the conjunction "dass".
+expr adjective [müde, schnell, laut, groß, klein, kalt, warm, hungrig, glücklich, traurig, erschöpft, schwer, teuer, leise, nervös, aufgeregt, wütend, krank, stark, lang, kurz, heiß, dunkel, hell, wichtig, schlecht, gut, froh, böse, voll, leer, dick, dünn, alt, jung, spät, früh]
+expr subject [ich, du, er, sie, es, wir, ihr, man]
+
+expr main <(so @adjective das @subject), das>
+
+let message "Nach »so … « leitet »dass« den Folgesatz ein."
+let description "Ersetzt »das« durch »dass« in »so müde, dass ich …«."
+let kind "Grammar"
+let becomes "dass"
+let strategy "MatchCase"
+
+test "Ich bin so müde das ich gleich einschlafe." "Ich bin so müde dass ich gleich einschlafe."
+test "Es war so laut das wir nichts verstanden." "Es war so laut dass wir nichts verstanden."
+test "Er rannte so schnell das er stolperte." "Er rannte so schnell dass er stolperte."
+test "Es ist so kalt das man friert." "Es ist so kalt dass man friert."
+test "Sie war so glücklich das sie weinte." "Sie war so glücklich dass sie weinte."
+
+allows "Ich bin so müde, dass ich gleich einschlafe."
+allows "Das ist so müde das Kind."
+allows "Ich esse so schnell das Brot wie du."
+allows "So kalt das Wasser auch ist, ich schwimme."
