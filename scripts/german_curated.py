@@ -613,6 +613,14 @@ Deaktivierung F Deaktivierungen
 Aktivierung F Aktivierungen
 Rechtschreibprüfung F Rechtschreibprüfungen
 Irrationalität F -
+Request M Requests
+Pull M Pulls
+Computing N -
+Login M Logins
+Source M -
+Commit M Commits
+Branch M Branches
+Merge M Merges
 Softwareentwickler M =
 Softwareentwicklung F -
 Kundenservice M -
@@ -642,6 +650,7 @@ ok
 
 CORE_ADJECTIVES = """
 gierig
+open
 """.split()
 
 # Words whose lower-case spelling is the verb and never the noun that shares the letters (ist / Ist).
@@ -705,6 +714,9 @@ EXTRA_VERBS = [
     "puffen", "wallen", "walzen", "tauen", "keilen", "filzen", "drillen", "dichten", "hitzen", "kränzen", "lichten",
     "petzen", "pflichten", "planken", "beschweren", "prangern", "reihen", "reichern", "einreihen", "umdrohen",
     "hydrolysieren", "schweißen", "rahmen", "puffen",
+    "mergen", "committen", "deployen", "streamen", "updaten", "downloaden", "uploaden", "canceln", "fixen",
+    "pullen", "clonen", "debuggen", "hosten", "scrollen", "swipen", "liken", "posten", "faken", "tracken",
+    "taggen", "scannen", "reviewen", "recyceln", "designen",
     "toppen", "shoppen", "pushen", "köcheln", "punkten", "verzinken", "entzünden", "chippen", "launchen",
     "spitzeln", "türmen",  # not *stutzen*: it would let *unterstutzt* pass for *unterstützt*
 ]

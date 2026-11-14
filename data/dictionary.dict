@@ -51793,6 +51793,7 @@ Branchenvergleichen/~~N
 branchenweit/~~JOQRSTqr
 branchenübergreifend/~~JOQRSTqr
 branchenüblich/~~JOQRSTqr
+Branches/~~N
 brancheüblich/~~JOQRSTqr
 Branco/~~!8H
 Brand/~~07AHMNbh
@@ -57962,6 +57963,7 @@ Clive/~~!8H
 Clivia/~~AFNh
 Clivien/~~N
 Clochard/~~HMNbh
+clonen/~~GVcdefij
 Clonmel/~~!8H
 Clooney/~~!8H
 Cloppenburg/~~!8H
@@ -58347,6 +58349,7 @@ computertest/~~Vt
 computertet/~~Vt
 computerunterstützt/~~JOQRSTqr
 computervermittelt/~~JOQRSTqr
+Computing/~~AHNh
 Computist/~~MNYh
 computre/~~V
 Comrat/~~!8H
@@ -114471,6 +114474,7 @@ Geckerei/~~FNYh
 geckig/~~JOQRSTqr
 Gecko/~~0AHMNh
 geclincht/~~OQRSTVg
+geclont/~~OQRSTVg
 gecoacht/~~OQRSTVg
 gecodet/~~OQRSTVg
 gecovert/~~OQRSTVg
@@ -117928,6 +117932,7 @@ gemengt/~~OQRSTVg
 gemenschelt/~~OQRSTVg
 gemensendieckt/~~OQRSTVg
 gemergelt/~~OQRSTVg
+gemergt/~~OQRSTVg
 gemerkelt/~~OQRSTVg
 gemerkt/~~OQRSTVg
 Gemert-Bakel/~~!8H
@@ -119028,6 +119033,7 @@ gepudert/~~OQRSTVg
 gepuffert/~~OQRSTVg
 gepufft/~~OQRSTVg
 gepullert/~~OQRSTVg
+gepullt/~~OQRSTVg
 gepulst/~~OQRSTVg
 gepult/~~OQRSTVg
 gepulvert/~~OQRSTVg
@@ -119458,6 +119464,7 @@ gereutert/~~OQRSTVg
 gereutes/~~J
 gereutest/~~Vt
 gereutet/~~OQRSTVgt
+gereviewt/~~OQRSTVg
 Gerfalke/~~EMNh
 Gergely/~~!8H
 Gerhard/~~AHMN
@@ -122295,6 +122302,7 @@ geunterzieht/~~OQRSTVg
 geupcycelt/~~OQRSTVg
 geupcyclt/~~OQRSTVg
 geupgradet/~~OQRSTVg
+geuploadet/~~OQRSTVg
 geurformt/~~OQRSTVg
 geurkundet/~~OQRSTVg
 geurlaubt/~~OQRSTVg
@@ -193919,6 +193927,7 @@ Mercy/~~!8H
 merde/~~
 Meredith/~~!8H
 Meretz/~~!8H
+Merge/~~HMNbh
 Mergel/~~EHMNh
 mergele/~~V
 mergelig/~~JOQRSTqr
@@ -193929,6 +193938,7 @@ mergelte/~~V
 mergelten/~~V
 mergeltest/~~Vt
 mergeltet/~~Vt
+mergen/~~GVcdefij
 Merger/~~HMNbh
 mergle/~~V
 merglest/~~V
@@ -210825,6 +210835,7 @@ Opapa/~~HMNbh
 Opava/~~!8H
 Opelika/~~!8H
 Opelousas/~~!8H
+open/~~JOQRSTUWqr
 Open-Air-Bühne/~~EFNh
 Open-Air-Festival/~~HNZbh
 Open-Air-Kino/~~HNZbh
@@ -224980,7 +224991,9 @@ Pulheim/~~!8H
 Pulisic/~~!8H
 Pulitzer/~~!8H
 Pulk/~~07AHMNh
+Pull/~~0HMNbh
 Pulle/~~EFNh
+pullen/~~GVcdefij
 pullere/~~V
 pullern/~~GVcdefij
 pullerst/~~V
@@ -232679,6 +232692,7 @@ Reputation/~~FNYh
 reputierlich/~~JOQRSTqr
 Reputierlichkeit/~~FNYh
 Requena/~~!8H
+Request/~~HMNbh
 Requiem/~~AHNZh
 requirier/~~V
 requirieren/~~GVcdefijx
@@ -233576,6 +233590,7 @@ revierter/~~J
 reviertes/~~J
 reviertest/~~Vt
 reviertet/~~Vt
+reviewen/~~GVcdefij
 Reviewer/~~EHKLMNh
 Reviewerin/~~FLNh
 Revindikation/~~FNYh
@@ -255245,7 +255260,7 @@ soupierter/~~J
 soupiertes/~~J
 soupiertest/~~Vt
 soupiertet/~~Vt
-Source/~~EFNbh
+Source/~~AEFHMNbh
 Sourcecode/~~HMNbh
 Sourcing/~~AHNZh
 Sousa/~~!8H
@@ -284432,6 +284447,7 @@ upgradetet/~~Vt
 Upland/~~!8H
 Upload/~~MNZh
 Upload-Filter/~~EHMNh
+uploaden/~~GVcdefij
 Uploadfilter/~~EHMNh
 Upolu/~~!8H
 Upperclass/~~AFNh
