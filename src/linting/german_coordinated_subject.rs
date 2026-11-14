@@ -153,8 +153,18 @@ impl Linter for GermanCoordinatedSubject {
             // *Mein Bruder und ich geht …*
             // Two names may be one place (*Wallis und Futuna*), so one of the two has to be a
             // pronoun or a phrase with a determiner.
+            // Two common given names are two people: *Peter und Maria kommt*.
+            const GIVEN_NAMES: &[&str] = &[
+                "Peter", "Maria", "Anna", "Paul", "Hans", "Lisa", "Tom", "Max", "Julia", "Thomas",
+                "Michael", "Sabine", "Karl", "Eva", "Klaus", "Petra", "Stefan", "Laura", "Felix",
+                "Lena", "Jan", "Sophie", "Lukas", "Emma", "Jonas", "Mia", "Tim", "Sarah", "Ben",
+                "Nina", "Markus", "Andrea", "Martin", "Susanne", "Frank", "Ute",
+            ];
             let is_name = |start: usize, end: usize| {
-                end == start + 1 && starts_uppercase(words[start], document)
+                end == start + 1
+                    && starts_uppercase(words[start], document)
+                    && !GIVEN_NAMES
+                        .contains(&document.get_span_content_str(&words[start].span).as_str())
             };
             if let Some(first_end) = self.subject_end(&words, 0, document)
                 && is_und(first_end)
@@ -258,6 +268,7 @@ mod tests {
     fn a_singular_verb_with_two_subjects_is_reported() {
         for (text, fixed) in [
             ("Mein Bruder und ich geht ins Kino.", "gehen"),
+            ("Peter und Maria kommt heute.", "kommen"),
             (
                 "Die Geschäftsstelle und das Archiv wurde verlegt.",
                 "wurden",
@@ -273,6 +284,8 @@ mod tests {
     fn plural_verbs_and_other_constructions_are_quiet() {
         for text in [
             "Mein Bruder und ich gehen ins Kino.",
+            "Peter und Maria kommen heute.",
+            "Wallis und Futuna gehört zu Frankreich.",
             "Peter und Maria kommen morgen.",
             "Sowohl Peter als auch Maria kommt.",
             "Gestern war Peter krank und Maria hier.",
