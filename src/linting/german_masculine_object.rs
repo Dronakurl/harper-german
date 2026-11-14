@@ -98,14 +98,25 @@ impl Linter for GermanMasculineObject {
                 let after = words.get(at + 2).map(|t| lowercase_of(t, document));
                 let participle = after.as_deref().is_some_and(|w| {
                     w.chars().count() >= 6
-                        && w.starts_with("ge")
+                        && ["ge", "ver", "be", "er", "ent", "zer", "über"]
+                            .iter()
+                            .any(|prefix| w.starts_with(prefix))
                         && (w.ends_with('t') || w.ends_with("en"))
                 }) && words[at + 2].kind.is_verb();
                 // The auxiliary stands in the same clause: no comma between them.
                 let same_clause = lower[..at]
                     .iter()
                     .rposition(|w| HABEN.contains(&w.as_str()))
-                    .is_some_and(|h| !words[h..at].iter().any(|t| t.kind.is_comma()));
+                    .is_some_and(|h| {
+                        // The subject stands in front of *haben* (*Ich habe gestern ein Brief
+                        // geschrieben*); behind it, *ein Zyklon* may be the subject itself.
+                        h > 0
+                            && matches!(
+                                lower[h - 1].as_str(),
+                                "ich" | "du" | "er" | "sie" | "es" | "wir" | "ihr" | "man"
+                            )
+                            && !words[h..at].iter().any(|t| t.kind.is_comma())
+                    });
                 let ends_question =
                     has_gibt && words.get(at + 2).is_none_or(|t| t.kind.is_punctuation());
                 if !(has_haben && participle && same_clause || ends_question) {
@@ -149,6 +160,7 @@ mod tests {
         for text in [
             "Ich habe gestern ein Brief geschrieben.",
             "Er hat sein Hund gesehen.",
+            "Wir haben unser Termin verschoben.",
             "Gibt es hier in der Nähe ein Supermarkt?",
             "Es gibt kein Bahnhof.",
         ] {
@@ -168,6 +180,7 @@ mod tests {
             "Ich habe mit ein Brief gespielt.",
             "Es gibt ein Problem.",
             "Ich habe ein Kind gesehen.",
+            "Wir haben unser Ziel erreicht.",
             "Ein Hunger hat alle ergriffen, ein Rausch geht durch die Welt.",
         ] {
             assert_eq!(count(text), 0, "{text}");

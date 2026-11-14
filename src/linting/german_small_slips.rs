@@ -132,6 +132,69 @@ impl Linter for GermanSmallSlips {
                 at = end.max(at + 1);
                 continue;
             }
+            // *Bei fragen*: *Fragen* is a noun.
+            if (c == 'b' || c == 'B')
+                && (at == 0 || !is_letter(source[at - 1]))
+                && source[at + 1..].starts_with(&['e', 'i', ' '][..])
+            {
+                let (end, word) = word_at(at + 4);
+                if word == "fragen" || word == "problemen" || word == "rückfragen" {
+                    let first: String = word.chars().next().unwrap().to_uppercase().collect();
+                    let fixed = format!(
+                        "{first}{}",
+                        &word[word.chars().next().unwrap().len_utf8()..]
+                    );
+                    lints.push(Lint {
+                        span: Span::new(at + 4, end),
+                        lint_kind: LintKind::Capitalization,
+                        suggestions: vec![Suggestion::ReplaceWith(fixed.chars().collect())],
+                        message: "Nach »bei« ist das Wort ein Nomen und wird großgeschrieben."
+                            .to_owned(),
+                        priority: 31,
+                    });
+                }
+            }
+            // *spricht Fließend Englisch*: the adverb in front of a language is not a noun.
+            if c == 'F'
+                && at >= 2
+                && source[at - 1] == ' '
+                && source[at - 2].is_lowercase()
+                && source[at..].starts_with(&['F', 'l', 'i', 'e', 'ß', 'e', 'n', 'd', ' '][..])
+            {
+                let (end, language) = word_at(at + 9);
+                if language.chars().next().is_some_and(char::is_uppercase)
+                    && LANGUAGES.contains(&language.to_lowercase().as_str())
+                {
+                    lints.push(Lint {
+                        span: Span::new(at, at + 8),
+                        lint_kind: LintKind::Capitalization,
+                        suggestions: vec![Suggestion::ReplaceWith("fließend".chars().collect())],
+                        message: "»fließend« ist hier ein Adverb und wird kleingeschrieben."
+                            .to_owned(),
+                        priority: 31,
+                    });
+                }
+                let _ = end;
+            }
+            // *Weißt du, wie spät ist es?*: the indirect question puts the verb last.
+            if c == ','
+                && source[at..].starts_with(
+                    &[
+                        ',', ' ', 'w', 'i', 'e', ' ', 's', 'p', 'ä', 't', ' ', 'i', 's', 't', ' ',
+                        'e', 's',
+                    ][..],
+                )
+                && source.get(at + 17).is_none_or(|c| !is_letter(*c))
+            {
+                lints.push(Lint {
+                    span: Span::new(at + 11, at + 17),
+                    lint_kind: LintKind::Grammar,
+                    suggestions: vec![Suggestion::ReplaceWith("es ist".chars().collect())],
+                    message: "Im indirekten Fragesatz steht das Verb am Ende: »wie spät es ist«."
+                        .to_owned(),
+                    priority: 31,
+                });
+            }
             // *auf deutsch*
             if (c == 'a' || c == 'A')
                 && (at == 0 || !is_letter(source[at - 1]))
@@ -185,6 +248,9 @@ mod tests {
             "Das ist ein 3-Zimmer Wohnung.",
             "Er ist 18 jährig.",
             "Er spricht auf deutsch mit mir.",
+            "Bei fragen melden Sie sich.",
+            "Weißt du, wie spät ist es?",
+            "Sie spricht Fließend Englisch.",
         ] {
             assert_eq!(count(text), 1, "{text}");
         }
@@ -199,6 +265,11 @@ mod tests {
             "Er ist 18-jährig.",
             "Er spricht auf Deutsch mit mir.",
             "Er nannte es: „kleiner Trick“.",
+            "Bei Fragen melden Sie sich.",
+            "Wie spät ist es?",
+            "Weißt du, wie spät es ist?",
+            "Sie spricht fließend Englisch.",
+            "Fließend Wasser ist wichtig.",
             "Das Haus hat 3 Zimmer Wohnung.",
             "Es gibt 18 Jahre.",
             "Das ist ein 5-Kilo Paket.",
