@@ -380,14 +380,17 @@ impl Linter for GermanRelativeClauseComma {
 
                 let noun = Self::text(noun_token, document);
                 let noun_genders = self.nouns.genders(&noun);
-                if noun_genders.is_empty() {
+                // *Bücher die ich gekauft habe*: a plural carries no gender in the dictionary.
+                let plural_noun = noun_genders.is_empty() && self.nouns.is_surely_plural(&noun);
+                if noun_genders.is_empty() && !plural_noun {
                     continue;
                 }
                 let surely_singular = self
                     .nouns
                     .gender_of(&noun)
                     .is_some_and(|(_, surely_singular)| surely_singular);
-                let agrees = genders.intersects(noun_genders) || (plural && !surely_singular);
+                let agrees = genders.intersects(noun_genders)
+                    || (plural && (!surely_singular || plural_noun));
                 if !agrees {
                     continue;
                 }
@@ -600,6 +603,17 @@ mod tests {
         ] {
             assert_eq!(lint_count(text), 0, "{text}");
         }
+    }
+
+    #[test]
+    fn a_plural_noun_takes_die_and_denen() {
+        for text in [
+            "Die Bücher die ich gekauft habe sind spannend.",
+            "Sie hat zwei Katzen die ich kenne.",
+        ] {
+            assert!(lint_count(text) >= 1, "{text}");
+        }
+        assert_eq!(lint_count("Ich habe die Bücher gelesen."), 0);
     }
 
     #[test]

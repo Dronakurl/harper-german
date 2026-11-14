@@ -621,7 +621,9 @@ impl GermanSubordinateComma {
             // *Er sagte er habe keine Zeit*: the subjunctive forms of the reported speech.
             const SUBJUNCTIVE: &[&str] = &[
                 "habe", "sei", "werde", "könne", "müsse", "wolle", "solle", "dürfe", "komme",
-                "gehe", "wisse", "mache", "sehe", "stehe", "bleibe", "finde", "wolle",
+                "gehe", "wisse", "mache", "sehe", "stehe", "bleibe", "finde", "wolle", "soll",
+                "muss", "kann", "will", "darf", "wird", "ist", "hat", "war", "hatte", "wäre",
+                "hätte", "würde", "könnte", "sollte", "müsste",
             ];
             let is_finite = SUBJUNCTIVE.contains(&finite_text.as_str())
                 || (finite_text.chars().next().is_some_and(char::is_lowercase)
