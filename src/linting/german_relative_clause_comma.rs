@@ -125,6 +125,13 @@ impl GermanRelativeClauseComma {
         if Self::is_capitalized(token, document) {
             return false;
         }
+        // *sieben* is a numeral here, not the verb *sieben* (to sift).
+        if matches!(
+            Self::text(token, document).as_str(),
+            "sieben" | "acht" | "neun" | "zehn" | "vierzig" | "dreißig"
+        ) {
+            return false;
+        }
         let TokenKind::Word(metadata) = &token.kind else {
             return false;
         };
@@ -474,6 +481,28 @@ impl Linter for GermanRelativeClauseComma {
                     && matches!(next.kind, TokenKind::Word(_))
                     && !Self::is_capitalized(next, document)
                     && !next.kind.is_adjective();
+                // *eine Frau die sieben Sprachen spricht*: a numeral behind *die*.
+                let numeral_subject = !behind_preposition
+                    && !bracket_open
+                    && pronoun == "die"
+                    && matches!(
+                        Self::text(next, document).as_str(),
+                        "zwei"
+                            | "drei"
+                            | "vier"
+                            | "fünf"
+                            | "sechs"
+                            | "sieben"
+                            | "acht"
+                            | "neun"
+                            | "zehn"
+                            | "zwölf"
+                            | "viele"
+                            | "wenige"
+                            | "einige"
+                            | "mehrere"
+                            | "beide"
+                    );
                 let genitive_relative = matches!(pronoun.as_str(), "dessen" | "deren")
                     && !behind_comma
                     && !behind_preposition
@@ -481,6 +510,7 @@ impl Linter for GermanRelativeClauseComma {
                     && !next.kind.is_adjective();
                 if !(opens_with_subject
                     || genitive_relative
+                    || numeral_subject
                     || masculine_subject
                     || neuter_or_feminine_subject
                     || after_comma_reading)
@@ -607,6 +637,11 @@ mod tests {
 
     #[test]
     fn a_plural_noun_takes_die_and_denen() {
+        assert_eq!(
+            lint_count("Ich kenne eine Frau die sieben Sprachen spricht."),
+            1
+        );
+        assert_eq!(lint_count("Ich habe dem Kind die zwei Bücher gegeben."), 0);
         for text in [
             "Die Bücher die ich gekauft habe sind spannend.",
             "Sie hat zwei Katzen die ich kenne.",

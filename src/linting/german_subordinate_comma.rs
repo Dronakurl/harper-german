@@ -723,6 +723,14 @@ impl GermanSubordinateComma {
             "versprechen",
             "vorhaben",
         ];
+        // *Der Plan ein Haus zu bauen war teuer*: a finite verb right behind the group.
+        let finite_after = |after: &Token| {
+            document
+                .get_span_content(&after.span)
+                .first()
+                .is_some_and(|c| c.is_lowercase())
+                && GermanRelativeClauseComma::is_verb_token(after, document)
+        };
         let mut lints = Vec::new();
         for (at, token) in tokens.iter().enumerate() {
             let is_zu_infinitive = Self::word_in(token, document, &["zu"])
@@ -732,15 +740,15 @@ impl GermanSubordinateComma {
                         && text.ends_with('n')
                         && GermanRelativeClauseComma::is_verb_token(verb, document)
                 })
-                && tokens
-                    .get(at + 2)
-                    .is_none_or(|after| !matches!(after.kind, TokenKind::Word(_)));
+                && tokens.get(at + 2).is_none_or(|after| {
+                    !matches!(after.kind, TokenKind::Word(_)) || finite_after(after)
+                });
             // *den Iran anzugreifen*: the *zu* inside a separable verb.
             let is_infix_infinitive = matches!(token.kind, TokenKind::Word(_))
                 && has_zu_infix(&document.get_span_content_str(&token.span))
-                && tokens
-                    .get(at + 1)
-                    .is_none_or(|after| !matches!(after.kind, TokenKind::Word(_)));
+                && tokens.get(at + 1).is_none_or(|after| {
+                    !matches!(after.kind, TokenKind::Word(_)) || finite_after(after)
+                });
             if !is_zu_infinitive && !is_infix_infinitive {
                 continue;
             }
@@ -839,6 +847,25 @@ impl GermanSubordinateComma {
                 .get_span_content(&tokens[noun_at].span)
                 .iter()
                 .collect();
+            // The group is the subject's attribute: the verb of the sentence follows it, and the
+            // group is closed by a comma as well. Only at the start of the sentence.
+            let group_end = if is_zu_infinitive { at + 1 } else { at };
+            if tokens.get(group_end + 1).is_some_and(|after| {
+                matches!(after.kind, TokenKind::Word(_)) && finite_after(after)
+            }) {
+                if noun_at > 1 {
+                    continue;
+                }
+                lints.push(Lint {
+                    span: tokens[group_end].span,
+                    lint_kind: LintKind::Punctuation,
+                    suggestions: vec![Suggestion::InsertAfter(vec![','])],
+                    priority: 28,
+                    message: format!(
+                        "Die Infinitivgruppe zu »{noun}« endet hier. Danach steht ein Komma."
+                    ),
+                });
+            }
             lints.push(Lint {
                 span: tokens[noun_at].span,
                 lint_kind: LintKind::Punctuation,
@@ -1561,6 +1588,16 @@ mod tests {
         ] {
             assert_eq!(lint_count(text), 0, "{text}");
         }
+    }
+
+    #[test]
+    fn a_subject_with_an_infinitive_group_needs_both_commas() {
+        assert_eq!(lint_count("Der Plan ein neues Haus zu bauen war teuer."), 2);
+        assert_eq!(lint_count("Die Idee ein Café zu eröffnen gefiel ihr."), 2);
+        assert_eq!(
+            lint_count("Der Plan, ein neues Haus zu bauen, war teuer."),
+            0
+        );
     }
 
     #[test]
