@@ -363,7 +363,9 @@ impl GermanMidSentenceCapital {
         let day_adverb = DAY_ADVERBS.contains(&lower.as_str())
             && (previous.kind.is_verb() || previous.kind.is_pronoun())
             && !previous.kind.is_determiner()
-            && !next_is_capitalized
+            && (!next_is_capitalized
+                // *Sie hat Morgen Geburtstag*: a verb or a pronoun right in front, then the noun.
+                || (lower == "morgen" && words.get(at + 1).is_some_and(|n| n.kind.is_noun())))
             && !matches!(
                 previous_lower.as_str(),
                 "guten" | "jeden" | "diesen" | "den" | "einen" | "am" | "vom" | "zum"
@@ -484,6 +486,13 @@ mod tests {
         ] {
             assert_eq!(flagged(text), vec![word], "{text}");
         }
+    }
+
+    #[test]
+    fn morgen_before_a_noun_is_the_adverb() {
+        assert_eq!(flagged("Sie hat Morgen Geburtstag."), ["Morgen"]);
+        assert!(flagged("Wir hatten gestern Morgen Besuch.").is_empty());
+        assert!(flagged("Guten Morgen Herr Müller.").is_empty());
     }
 
     #[test]

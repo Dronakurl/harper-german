@@ -8,7 +8,7 @@ use harper_core::{
 use crate::grammar::noun_gender::NounGender;
 use crate::grammar::noun_phrase::lowercase_of;
 use crate::grammar::token_text::starts_uppercase;
-use crate::morphology::GenderSet;
+use crate::morphology::{GenderSet, MorphologyExt};
 
 /// Words in front of *viel* that make it an adverb or a degree: *so viel*, *wie viel*, *zu viel*.
 const DEGREE: &[&str] = &[
@@ -43,6 +43,22 @@ pub struct GermanVielPlural {
     nouns: NounGender,
 }
 
+impl GermanVielPlural {
+    /// Is `word` in the dictionary as a noun in the plural and not in the singular?
+    fn plural_only_noun(&self, word: &str) -> bool {
+        use harper_core::spell::Dictionary;
+        let chars: Vec<char> = word.chars().collect();
+        self.nouns
+            .dictionary()
+            .get_word_metadata_exact(&chars)
+            .filter(|m| m.is_noun())
+            .is_some_and(|m| {
+                let number = m.noun_agreement().number;
+                number == crate::morphology::NumberSet::PLURAL
+            })
+    }
+}
+
 impl Linter for GermanVielPlural {
     fn lint(&mut self, document: &Document) -> Vec<Lint> {
         let mut lints = Vec::new();
@@ -52,6 +68,38 @@ impl Linter for GermanVielPlural {
                 .filter(|token| !token.kind.is_whitespace())
                 .collect();
             for at in 0..words.len().saturating_sub(1) {
+                // *viele Freunden*: a nominative or accusative quantifier with a dative plural.
+                if matches!(
+                    lowercase_of(words[at], document).as_str(),
+                    "viele" | "alle" | "einige" | "mehrere" | "wenige" | "manche" | "beide"
+                ) && let Some(noun) = words.get(at + 1)
+                    && noun.kind.is_word()
+                    && starts_uppercase(noun, document)
+                {
+                    let text = document.get_span_content_str(&noun.span);
+                    let plural = text.strip_suffix('n').unwrap_or("");
+                    if self.nouns.is_dative_plural(&text)
+                        || (self.plural_only_noun(plural)
+                            && plural.strip_suffix('e').is_some_and(|singular| {
+                                let genders = self.nouns.genders(singular);
+                                !genders.is_empty()
+                                    && genders != crate::morphology::GenderSet::FEMININE
+                            }))
+                    {
+                        let fixed = &text[..text.len() - 1];
+                        lints.push(Lint {
+                            span: noun.span,
+                            lint_kind: LintKind::Agreement,
+                            suggestions: vec![Suggestion::ReplaceWith(fixed.chars().collect())],
+                            message: format!(
+                                "Nach »{}« steht der Plural ohne -n: »{fixed}«.",
+                                lowercase_of(words[at], document)
+                            ),
+                            priority: 31,
+                        });
+                    }
+                    continue;
+                }
                 if lowercase_of(words[at], document) != "viel"
                     || (at == 0 && !starts_uppercase(words[at], document))
                     || (at > 0
@@ -114,6 +162,8 @@ mod tests {
             "Er hat viel Fehler gemacht.",
             "Viel Kinder spielen draußen.",
             "Wir haben viel Probleme.",
+            "Ich habe viele Freunden.",
+            "Alle Kindern spielen.",
         ] {
             assert_eq!(count(text), 1, "{text}");
         }
@@ -130,6 +180,10 @@ mod tests {
             "Ich habe so viel Glück.",
             "Es gibt viel Neues.",
             "Er isst viel Fleisch.",
+            "Ich habe viele Freunde.",
+            "Wir helfen allen Kindern.",
+            "Alle Menschen sind gleich.",
+            "Viele Frauen kommen.",
         ] {
             assert_eq!(count(text), 0, "{text}");
         }

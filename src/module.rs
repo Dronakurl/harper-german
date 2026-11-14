@@ -53,7 +53,9 @@ pub fn rust_lint_group(
         german_relative_clause_comma::GermanRelativeClauseComma,
         german_relative_pronoun::GermanRelativePronoun,
         german_repeated_words::GermanRepeatedWords,
+        german_sein_haben::GermanSeinHaben,
         german_sentence_capitalization::GermanSentenceCapitalization,
+        german_small_slips::GermanSmallSlips,
         german_sonst_comma::GermanSonstComma,
         german_spacing::{GermanCommaFixes, GermanDoublePeriod, GermanSpaces},
         german_spell_check::GermanSpellCheck,
@@ -189,6 +191,8 @@ pub fn rust_lint_group(
     group.add("GermanWeakAdjective", GermanWeakAdjective::default());
     group.add("GermanDoubledVerb", GermanDoubledVerb);
     group.add("GermanSonstComma", GermanSonstComma);
+    group.add("GermanSmallSlips", GermanSmallSlips);
+    group.add("GermanSeinHaben", GermanSeinHaben);
     group.add("GermanCapitalIhr", GermanCapitalIhr);
     group.add("GermanVielPlural", GermanVielPlural::default());
     group.add("GermanMasculineObject", GermanMasculineObject::default());
