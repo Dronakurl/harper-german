@@ -112,9 +112,8 @@ impl<T: Dictionary> Linter for GermanSplitCompound<T> {
                 }
                 // *der Liebe Gott*: an adjective written with a capital is not the start of a
                 // compound.
-                if matches!(&first.kind, TokenKind::Word(Some(meta)) if meta.is_adjective()) {
-                    continue;
-                }
+                let first_is_adjective =
+                    matches!(&first.kind, TokenKind::Word(Some(meta)) if meta.is_adjective());
                 if !Self::noun(first)
                     || !Self::noun(second)
                     || first.span.end + 1 != second.span.start
@@ -181,6 +180,11 @@ impl<T: Dictionary> Linter for GermanSplitCompound<T> {
                         })
                         .map(|_| candidate)
                 });
+                // An adjective reading is only an obstacle when the pair has an article that
+                // fits it: *der Liebe Gott*. *Kunden Service* has a plural noun first.
+                if first_is_adjective && (at == 0 || tokens[at - 1].kind.is_determiner()) {
+                    continue;
+                }
                 if let Some(joined) = joined {
                     lints.push(Lint {
                         span: harper_core::Span::new(first.span.start, second.span.end),

@@ -45099,6 +45099,7 @@ bestellet/~~V
 Bestellformular/~~0HNXZh
 Bestellformulare/~~&
 Bestellformularen/~~N
+Bestellnummer/~~EFNh
 bestellst/~~V
 bestellt/~~JOQRSTVgqr
 bestellte/~~JV
@@ -153988,6 +153989,7 @@ Hotelsteuer/~~EFNh
 Hoteltrakt/~~0HMNXh
 Hoteltrakte/~~&
 Hoteltrakten/~~N
+Hotelzimmer/~~EHNh
 Hotline/~~FNbh
 Hotmoney/~~NZh
 Hotpants/~~Nh
@@ -178924,6 +178926,7 @@ Kunden-Service/~~MNZh
 Kundenauftrag/~~0AHMNh
 Kundenaufträge/~~&N
 Kundenaufträgen/~~N
+Kundenberater/~~EHKLMNh
 kundenbezogen/~~JOQRSTqr
 Kundendienst/~~HMNXh
 Kundendienste/~~&
@@ -178936,13 +178939,17 @@ kundenindividuell/~~JOQRSTqr
 Kundenkontakt/~~0HMNXh
 Kundenkontakte/~~&
 Kundenkontakten/~~N
+Kundenkonten/~~N
+Kundenkonto/~~AHNh
 Kundenkredit/~~0HMNXh
 Kundenkredite/~~&
 Kundenkrediten/~~N
 kundennah/~~JOQRSTqr
+Kundennummer/~~EFNh
 kundenorientiert/~~JOQRSTqr
 Kundenplus/~~ANZh
 Kundenplusses/~~NZ
+Kundenservice/~~AHMNh
 kundenspezifisch/~~JOQRSTqr
 Kundentelefon/~~0HNXZh
 Kundentelefone/~~&
@@ -191050,6 +191057,7 @@ marketendre/~~V
 Marketing/~~ANZh
 Marketing-Maschine/~~EFNh
 Marketing-Spezialist/~~MNYh
+Marketingabteilung/~~FNYh
 Marketingleiter/~~EHKLMNh
 Marketingmix/~~0MNXh
 Marketingmixe/~~&
@@ -210702,6 +210710,7 @@ Onlineformulare/~~&
 Onlineformularen/~~N
 Onlinekriminalität/~~FNYh
 Onlinemarketing/~~AHNZh
+Onlineshop/~~HMNbh
 Onoda/~~!8H
 Onomantie/~~AFNh
 Onomasiologie/~~AFNh
@@ -222800,6 +222809,7 @@ Projektionsschirmen/~~N
 projektiv/~~JOQRSTqr
 Projektkunde/~~AFNh
 Projektleiter/~~EHKLMNh
+Projektleitung/~~FNYh
 Projektor/~~HMNYh
 projektorientiert/~~JOQRSTqr
 Projektplan/~~0AHMNh
@@ -254197,6 +254207,8 @@ Software-Systeme/~~&
 Software-Systemen/~~N
 Software-Unternehmen/~~HNZh
 Software-Update/~~HNZbh
+Softwareentwickler/~~EHKLMNh
+Softwareentwicklung/~~AFNh
 Softwarepanne/~~EFNh
 Softwareprogramm/~~0HNXZh
 Softwareprogramme/~~&
@@ -309799,6 +309811,7 @@ Webdiensten/~~N
 Webe/~~EFNh
 webe/~~V
 weben/~~GVcdefij
+Webentwickler/~~EHKLMNh
 Weber/~~EFHKLMNbh
 Weberbock/~~0AHMNh
 Weberböcke/~~&N

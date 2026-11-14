@@ -613,6 +613,22 @@ Deaktivierung F Deaktivierungen
 Aktivierung F Aktivierungen
 Rechtschreibprüfung F Rechtschreibprüfungen
 Irrationalität F -
+Softwareentwickler M =
+Softwareentwicklung F -
+Kundenservice M -
+Onlineshop M Onlineshops
+Kundennummer F Kundennummern
+Projektleiter M =
+Projektleitung F Projektleitungen
+Marketingabteilung F Marketingabteilungen
+Webentwickler M =
+Teamleiter M =
+Abteilungsleiter M =
+Bestellnummer F Bestellnummern
+Kundenberater M =
+Kundenkonto N Kundenkonten
+Hotelzimmer N =
+Reisebüro N Reisebüros
 """.strip().splitlines()
 
 CORE_ADVERBS = """
