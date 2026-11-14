@@ -58,7 +58,19 @@ impl GermanStrongImperative {
             .rev()
             .find(|token| !token.kind.is_whitespace())
             .is_some_and(|token| document.get_span_content(&token.span) == ['!']);
+        // *Lese das Buch bis morgen.*: an article or a pronoun right behind the verb.
+        let object_follows = sentence
+            .iter()
+            .filter(|token| !token.kind.is_whitespace())
+            .nth(1)
+            .is_some_and(|token| {
+                matches!(
+                    lowercase_of(token, document).as_str(),
+                    "das" | "den" | "dem" | "ein" | "eine" | "einen" | "mir" | "dir" | "uns"
+                )
+            });
         exclaimed
+            || object_follows
             || sentence.iter().any(|token| {
                 token.kind.is_word()
                     && matches!(
@@ -170,6 +182,7 @@ mod tests {
             ("Gebe mir das Buch!", "Gib"),
             ("Nehme bitte Platz.", "Nimm"),
             ("Lese das bitte noch einmal.", "Lies"),
+            ("Lese das Buch bis morgen.", "Lies"),
             ("Vergesse es nicht!", "Vergiss"),
             ("Helfe mir doch mal!", "Hilf"),
             ("Spreche lauter!", "Sprich"),

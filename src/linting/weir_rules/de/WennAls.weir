@@ -1,0 +1,18 @@
+# "Wenn ich gestern nach Hause kam": a single event in the past is introduced by "als".
+expr subject [ich, du, er, sie, es, wir, ihr, man]
+expr past [gestern, vorgestern, damals]
+expr main <(wenn @subject @past), wenn>
+
+let message "Ein einmaliges Ereignis in der Vergangenheit leitet man mit »als« ein."
+let description "Ersetzt »wenn« durch »als« vor einem einmaligen Ereignis der Vergangenheit."
+let kind "Grammar"
+let becomes "als"
+let strategy "MatchCase"
+
+test "Wenn ich gestern nach Hause kam, war niemand da." "Als ich gestern nach Hause kam, war niemand da."
+test "Wenn er damals anrief, war ich nicht da." "Als er damals anrief, war ich nicht da."
+test "Er sagte, wenn wir gestern kamen, sei niemand da gewesen." "Er sagte, als wir gestern kamen, sei niemand da gewesen."
+
+allows "Als ich gestern nach Hause kam, war niemand da."
+allows "Wenn ich morgen komme, bin ich da."
+allows "Wenn ich Zeit habe, rufe ich an."

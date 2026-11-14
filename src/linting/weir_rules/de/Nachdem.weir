@@ -1,0 +1,18 @@
+# "Nach dem er gegessen hatte": "nachdem" is one word when a subject pronoun follows it.
+expr subject [ich, du, er, sie, es, wir, ihr, man]
+expr main <(nach dem @subject), (nach dem)>
+
+let message "Als Konjunktion schreibt man »nachdem« zusammen."
+let description "Schreibt »nach dem« vor einem Subjektpronomen zusammen."
+let kind "Spelling"
+let becomes "nachdem"
+let strategy "MatchCase"
+
+test "Nach dem er gegessen hatte, ging er." "Nachdem er gegessen hatte, ging er."
+test "Wir gingen, nach dem wir gegessen hatten." "Wir gingen, nachdem wir gegessen hatten."
+test "Nach dem ich gegangen war, kam er." "Nachdem ich gegangen war, kam er."
+test "Nach dem sie angekommen war, rief sie an." "Nachdem sie angekommen war, rief sie an."
+
+allows "Nachdem er gegessen hatte, ging er."
+allows "Nach dem Essen gingen wir."
+allows "Nach dem Spiel ging er heim."
