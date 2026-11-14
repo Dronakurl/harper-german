@@ -15,6 +15,7 @@ pub fn rust_lint_group(
         german_absolute_superlative::GermanAbsoluteSuperlative,
         german_adjective_form::GermanAdjectiveForm,
         german_bare_stem::GermanBareStem,
+        german_capital_ihr::GermanCapitalIhr,
         german_colloquial::GermanColloquial,
         german_common_typos::GermanCommonTypos,
         german_comparative_clause_comma::GermanComparativeClauseComma,
@@ -188,6 +189,7 @@ pub fn rust_lint_group(
     group.add("GermanWeakAdjective", GermanWeakAdjective::default());
     group.add("GermanDoubledVerb", GermanDoubledVerb);
     group.add("GermanSonstComma", GermanSonstComma);
+    group.add("GermanCapitalIhr", GermanCapitalIhr);
     group.add("GermanVielPlural", GermanVielPlural::default());
     group.add("GermanMasculineObject", GermanMasculineObject::default());
     group.add("GermanPartitiveSubject", GermanPartitiveSubject::default());

@@ -112,7 +112,7 @@ const FINDEN: &[&str] = &["finde", "findest", "findet", "finden", "fand", "fande
 
 /// Adjectives whose capitalized spelling is also a noun so rare that the capital is a slip:
 /// *der Lecker* is the hunter's word for a tongue.
-const RARE_NOUNS_OF_ADJECTIVES: &[&str] = &["lecker"];
+const RARE_NOUNS_OF_ADJECTIVES: &[&str] = &["lecker", "fertig", "bereit"];
 
 /// What follows *bis* in a farewell: *bis bald*, *bis später*, *bis morgen*.
 const AFTER_BIS: &[&str] = &[
@@ -208,7 +208,30 @@ impl GermanMidSentenceCapital {
         let previous_word = document.get_span_content_str(&previous.span);
         // *das Spiel Knapp verloren*: a noun with its article in front, and a verb behind.
         let object_in_front = at > 2
-            && words[at - 2].kind.is_determiner()
+            && (words[at - 2].kind.is_determiner()
+                || matches!(
+                    document
+                        .get_span_content_str(&words[at - 2].span)
+                        .to_lowercase()
+                        .as_str(),
+                    "alle"
+                        | "viele"
+                        | "einige"
+                        | "mehrere"
+                        | "beide"
+                        | "wenige"
+                        | "keine"
+                        | "meine"
+                        | "deine"
+                        | "seine"
+                        | "ihre"
+                        | "unsere"
+                        | "eure"
+                        | "zwei"
+                        | "drei"
+                        | "vier"
+                        | "fünf"
+                ))
             && previous.kind.is_noun()
             && words.get(at + 1).is_some_and(|t| {
                 t.kind.is_verb()
@@ -461,6 +484,14 @@ mod tests {
         ] {
             assert_eq!(flagged(text), vec![word], "{text}");
         }
+    }
+
+    #[test]
+    fn a_capitalized_adjective_behind_a_quantified_object() {
+        assert_eq!(
+            flagged("Er hat alle Hausaufgaben Fertig gemacht."),
+            ["Fertig"]
+        );
     }
 
     #[test]
