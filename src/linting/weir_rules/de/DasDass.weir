@@ -99,7 +99,7 @@ expr quantor [alles, nichts, jeder, jede, jedes, viele, niemand, keiner, keine, 
 expr sagepartizip [gesagt, erzählt, versprochen, mitgeteilt, geschrieben, verraten, erklärt, gestanden]
 expr dativ [mir, dir, ihm, ihr, uns, euch, ihnen, Ihnen]
 
-expr main <[(@partizip das @subjektohnekomma), (@partizip das @quantor), (@dativ @sagepartizip, das @subjektohnekomma), (@verb @nachgestellt(,) das @subjekt), (@verb @nachgestellt(,) das @artikel), (@ausloeser(,) das @subjekt), (@ausloeser @einschub(,) das @subjekt), (@verb(,) das @artikel), (@verb @einschub(,) das @artikel), (@ausloeser das @subjektohnekomma), (@ausloeser @einschub das @subjektohnekomma)], das>
+expr main <[(@partizip das @subjektohnekomma), (@partizip das @quantor), (@dativ @sagepartizip, das @subjektohnekomma), (@verb @nachgestellt(,) das @subjekt), (@verb @nachgestellt(,) das @artikel), (@ausloeser(,) das @subjekt), (@ausloeser @einschub(,) das @subjekt), (@verb(,) das @artikel), (@verb @einschub(,) das @artikel), (@ausloeser das @subjektohnekomma), (@ausloeser @einschub das @subjektohnekomma), (@sagepartizip(,) das @artikel)], das>
 
 let message "Hier steht die Konjunktion »dass«. Das Pronomen »das« schreibt man mit einem »s«, die Konjunktion mit zwei."
 let description "Ersetzt das Pronomen »das« durch die Konjunktion »dass«, wenn ein Nebensatz folgt."
@@ -108,6 +108,7 @@ let becomes "dass"
 let strategy "MatchCase"
 let scope "Sentence"
 
+test "Mir wurde gesagt, das die Überweisung aussteht." "Mir wurde gesagt, dass die Überweisung aussteht."
 test "Sie hat mir gesagt, das er kommt." "Sie hat mir gesagt, dass er kommt."
 allows "Er hat ein Märchen erzählt, das er gehört hat."
 allows "Ich habe ein Buch gelesen, das er geschrieben hat."
