@@ -1050,17 +1050,6 @@ impl<T: Dictionary> Linter for GermanSpellCheck<T> {
                         });
                         continue;
                     }
-                    if self.dictionary.contains_word(word_chars)
-                        && !self.is_lowercase_name(word_chars)
-                    {
-                        if !curated_german_dictionary().contains_word(word_chars)
-                            && !in_a_name(&tokens, index, document)
-                        {
-                            lints.extend(near_miss_lint(word, word_chars));
-                        }
-                        continue;
-                    }
-
                     // An abbreviation German writes with a full stop: `Nr.`,
                     // `Dr.`, `Okt.`. The tokenizer hands over the letters and
                     // the stop separately, and the dictionary lists the
@@ -1079,7 +1068,14 @@ impl<T: Dictionary> Linter for GermanSpellCheck<T> {
                             "Hr", "Prof", "Dr",
                         ];
                         let written_word: String = word_chars.iter().collect();
+                        // *800 Mio Dollar*, not *mein Mio*: the millions have a number in front.
+                        let counts_something = !matches!(written_word.as_str(), "Mio" | "Mrd")
+                            || index
+                                .checked_sub(1)
+                                .and_then(|i| tokens.get(i))
+                                .is_some_and(|t| matches!(t.kind, TokenKind::Number(_)));
                         if !stop_follows
+                            && counts_something
                             && EVERYDAY.contains(&written_word.as_str())
                             && !german_foreign_stretch::in_foreign_stretch(
                                 &tokens,
@@ -1104,6 +1100,17 @@ impl<T: Dictionary> Linter for GermanSpellCheck<T> {
                         if stop_follows {
                             continue;
                         }
+                    }
+
+                    if self.dictionary.contains_word(word_chars)
+                        && !self.is_lowercase_name(word_chars)
+                    {
+                        if !curated_german_dictionary().contains_word(word_chars)
+                            && !in_a_name(&tokens, index, document)
+                        {
+                            lints.extend(near_miss_lint(word, word_chars));
+                        }
+                        continue;
                     }
 
                     // *Anna's*, *Müller's*: the genitive of a name takes no apostrophe.
