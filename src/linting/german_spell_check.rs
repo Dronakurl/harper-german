@@ -87,6 +87,16 @@ const SHADOWED_FORMS: &[(&str, &str)] = &[
     ("genennt", "genannt"),
     ("gerennt", "gerannt"),
     ("gewisst", "gewusst"),
+    ("endschuldigen", "entschuldigen"),
+    ("endschuldige", "entschuldige"),
+    ("endschuldigt", "entschuldigt"),
+    ("endschuldigte", "entschuldigte"),
+    ("endschuldigst", "entschuldigst"),
+    ("endschuldigung", "Entschuldigung"),
+    ("Endschuldigen", "Entschuldigen"),
+    ("Endschuldigung", "Entschuldigung"),
+    ("Endschuldige", "Entschuldige"),
+    ("endschuldigend", "entschuldigend"),
 ];
 
 fn dated_verb_form(word: &[char]) -> Option<Vec<char>> {
@@ -1435,6 +1445,18 @@ mod tests {
             assert!(lint_text(text).is_empty(), "{text}: {:?}", lint_text(text));
         }
         assert!(!lint_text("Die Kunst des Erzählnes ist alt.").is_empty());
+    }
+
+    #[test]
+    fn endschuldigen_is_reported() {
+        for text in [
+            "Ich möchte mich endschuldigen.",
+            "Er hat sich endschuldigt.",
+            "Die Endschuldigung war nett.",
+        ] {
+            assert!(!lint_text(text).is_empty(), "{text}");
+        }
+        assert!(lint_text("Ich möchte mich entschuldigen.").is_empty());
     }
 
     #[test]
