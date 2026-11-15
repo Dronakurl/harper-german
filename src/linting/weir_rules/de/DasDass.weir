@@ -50,7 +50,7 @@ expr adjektiv [schade, klar, wichtig, möglich, unmöglich, wahrscheinlich, unwa
 expr nomen [tatsache, annahme, vermutung, befürchtung, gewissheit, behauptung, meinung, ansicht, überzeugung, hoffnung, angst, sorge, eindruck, verdacht, gefahr, möglichkeit, wahrscheinlichkeit, voraussetzung, bedingung, feststellung, erkenntnis, nachricht, mitteilung, erwartung, vorstellung, forderung, hinweis, beweis, garantie, chance]
 
 # A verb of feeling with its object: "es freut mich, dass …".
-expr gefuehl [(freut mich), (freut uns), (freut dich), (freut euch), (wundert mich), (ärgert mich), (stört mich), (überrascht mich)]
+expr gefuehl [(tut mir leid), (tut uns leid), (tut mir wirklich leid), (freut mich), (freut uns), (freut dich), (freut euch), (wundert mich), (ärgert mich), (stört mich), (überrascht mich)]
 
 # The subject after the verb, when the clause starts with something else: "bis
 # dahin hoffe ich, dass …".
@@ -99,7 +99,7 @@ expr quantor [alles, nichts, jeder, jede, jedes, viele, niemand, keiner, keine, 
 expr sagepartizip [gesagt, erzählt, versprochen, mitgeteilt, geschrieben, verraten, erklärt, gestanden]
 expr dativ [mir, dir, ihm, ihr, uns, euch, ihnen, Ihnen]
 
-expr main <[(@partizip das @subjektohnekomma), (@partizip das @quantor), (@dativ @sagepartizip, das @subjektohnekomma), (@verb @nachgestellt(,) das @subjekt), (@verb @nachgestellt(,) das @artikel), (@ausloeser(,) das @subjekt), (@ausloeser @einschub(,) das @subjekt), (@verb(,) das @artikel), (@verb @einschub(,) das @artikel), (@ausloeser das @subjektohnekomma), (@ausloeser @einschub das @subjektohnekomma), (@sagepartizip(,) das @artikel)], das>
+expr main <[(@partizip das @subjektohnekomma), (@partizip das @quantor), (@dativ @sagepartizip, das @subjektohnekomma), (@verb @nachgestellt(,) das @subjekt), (@verb @nachgestellt(,) das @artikel), (@ausloeser(,) das @subjekt), (@ausloeser @einschub(,) das @subjekt), (@verb(,) das @artikel), (@verb @einschub(,) das @artikel), (@ausloeser das @subjektohnekomma), (@ausloeser @einschub das @subjektohnekomma), (@sagepartizip(,) das @artikel), (zu [sagen, hoffen, glauben, wissen, denken, behaupten, meinen, erzählen, erwähnen, vergessen, bedauern] das @subjektohnekomma)], das>
 
 let message "Hier steht die Konjunktion »dass«. Das Pronomen »das« schreibt man mit einem »s«, die Konjunktion mit zwei."
 let description "Ersetzt das Pronomen »das« durch die Konjunktion »dass«, wenn ein Nebensatz folgt."
@@ -109,6 +109,8 @@ let strategy "MatchCase"
 let scope "Sentence"
 
 test "Mir wurde gesagt, das die Überweisung aussteht." "Mir wurde gesagt, dass die Überweisung aussteht."
+test "Ich habe vergessen dir zu sagen das ich später komme." "Ich habe vergessen dir zu sagen dass ich später komme."
+test "Es tut mir leid das ich dich nicht angerufen habe." "Es tut mir leid dass ich dich nicht angerufen habe."
 test "Sie hat mir gesagt, das er kommt." "Sie hat mir gesagt, dass er kommt."
 allows "Er hat ein Märchen erzählt, das er gehört hat."
 allows "Ich habe ein Buch gelesen, das er geschrieben hat."

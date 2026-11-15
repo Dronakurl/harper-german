@@ -283,7 +283,15 @@ impl GermanPrepositionCase {
     /// [`readings_allowed_by_spelling`], which asks the opposite question and
     /// needs no entry at all.
     fn agreement_of(&self, head: &str) -> Agreement {
-        if could_be_a_dative_plural(head) {
+        // *Garten*, *Boden* end like a dative plural, but their plural is spelled otherwise
+        // (*Gärten*, *Böden*): a short list, because the dictionary's "surely singular" also
+        // holds for the head of a compound split by a hyphen.
+        const MASCULINE_IN_EN: &[&str] = &[
+            "Garten", "Boden", "Laden", "Wagen", "Ofen", "Graben", "Hafen", "Faden", "Bogen",
+            "Kasten", "Hammer",
+        ];
+        let surely_singular = MASCULINE_IN_EN.contains(&head);
+        if could_be_a_dative_plural(head) && !surely_singular {
             return Agreement::default();
         }
 

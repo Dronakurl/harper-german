@@ -475,6 +475,8 @@ impl GermanSubordinateComma {
             "überlegt",
             "überlegte",
             "entscheiden",
+            "grund",
+            "gründe",
             "sag",
             "sagst",
             "sagt",
@@ -623,7 +625,8 @@ impl GermanSubordinateComma {
                 "habe", "sei", "werde", "könne", "müsse", "wolle", "solle", "dürfe", "komme",
                 "gehe", "wisse", "mache", "sehe", "stehe", "bleibe", "finde", "wolle", "soll",
                 "muss", "kann", "will", "darf", "wird", "ist", "hat", "war", "hatte", "wäre",
-                "hätte", "würde", "könnte", "sollte", "müsste",
+                "hätte", "würde", "könnte", "sollte", "müsste", "sollen", "müssen", "können",
+                "wollen", "dürfen", "sind", "haben", "werden", "würden", "könnten", "sollten",
             ];
             let is_finite = SUBJUNCTIVE.contains(&finite_text.as_str())
                 || (finite_text.chars().next().is_some_and(char::is_lowercase)
@@ -654,13 +657,48 @@ impl GermanSubordinateComma {
         let mut lints = Vec::new();
         for at in 1..tokens.len().saturating_sub(2) {
             let (before, bis, subject) = (tokens[at - 1], tokens[at], tokens[at + 1]);
-            if !Self::word_in(bis, document, &["bis"])
-                || !matches!(before.kind, TokenKind::Word(_))
+            if !matches!(before.kind, TokenKind::Word(_))
                 || !Self::word_in(subject, document, SUBJECTS)
             {
                 continue;
             }
             let written: String = document.get_span_content(&before.span).iter().collect();
+            // *Wir müssen uns beeilen damit wir …*: *damit* in front of a subject pronoun opens
+            // a clause; the word in front is no preposition, conjunction or article.
+            if Self::word_in(bis, document, &["damit"])
+                && !before.kind.is_preposition()
+                && !before.kind.is_conjunction()
+                && !before.kind.is_determiner()
+                && at > 1
+            {
+                lints.push(Lint {
+                    span: before.span,
+                    lint_kind: LintKind::Punctuation,
+                    suggestions: vec![Suggestion::InsertAfter(vec![','])],
+                    priority: 28,
+                    message: "Vor dem Nebensatz mit »damit« steht ein Komma.".to_owned(),
+                });
+                continue;
+            }
+            // *Ich habe ihn gesehen wie er …*: *wie* behind a participle of perceiving.
+            if Self::word_in(bis, document, &["wie"])
+                && matches!(
+                    written.as_str(),
+                    "gesehen" | "gehört" | "erlebt" | "bemerkt" | "beobachtet" | "gespürt"
+                )
+            {
+                lints.push(Lint {
+                    span: before.span,
+                    lint_kind: LintKind::Punctuation,
+                    suggestions: vec![Suggestion::InsertAfter(vec![','])],
+                    priority: 28,
+                    message: "Vor dem Nebensatz mit »wie« steht ein Komma.".to_owned(),
+                });
+                continue;
+            }
+            if !Self::word_in(bis, document, &["bis"]) {
+                continue;
+            }
             let participle = written.starts_with("ge")
                 && (written.ends_with('t') || written.ends_with("en"))
                 && written.chars().count() > 4;
@@ -1726,6 +1764,34 @@ mod tests {
         ] {
             assert_eq!(lint_count(text), 0, "{text}");
         }
+    }
+
+    #[test]
+    fn a_reported_clause_with_a_plural_modal_needs_a_comma() {
+        assert_eq!(
+            lint_count("Der Chef hat gesagt wir sollen früher kommen."),
+            1
+        );
+        assert_eq!(
+            lint_count("Der Chef hat gesagt, wir sollen früher kommen."),
+            0
+        );
+    }
+
+    #[test]
+    fn damit_and_wie_clauses_need_a_comma() {
+        assert_eq!(
+            lint_count("Wir müssen uns beeilen damit wir den Zug nicht verpassen."),
+            1
+        );
+        assert_eq!(lint_count("Ich lerne Deutsch damit ich arbeiten kann."), 1);
+        assert_eq!(
+            lint_count("Ich habe ihn gesehen wie er die Straße überquert hat."),
+            1
+        );
+        assert_eq!(lint_count("Wir müssen uns beeilen, damit wir ankommen."), 0);
+        assert_eq!(lint_count("Was machst du damit?"), 0);
+        assert_eq!(lint_count("Er sieht aus wie sein Vater."), 0);
     }
 
     #[test]

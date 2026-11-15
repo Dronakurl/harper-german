@@ -68,6 +68,44 @@ impl Linter for GermanVielPlural {
                 .filter(|token| !token.kind.is_whitespace())
                 .collect();
             for at in 0..words.len().saturating_sub(1) {
+                // *sein Hausaufgaben*: a singular possessive in front of a plural.
+                if let Some(plural_form) = match lowercase_of(words[at], document).as_str() {
+                    "sein" => Some("seine"),
+                    "mein" => Some("meine"),
+                    "dein" => Some("deine"),
+                    "unser" => Some("unsere"),
+                    "kein" => Some("keine"),
+                    _ => None,
+                } && let Some(noun) = words.get(at + 1)
+                    && noun.kind.is_word()
+                    && starts_uppercase(noun, document)
+                {
+                    let text = document.get_span_content_str(&noun.span);
+                    // Nominalized infinitives (*Ablösen*) end in *-en* and look plural-only: only a
+                    // few plurals in *-en* are listed.
+                    let plural = if text.ends_with("en") {
+                        matches!(text.as_str(), "Hausaufgaben" | "Ferien" | "Kosten")
+                    } else {
+                        self.nouns.is_plural_only(&text) || self.nouns.is_surely_plural(&text)
+                    };
+                    if plural {
+                        let fixed = if starts_uppercase(words[at], document) {
+                            let mut f = plural_form.to_owned();
+                            f[..1].make_ascii_uppercase();
+                            f
+                        } else {
+                            plural_form.to_owned()
+                        };
+                        lints.push(Lint {
+                            span: words[at].span,
+                            lint_kind: LintKind::Agreement,
+                            suggestions: vec![Suggestion::ReplaceWith(fixed.chars().collect())],
+                            message: format!("»{text}« ist ein Plural: »{fixed} {text}«."),
+                            priority: 31,
+                        });
+                        continue;
+                    }
+                }
                 // *viele Freunden*: a nominative or accusative quantifier with a dative plural.
                 if matches!(
                     lowercase_of(words[at], document).as_str(),
@@ -164,6 +202,8 @@ mod tests {
             "Wir haben viel Probleme.",
             "Ich habe viele Freunden.",
             "Alle Kindern spielen.",
+            "Er hat sein Hausaufgaben vergessen.",
+            "Wir haben unser Hausaufgaben gemacht.",
         ] {
             assert_eq!(count(text), 1, "{text}");
         }
@@ -184,6 +224,8 @@ mod tests {
             "Wir helfen allen Kindern.",
             "Alle Menschen sind gleich.",
             "Viele Frauen kommen.",
+            "Er hat seine Hausaufgaben vergessen.",
+            "Er hat sein Haus verkauft.",
         ] {
             assert_eq!(count(text), 0, "{text}");
         }
