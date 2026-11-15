@@ -242,6 +242,32 @@ impl Linter for GermanVerbPreposition {
                 }) {
                     at += 1;
                 }
+                // *Sie wartet seit einer Stunde auf dem Bus*: a time phrase or an adverb between.
+                loop {
+                    let Some(t) = tokens.get(at) else { break };
+                    let word = text(t).to_lowercase();
+                    if is_word(t)
+                        && matches!(
+                            word.as_str(),
+                            "lange"
+                                | "schon"
+                                | "bereits"
+                                | "immer"
+                                | "noch"
+                                | "heute"
+                                | "gestern"
+                                | "jetzt"
+                                | "geduldig"
+                                | "still"
+                        )
+                    {
+                        at += 1;
+                    } else if is_word(t) && word == "seit" && tokens.len() > at + 3 {
+                        at += 3;
+                    } else {
+                        break;
+                    }
+                }
                 let (Some(preposition), Some(article)) = (tokens.get(at), tokens.get(at + 1))
                 else {
                     continue;
@@ -360,6 +386,8 @@ mod tests {
             "Wir arbeiten an das Projekt.",
             "Er zweifelt an das Ergebnis.",
             "Wir warten auf dem Bus seit einer Stunde.",
+            "Sie wartet seit einer Stunde auf dem Bus.",
+            "Er wartet schon lange auf dem Bus.",
             "Ich hoffe auf einem Wunder.",
             "Sie antwortet auf dem Brief.",
         ] {

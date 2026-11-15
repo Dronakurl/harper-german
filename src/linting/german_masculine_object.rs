@@ -110,16 +110,31 @@ impl Linter for GermanMasculineObject {
                     .is_some_and(|h| {
                         // The subject stands in front of *haben* (*Ich habe gestern ein Brief
                         // geschrieben*); behind it, *ein Zyklon* may be the subject itself.
-                        h > 0
-                            && matches!(
-                                lower[h - 1].as_str(),
+                        let pronoun = |w: &str| {
+                            matches!(
+                                w,
                                 "ich" | "du" | "er" | "sie" | "es" | "wir" | "ihr" | "man"
                             )
+                        };
+                        // *Hast du dein Schlüssel vergessen?*: the question has the pronoun behind.
+                        (h > 0 && pronoun(lower[h - 1].as_str())
+                            || h == 0 && lower.get(1).is_some_and(|w| pronoun(w)))
                             && !words[h..at].iter().any(|t| t.kind.is_comma())
                     });
                 let ends_question =
                     has_gibt && words.get(at + 2).is_none_or(|t| t.kind.is_punctuation());
-                if !(has_haben && participle && same_clause || ends_question) {
+                // *Die Wohnung hat zwei Schlafzimmer und ein Balkon.*: a second object of *haben*
+                // behind *und*, at the end of the clause.
+                let second_object = at >= 3
+                    && lower[at - 1] == "und"
+                    && words.get(at + 2).is_none_or(|t| t.kind.is_punctuation())
+                    && lower[..at - 1]
+                        .iter()
+                        .rposition(|w| matches!(w.as_str(), "hat" | "haben" | "hast" | "habe"))
+                        .is_some_and(|h| {
+                            at - 1 - h >= 2 && !words[h..at].iter().any(|t| t.kind.is_comma())
+                        });
+                if !(has_haben && participle && same_clause || ends_question || second_object) {
                     continue;
                 }
                 lints.push(Lint {
@@ -161,6 +176,8 @@ mod tests {
             "Ich habe gestern ein Brief geschrieben.",
             "Er hat sein Hund gesehen.",
             "Wir haben unser Termin verschoben.",
+            "Hast du dein Schlüssel vergessen?",
+            "Die Wohnung hat zwei Schlafzimmer und ein Balkon.",
             "Gibt es hier in der Nähe ein Supermarkt?",
             "Es gibt kein Bahnhof.",
         ] {
@@ -181,6 +198,8 @@ mod tests {
             "Es gibt ein Problem.",
             "Ich habe ein Kind gesehen.",
             "Wir haben unser Ziel erreicht.",
+            "Er hat ein Haus und ein Auto.",
+            "Sie hat Besuch und ein Kollege kommt.",
             "Ein Hunger hat alle ergriffen, ein Rausch geht durch die Welt.",
         ] {
             assert_eq!(count(text), 0, "{text}");

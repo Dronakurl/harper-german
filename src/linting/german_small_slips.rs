@@ -195,6 +195,58 @@ impl Linter for GermanSmallSlips {
                     priority: 31,
                 });
             }
+            // *Wir haben und gestern getroffen*: *uns* typed as *und*.
+            if c == 'u'
+                && at >= 6
+                && source[at..].starts_with(&['u', 'n', 'd', ' '][..])
+                && source[at - 1] == ' '
+            {
+                let before: String = source[..at - 1].iter().collect();
+                let mut words = before.rsplit(' ');
+                let verb = words.next().unwrap_or("");
+                let subject = words.next().unwrap_or("");
+                let (end, next) = word_at(at + 4);
+                let _ = end;
+                if subject.eq_ignore_ascii_case("wir")
+                    && matches!(
+                        verb,
+                        "haben"
+                            | "sind"
+                            | "müssen"
+                            | "sollen"
+                            | "können"
+                            | "wollen"
+                            | "treffen"
+                            | "sehen"
+                            | "besuchen"
+                            | "hatten"
+                            | "waren"
+                    )
+                    && matches!(
+                        next.as_str(),
+                        "gestern"
+                            | "heute"
+                            | "morgen"
+                            | "bald"
+                            | "jetzt"
+                            | "später"
+                            | "oft"
+                            | "schon"
+                            | "noch"
+                            | "nicht"
+                            | "endlich"
+                            | "wieder"
+                    )
+                {
+                    lints.push(Lint {
+                        span: Span::new(at, at + 3),
+                        lint_kind: LintKind::Spelling,
+                        suggestions: vec![Suggestion::ReplaceWith("uns".chars().collect())],
+                        message: "Hier ist das Pronomen »uns« gemeint, nicht »und«.".to_owned(),
+                        priority: 31,
+                    });
+                }
+            }
             // *auf deutsch*
             if (c == 'a' || c == 'A')
                 && (at == 0 || !is_letter(source[at - 1]))
@@ -249,6 +301,7 @@ mod tests {
             "Er ist 18 jährig.",
             "Er spricht auf deutsch mit mir.",
             "Bei fragen melden Sie sich.",
+            "Wir haben und gestern im Park getroffen.",
             "Weißt du, wie spät ist es?",
             "Sie spricht Fließend Englisch.",
         ] {
@@ -266,6 +319,8 @@ mod tests {
             "Er spricht auf Deutsch mit mir.",
             "Er nannte es: „kleiner Trick“.",
             "Bei Fragen melden Sie sich.",
+            "Wir haben uns gestern im Park getroffen.",
+            "Wir haben Brot und gestern Kuchen gekauft.",
             "Wie spät ist es?",
             "Weißt du, wie spät es ist?",
             "Sie spricht fließend Englisch.",
