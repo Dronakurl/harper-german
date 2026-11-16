@@ -32,7 +32,43 @@ impl Linter for GermanPoliteSie {
                 .unwrap_or(words.len());
             let clause = &words[..end];
             let has_bitte = clause.iter().any(|t| lowercase_of(t, document) == "bitte");
-            if !has_bitte {
+            // *Entschuldigen sie die Umstände.*: a verb of a request at the start, no question.
+            const REQUEST_VERBS: &[&str] = &[
+                "entschuldigen",
+                "beachten",
+                "melden",
+                "senden",
+                "schicken",
+                "rufen",
+                "bestätigen",
+                "überweisen",
+                "teilen",
+                "geben",
+                "lassen",
+                "bringen",
+                "füllen",
+                "sehen",
+                "informieren",
+                "kontaktieren",
+                "wenden",
+                "antworten",
+                "nehmen",
+                "überprüfen",
+                "prüfen",
+                "schreiben",
+                "bleiben",
+                "verzeihen",
+                "beachten",
+                "denken",
+            ];
+            let asks = words
+                .last()
+                .is_some_and(|t| document.get_span_content_str(&t.span) == "?");
+            let opens_a_request = !asks
+                && clause.len() >= 2
+                && REQUEST_VERBS.contains(&lowercase_of(clause[0], document).as_str())
+                && document.get_span_content_str(&clause[1].span) == "sie";
+            if !has_bitte && !opens_a_request {
                 continue;
             }
             for at in 1..clause.len() {
@@ -101,6 +137,9 @@ mod tests {
             "Bei Fragen wenden sie sich bitte an unseren Kundenservice.",
             "Bitte antworten sie bis Freitag.",
             "Rufen sie mich bitte zurück.",
+            "Entschuldigen sie die Umstände.",
+            "Teilen sie mir bitte mit, wann es passt.",
+            "Melden sie sich bei Fragen.",
         ] {
             assert_eq!(count(text), 1, "{text}");
         }
@@ -110,6 +149,9 @@ mod tests {
             "Sie wollen, dass wir sie bitten.",
             "Bitte sag ihr, dass sie kommen soll.",
             "Die Eltern kommen, wenn sie können.",
+            "Entschuldigen Sie die Umstände.",
+            "Sehen sie das Bild?",
+            "Geben sie ihm das Buch?",
         ] {
             assert_eq!(count(text), 0, "{text}");
         }

@@ -19,6 +19,11 @@ const HAND_PICKED_TYPOS: &[(&str, &str)] = &[
     ("packet", "Paket"),
     ("schoneinmal", "schon einmal"),
     ("schonmal", "schon mal"),
+    ("wargenommen", "wahrgenommen"),
+    ("warnahm", "wahrnahm"),
+    ("warnehmen", "wahrnehmen"),
+    ("warnehmung", "Wahrnehmung"),
+    ("warnimmt", "wahrnimmt"),
     ("wiedereinmal", "wieder einmal"),
     ("wiedermal", "wieder mal"),
 ];

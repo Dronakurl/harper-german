@@ -503,6 +503,28 @@ impl Linter for GermanRelativeClauseComma {
                             | "mehrere"
                             | "beide"
                     );
+                // *einen Film gesehen der mich beeindruckt hat*: an object pronoun behind the
+                // pronoun, after the noun and its participle. *eine Familie die ihre Heimat
+                // verlassen muss*: a possessive behind it.
+                let object_or_possessive = !behind_preposition
+                    && matches!(pronoun.as_str(), "der" | "die" | "das")
+                    && (skipped_participle
+                        && matches!(
+                            Self::text(next, document).as_str(),
+                            "mich" | "dich" | "uns" | "euch" | "ihn" | "ihm" | "ihr" | "sie"
+                        )
+                        || !bracket_open
+                            && matches!(
+                                Self::text(next, document).as_str(),
+                                "ihre"
+                                    | "ihren"
+                                    | "ihrem"
+                                    | "ihrer"
+                                    | "seine"
+                                    | "seinen"
+                                    | "seinem"
+                                    | "seiner"
+                            ));
                 let genitive_relative = matches!(pronoun.as_str(), "dessen" | "deren")
                     && !behind_comma
                     && !behind_preposition
@@ -510,6 +532,7 @@ impl Linter for GermanRelativeClauseComma {
                     && !next.kind.is_adjective();
                 if !(opens_with_subject
                     || genitive_relative
+                    || object_or_possessive
                     || numeral_subject
                     || masculine_subject
                     || neuter_or_feminine_subject
@@ -633,6 +656,19 @@ mod tests {
         ] {
             assert_eq!(lint_count(text), 0, "{text}");
         }
+    }
+
+    #[test]
+    fn a_participle_or_a_possessive_behind_the_pronoun() {
+        assert_eq!(
+            lint_count("Ich habe gestern einen Film gesehen der mich sehr beeindruckt hat."),
+            1
+        );
+        assert_eq!(
+            lint_count("Es geht um eine Familie die ihre Heimat verlassen muss."),
+            1
+        );
+        assert_eq!(lint_count("Ich habe dem Mann die ihre Tasche gegeben."), 0);
     }
 
     #[test]
