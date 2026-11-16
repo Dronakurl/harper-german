@@ -507,7 +507,7 @@ pub fn could_be_a_dative_plural(noun: &str) -> bool {
     // *Plänen*). `-s` is the `-s` plural, which takes none — but not after
     // another `s`: *Prozess*, *Fluss*. And `-a` and `-i` are the Latin and
     // Greek plurals, which take none either.
-    ["en", "ern", "eln"]
+    ["en", "ern", "eln", "arn"]
         .iter()
         .any(|ending| lower.ends_with(ending))
         || (lower.ends_with('s') && !lower.ends_with("ss"))

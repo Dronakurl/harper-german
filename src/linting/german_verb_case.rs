@@ -897,6 +897,16 @@ impl GermanVerbCase {
                         .is_some_and(|c| c.is_uppercase())
                 })
                 .or(clause.get(at + 2));
+            // *liegt in der nähe*: a lower-case word where the noun belongs is a slip of its own
+            // (reported by the capitalization rule), and its gender is no guide.
+            if noun.is_some_and(|t| {
+                document
+                    .get_span_content(&t.span)
+                    .first()
+                    .is_some_and(|c| c.is_lowercase())
+            }) {
+                continue;
+            }
             lints.extend(
                 self.wrong_determiner(object, noun, Case::Dative, document, || {
                     format!("Nach »{verb}« steht der Ort im Dativ: »{preposition}« mit Dativ.")

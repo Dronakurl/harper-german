@@ -202,7 +202,7 @@ impl Linter for GermanSmallSlips {
                 && source[at - 1] == ' '
             {
                 let before: String = source[..at - 1].iter().collect();
-                let mut words = before.rsplit(' ');
+                let mut words = before.split_whitespace().rev();
                 let verb = words.next().unwrap_or("");
                 let subject = words.next().unwrap_or("");
                 let (end, next) = word_at(at + 4);
@@ -301,6 +301,7 @@ mod tests {
             "Er ist 18 jährig.",
             "Er spricht auf deutsch mit mir.",
             "Bei fragen melden Sie sich.",
+            "Das war schön.\n\nWir haben und gestern im Park getroffen.",
             "Wir haben und gestern im Park getroffen.",
             "Weißt du, wie spät ist es?",
             "Sie spricht Fließend Englisch.",
@@ -320,6 +321,7 @@ mod tests {
             "Er nannte es: „kleiner Trick“.",
             "Bei Fragen melden Sie sich.",
             "Wir haben uns gestern im Park getroffen.",
+            "Das war schön.\n\nWir haben uns gestern im Park getroffen.",
             "Wir haben Brot und gestern Kuchen gekauft.",
             "Wie spät ist es?",
             "Weißt du, wie spät es ist?",

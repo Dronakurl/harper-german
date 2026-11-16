@@ -983,6 +983,10 @@ mod tests {
     /// it. Behind a determiner that is no dative it stays this rule's.
     #[test]
     fn a_plural_without_its_n_is_left_to_the_dative_plural_rule() {
+        assert_clean(&[
+            "Ich habe bei den Nachbarn nachgefragt.",
+            "Er wohnt bei den Nachbarn.",
+        ]);
         assert_clean(&["Ich gehe mit meinen Freunde ins Kino."]);
         assert!(!lint("Bei meine Häuser.").is_empty());
     }

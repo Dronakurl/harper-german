@@ -161,6 +161,11 @@ impl GermanVerbCluster {
         if last_word == "werden" || last_word == "sein" || last_word == "haben" {
             return None;
         }
+        // A finite form at the end closes a subordinate clause: *Hat jemand eine Idee, was ich
+        // tun kann?*
+        if irregular_finite_verb_lemma(&last_word).is_some() {
+            return None;
+        }
         if lemmas
             .iter()
             .flatten()
@@ -298,6 +303,14 @@ mod tests {
         ] {
             assert_eq!(flagged(text), [word], "{text}");
         }
+    }
+
+    #[test]
+    fn a_finite_modal_closing_a_subordinate_clause_is_quiet() {
+        assert!(
+            flagged("Hat jemand eine Idee was ich tun kann?").is_empty(),
+            "kann"
+        );
     }
 
     #[test]
