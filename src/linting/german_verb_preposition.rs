@@ -243,8 +243,7 @@ impl Linter for GermanVerbPreposition {
                     at += 1;
                 }
                 // *Sie wartet seit einer Stunde auf dem Bus*: a time phrase or an adverb between.
-                loop {
-                    let Some(t) = tokens.get(at) else { break };
+                while let Some(t) = tokens.get(at) {
                     let word = text(t).to_lowercase();
                     if is_word(t)
                         && matches!(
