@@ -114,6 +114,22 @@ const FINDEN: &[&str] = &["finde", "findest", "findet", "finden", "fand", "fande
 /// *der Lecker* is the hunter's word for a tongue.
 const RARE_NOUNS_OF_ADJECTIVES: &[&str] = &["lecker", "fertig", "bereit"];
 
+/// Adverbs of manner and time that stand before the verb at the end of a clause but never
+/// before a noun: *Wir haben uns gut unterhalten*, *Er hat lange geschlafen*.
+const MANNER_ADVERBS: &[&str] = &[
+    "gut", "schlecht", "schnell", "langsam", "gern", "gerne", "lange", "oft", "kurz", "früh",
+    "spät", "richtig", "falsch", "laut", "leise", "bereits", "endlich", "sofort", "bald",
+];
+
+/// The auxiliaries and modals that leave the verb for the end of the clause.
+const AUXILIARIES: &[&str] = &[
+    "habe", "hast", "hat", "haben", "habt", "hatte", "hatten", "bin", "bist", "ist", "sind",
+    "seid", "war", "waren", "werde", "wirst", "wird", "werden", "werdet", "würde", "würden",
+    "kann", "kannst", "können", "könnt", "konnte", "konnten", "muss", "musst", "müssen", "will",
+    "willst", "wollen", "wollte", "soll", "sollst", "sollen", "sollte", "darf", "dürfen", "möchte",
+    "möchten",
+];
+
 /// What follows *bis* in a farewell: *bis bald*, *bis später*, *bis morgen*.
 const AFTER_BIS: &[&str] = &[
     "bald",
@@ -357,6 +373,23 @@ impl GermanMidSentenceCapital {
                 .dictionary
                 .get_word_metadata(&lower.chars().collect::<Vec<_>>())
                 .is_some_and(|m| m.is_verb());
+        // *Wir haben uns gut Unterhalten.*: the verb that closes the clause behind an
+        // auxiliary, with an adverb in front that no noun follows.
+        let closing_verb = next_ends_clause
+            && MANNER_ADVERBS.contains(&previous_lower.as_str())
+            && (lower.ends_with('n') || crate::grammar::verbs::is_past_participle(&lower))
+            && words[..at - 1]
+                .iter()
+                .rev()
+                .take_while(|t| !t.kind.is_punctuation())
+                .any(|t| {
+                    AUXILIARIES
+                        .contains(&crate::grammar::noun_phrase::lowercase_of(t, document).as_str())
+                })
+            && self
+                .dictionary
+                .get_word_metadata(&lower.chars().collect::<Vec<_>>())
+                .is_some_and(|m| m.is_verb());
         let finite_verb = subject_pronoun(&previous_lower).is_some()
             && !lower.ends_with('n')
             && self.small_word(chars, |m| m.verb.is_some() && m.adjective.is_none());
@@ -401,6 +434,7 @@ impl GermanMidSentenceCapital {
         if !(graded_adjective
             || bare_adjective
             || goes_to_do
+            || closing_verb
             || finite_verb
             || day_adverb
             || recurring
@@ -483,6 +517,9 @@ mod tests {
             ("Wir haben Zwölf Gäste eingeladen.", "Zwölf"),
             ("Er ist Dreißig geworden.", "Dreißig"),
             ("Die Beiden sind verheiratet.", "Beiden"),
+            ("Wir haben uns gut Unterhalten.", "Unterhalten"),
+            ("Er hat lange Geschlafen.", "Geschlafen"),
+            ("Ich kann leider nicht so schnell Laufen.", "Laufen"),
         ] {
             assert_eq!(flagged(text), vec![word], "{text}");
         }
@@ -505,6 +542,14 @@ mod tests {
 
     #[test]
     fn leaves_nominalizations_and_names_alone() {
+        for text in [
+            "Wir haben gut Essen bestellt.",
+            "Ich habe bald Geburtstag.",
+            "Er hat oft Recht.",
+            "Es gab gut Essen.",
+        ] {
+            assert!(flagged(text).is_empty(), "{text}: {:?}", flagged(text));
+        }
         for text in [
             "Ich wünsche dir alles Gute.",
             "Er sagt etwas Interessantes.",

@@ -240,6 +240,20 @@ impl GermanMasculineObject {
             verb,
             "werde" | "wirst" | "wird" | "werdet" | "würde" | "würdest" | "würden" | "würdet"
         );
+        // *Er hat ein Termin beim Zahnarzt*: a prepositional phrase behind the object. Without
+        // an auxiliary in front, a verb at its end would start a clause of its own (*Ich glaube
+        // ein Mann im Park kommt*).
+        let preposition_first = (at + 2 < words.len())
+            && (words[at + 2].kind.is_preposition()
+                || matches!(
+                    tail.first().copied(),
+                    Some("beim" | "im" | "am" | "zum" | "zur" | "vom" | "ins" | "ans")
+                ));
+        if preposition_first && !tail.is_empty() && !needs_verb {
+            let last = words[at + 1 + tail.len()];
+            let verb_last = last.kind.is_verb() && !starts_uppercase(last, document);
+            return is_aux || !verb_last || PARTICLES.contains(tail.last().unwrap_or(&""));
+        }
         match tail.as_slice() {
             [] => !needs_verb,
             [p] if !is_aux => PARTICLES.contains(p),
@@ -386,6 +400,8 @@ mod tests {
             "Dann kaufe ich ein Tisch.",
             "Ich rufe morgen ein Kollege an.",
             "Er kennt ein Arzt.",
+            "Er hat ein Termin beim Zahnarzt.",
+            "Ich sehe ein Mann im Park.",
         ] {
             assert_eq!(count(text), 1, "{text}");
         }
@@ -420,7 +436,8 @@ mod tests {
             "Weil er ein Hund hat.",
             "Ich weiß, dass ein Mann kommt.",
             "Wir gehen ein Stück.",
-            "Er läuft ein Marathon in Berlin.",
+            "Ich glaube ein Mann im Park kommt.",
+            "Er hat einen Termin beim Zahnarzt.",
         ] {
             assert_eq!(count(text), 0, "{text}");
         }

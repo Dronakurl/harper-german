@@ -355,7 +355,72 @@ impl GermanAdjectiveForm {
                     return None;
                 }
             }
-            return self.wrong_ending(adjective, stem, ending, &determiner, &narrowed);
+            let lint = self.wrong_ending(adjective, stem, ending, &determiner, &narrowed)?;
+            // *Ich habe ein neuen Computer gekauft*: *-en* is the masculine accusative, and
+            // the article lost its own *-en*. Offer both, the accusative first unless a
+            // copula in front asks for the nominative (*Das ist ein großen Erfolg*).
+            // A weak masculine is known by its nominative: *Kollegen* by *Kollege*.
+            let is_masculine = |noun: &str| {
+                self.nouns
+                    .gender_of(noun)
+                    .is_some_and(|(gender, _)| gender == crate::morphology::Gender::Masculine)
+            };
+            let masculine = is_masculine(&noun_text)
+                || noun_text.strip_suffix('n').is_some_and(|nominative| {
+                    nominative.ends_with('e') && is_masculine(nominative)
+                });
+            const EIN_FORMS: &[&str] = &[
+                "ein", "kein", "mein", "dein", "sein", "ihr", "unser", "euer",
+            ];
+            if ending == "en" && masculine && EIN_FORMS.contains(&determiner.as_str()) {
+                let copula = words[..at]
+                    .iter()
+                    .rev()
+                    .take_while(|t| !t.kind.is_punctuation())
+                    .any(|t| {
+                        matches!(
+                            lowercase_of(t, document).as_str(),
+                            "ist"
+                                | "sind"
+                                | "war"
+                                | "waren"
+                                | "bin"
+                                | "bist"
+                                | "wird"
+                                | "werden"
+                                | "wurde"
+                                | "bleibt"
+                                | "blieb"
+                                | "heißt"
+                                | "sei"
+                                | "wäre"
+                        )
+                    });
+                let written = document.get_span_content_str(&words[at].span);
+                // *euer* drops its *e*: *euren*.
+                let accusative_article = match written.strip_suffix("uer") {
+                    Some(head) => format!("{head}uren"),
+                    None => format!("{written}en"),
+                };
+                let accusative = format!("{accusative_article} {stem}en");
+                let nominative = format!("{written} {stem}er");
+                let mut suggestions = vec![accusative, nominative];
+                if copula {
+                    suggestions.reverse();
+                }
+                return Some(Lint {
+                    span: harper_core::Span::new(words[at].span.start, adjective.span.end),
+                    suggestions: suggestions
+                        .into_iter()
+                        .map(|s| Suggestion::ReplaceWith(s.chars().collect()))
+                        .collect(),
+                    message: format!(
+                        "»{written} {stem}en« passt nicht zu einem männlichen Nomen: im Akkusativ »{written}en {stem}en«, im Nominativ »{written} {stem}er«."
+                    ),
+                    ..lint
+                });
+            }
+            return Some(lint);
         }
 
         let noun_text: String = document.get_span_content(&noun.span).iter().collect();
@@ -1044,6 +1109,32 @@ mod tests {
         assert_eq!(
             reported("Wir haben eine genau Vorstellung davon."),
             ["genau"]
+        );
+    }
+
+    #[test]
+    fn ein_with_a_masculine_accusative_ending_offers_einen() {
+        let fixes = |text: &str| -> Vec<String> {
+            let dict = combined_german_dictionary();
+            let document = Document::new(text, &PlainGerman, &dict);
+            GermanAdjectiveForm::new()
+                .lint(&document)
+                .into_iter()
+                .flat_map(|lint| lint.suggestions)
+                .map(|s| s.to_string())
+                .collect()
+        };
+        assert_eq!(
+            fixes("Ich habe ein neuen Computer gekauft."),
+            ["Replace with: “einen neuen”", "Replace with: “ein neuer”"]
+        );
+        assert_eq!(
+            fixes("Wir haben ein neuen Kollegen."),
+            ["Replace with: “einen neuen”", "Replace with: “ein neuer”"]
+        );
+        assert_eq!(
+            fixes("Das ist ein großen Erfolg."),
+            ["Replace with: “ein großer”", "Replace with: “einen großen”"]
         );
     }
 

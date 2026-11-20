@@ -220,13 +220,25 @@ impl GermanDativePlural {
         // Weak masculine nouns spell every plural in *-en* (*Megalithen*, *Lombarden*), so only
         // a neuter or masculine singular in a dictionary-known plural *-e* is trusted for the
         // second path, and only when the singular is surely one: *Problem* → *Probleme*.
+        // A masculine one too when its plural in *-e* is known (*Freund* → *Freunde*): a weak
+        // masculine has no such plural. And a noun with no singular at all (*Leute*).
+        // Latin nouns in *-or* have both plurals (*Tumore*, *Tumoren*).
         let strong_singular = |stem: &str| {
             stem.strip_suffix('e').is_some_and(|singular| {
-                self.nouns
-                    .gender_of(singular)
-                    .is_some_and(|(gender, sure)| {
-                        sure && gender == crate::morphology::Gender::Neuter
-                    })
+                !singular.ends_with("or")
+                    && match self.nouns.gender_of(singular) {
+                        Some((gender, sure)) => {
+                            sure && matches!(
+                                gender,
+                                crate::morphology::Gender::Neuter
+                                    | crate::morphology::Gender::Masculine
+                            )
+                        }
+                        None => !self
+                            .nouns
+                            .dictionary()
+                            .contains_word(&singular.chars().collect::<Vec<_>>()),
+                    }
             })
         };
         if !(self.nouns.is_dative_plural(&text)
@@ -408,7 +420,17 @@ mod tests {
             fixes("Das waren seine besten Jahren."),
             ["Replace with: “Jahre”"]
         );
+        assert_eq!(
+            fixes("Das sind meine Freunden."),
+            ["Replace with: “Freunde”"]
+        );
+        assert_eq!(fixes("Ich sehe die Hunden."), ["Replace with: “Hunde”"]);
         for text in [
+            "Die Studenten lernen.",
+            "Die Menschen warten.",
+            "Die Kollegen sind da.",
+            "Die Grenzen sind offen.",
+            "Viele Tumoren wachsen langsam.",
             "Ich spreche mit den Freunden.",
             "Er hilft vielen Freunden.",
             "Die Taschen sind voll.",

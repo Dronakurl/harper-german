@@ -119,8 +119,10 @@ impl Linter for GermanVielPlural {
                     if self.nouns.is_dative_plural(&text)
                         || (self.plural_only_noun(plural)
                             && plural.strip_suffix('e').is_some_and(|singular| {
+                                // *Tumore* and *Tumoren* are both plurals.
                                 let genders = self.nouns.genders(singular);
-                                !genders.is_empty()
+                                !singular.ends_with("or")
+                                    && !genders.is_empty()
                                     && genders != crate::morphology::GenderSet::FEMININE
                             }))
                     {
