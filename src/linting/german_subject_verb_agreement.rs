@@ -727,6 +727,50 @@ impl<T: Dictionary> GermanSubjectVerbAgreement<T> {
                 continue;
             }
 
+            // *Die Wetter ist schön*: *die* read the noun as a plural, but the noun is a
+            // masculine or neuter whose plural is spelled like its singular, and the verb is
+            // singular. The article is what went wrong: *Das Wetter*.
+            let determiner = Self::word_at(tokens, phrase.open, document);
+            if determiner == "die"
+                && phrase.head == phrase.open + 1
+                && readings
+                    .iter()
+                    .all(|r| r.number == NumberSet::SINGULAR && r.person.contains(PersonSet::THIRD))
+            {
+                let head: String = document
+                    .get_span_content(&tokens[phrase.head].span)
+                    .iter()
+                    .collect();
+                if let Some((gender, _)) = self.nouns.gender_of(&head)
+                    && gender != crate::morphology::Gender::Feminine
+                {
+                    let article = if gender == crate::morphology::Gender::Masculine {
+                        "der"
+                    } else {
+                        "das"
+                    };
+                    let original = document.get_span_content(&tokens[phrase.open].span);
+                    lints.push(Lint {
+                        span: tokens[phrase.open].span,
+                        lint_kind: LintKind::Agreement,
+                        suggestions: vec![Suggestion::replace_with_match_case(
+                            article.chars().collect(),
+                            original,
+                        )],
+                        priority: 30,
+                        message: format!(
+                            "»{head}« ist {} und steht hier im Singular: »{article} {head}«.",
+                            if article == "der" {
+                                "maskulin"
+                            } else {
+                                "neutral"
+                            }
+                        ),
+                    });
+                    continue;
+                }
+            }
+
             let subject_text: String = (phrase.open..=phrase.head)
                 .map(|at| {
                     document
@@ -1649,6 +1693,7 @@ mod tests {
             ("Der Hund bellen laut.", "bellt"),
             ("Wir ist heute sehr müde.", "sind"),
             ("Er weißt es nicht.", "weiß"),
+            ("Die Wetter ist schön.", "Das"),
         ] {
             assert_eq!(
                 suggested(text),
