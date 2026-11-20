@@ -28,7 +28,7 @@ expr zeitraum [jahr, monat, tag, jahrzehnt, jahrhundert, woche, stunde, minute, 
 # adjective there and stays.
 expr finit [ist, sind, war, waren, geht, ging, gibt, gab, hat, haben, hatte, habe, bin, lebe, lebt, leben, wohne, wohnt, wohnen, arbeite, arbeitet, arbeiten, kann, können, weiß, wissen, fühle, fühlt, regnet, läuft, hat, bleibt, fehlt, kenne, kennt]
 
-expr main <[(seid [dem, der, einem, einer] * @finit), (seid @zeitangabe), (seid @menge @zeitangabe), (seid [einem, einer] @einzahl), (seid @vergangen @zeitraum)], seid>
+expr main <[(seid [dem, der, einem, einer] * @finit), (seid @zeitangabe), (seid @menge @zeitangabe), (seid [einem, einer] @einzahl), (seid @vergangen @zeitraum), (seid wann), (seid wie lange)], seid>
 
 let message "»seid« ist die Verbform (»ihr seid«). Vor einer Zeitangabe steht die Präposition »seit«."
 let description "Ersetzt das Verb »seid« vor einer Zeitangabe durch die Präposition »seit«."
@@ -47,6 +47,11 @@ test "Das Geschäft gibt es seid ein paar Monaten." "Das Geschäft gibt es seit 
 test "Ich warte seid zwei Stunden." "Ich warte seit zwei Stunden."
 test "Er wartet seid einer Stunde." "Er wartet seit einer Stunde."
 
+# "Seid wann?" asks for the start of a span of time; the verb has no use for "wann" right behind it.
+test "Seid wann wohnst du hier?" "Seit wann wohnst du hier?"
+test "Und seid wann weißt du das?" "Und seit wann weißt du das?"
+test "Seid wie lange wartest du schon?" "Seit wie lange wartest du schon?"
+
 test "Seid letzter Woche ist er krank." "Seit letzter Woche ist er krank."
 test "Seid dem Umzug geht es mir besser." "Seit dem Umzug geht es mir besser."
 test "Seid der Hochzeit wohnen sie in Bonn." "Seit der Hochzeit wohnen sie in Bonn."
@@ -60,6 +65,8 @@ allows "Seit letzter Woche ist er krank."
 allows "Seid heute bitte pünktlich."
 allows "Das Haus steht seit Jahren leer."
 allows "Seid ihr schon da?"
+allows "Seit wann wohnst du hier?"
+allows "Wisst ihr, wann ihr fertig seid?"
 allows "Ihr seid drei Freunde."
 allows "Ihr seid einer Meinung."
 allows "Ihr seid vielen Menschen begegnet."

@@ -4,7 +4,7 @@
 use crate::morphology::{Gender, GenderSet};
 use harper_core::{
     Document, Punctuation, Token, TokenKind, TokenStringExt,
-    linting::{Lint, LintKind, Linter},
+    linting::{Lint, LintKind, Linter, Suggestion},
 };
 
 use crate::grammar::token_text::starts_lowercase;
@@ -14,8 +14,8 @@ use crate::{
         noun_phrase::lowercase_of,
         subjects::irregular_finite_verb_lemma,
         verbs::{
-            has_zu_infix, is_past_participle, looks_like_participle,
-            participle_spelled_like_infinitive,
+            has_zu_infix, infinitive_of_participle, is_participle_not_infinitive,
+            is_past_participle, looks_like_participle, participle_spelled_like_infinitive,
         },
     },
     linting::german_subordinate_comma::SUBORDINATORS,
@@ -174,6 +174,28 @@ impl GermanVerbCluster {
             return None;
         }
 
+        // *Er hat sein Fahrrad repariert lassen*: *lassen* takes the bare infinitive.
+        if last_word == "lassen"
+            && let Some(&previous_at) = before.last()
+            && starts_lowercase(tokens[previous_at], document)
+            && is_participle_not_infinitive(&words[words.len() - 1])
+        {
+            let previous = tokens[previous_at];
+            let infinitive = infinitive_of_participle(&words[words.len() - 1]);
+            return Some(Lint {
+                span: previous.span,
+                lint_kind: LintKind::Grammar,
+                suggestions: infinitive
+                    .map(|w| vec![Suggestion::ReplaceWith(w.chars().collect())])
+                    .unwrap_or_default(),
+                message: format!(
+                    "Vor »lassen« steht der Infinitiv, nicht das Partizip: »{}«.",
+                    words[words.len() - 1]
+                ),
+                priority: 31,
+            });
+        }
+
         let modal = lemmas.iter().flatten().any(|lemma| MODALS.contains(lemma));
         let haben = lemmas
             .iter()
@@ -271,6 +293,47 @@ mod tests {
             .into_iter()
             .map(|lint| document.get_span_content_str(&lint.span))
             .collect()
+    }
+
+    fn suggested(text: &str) -> Vec<String> {
+        let dict = combined_german_dictionary();
+        let document = Document::new(text, &PlainGerman, &dict);
+        GermanVerbCluster::new()
+            .lint(&document)
+            .into_iter()
+            .flat_map(|lint| lint.suggestions)
+            .map(|s| s.to_string())
+            .collect()
+    }
+
+    #[test]
+    fn a_participle_before_lassen_takes_the_infinitive() {
+        for (text, infinitive) in [
+            ("Er hat sein Fahrrad repariert lassen.", "reparieren"),
+            ("Ich habe das Auto gewaschen lassen.", "waschen"),
+            ("Sie hat die Haare geschnitten lassen.", "schneiden"),
+            ("Wir haben das Paket abgeholt lassen.", "abholen"),
+            ("Er hat das Haus verkauft lassen.", "verkaufen"),
+        ] {
+            let suggestions = suggested(text);
+            assert_eq!(flagged(text).len(), 1, "{text}");
+            if infinitive != "schneiden" {
+                assert!(
+                    suggestions.iter().any(|s| s.contains(infinitive)),
+                    "{text}: {suggestions:?}"
+                );
+            }
+        }
+        for text in [
+            "Er hat sein Fahrrad reparieren lassen.",
+            "Er hat sich gehen lassen.",
+            "Sie hat es geschehen lassen.",
+            "Er hat ihn gefesselt liegen lassen.",
+            "Wir haben uns scheiden lassen.",
+            "Das hat er sich nicht gefallen lassen.",
+        ] {
+            assert!(flagged(text).is_empty(), "{text}: {:?}", flagged(text));
+        }
     }
 
     #[test]

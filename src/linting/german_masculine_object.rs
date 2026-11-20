@@ -13,6 +13,107 @@ use crate::morphology::GenderSet;
 
 const HABEN: &[&str] = &["habe", "hast", "hat", "haben", "habt", "hatte", "hatten"];
 
+/// Verbs whose noun phrase is a nominative: *Ich bin ein Lehrer*, *Er heißt ein Riese*.
+const COPULAS: &[&str] = &[
+    "bin",
+    "bist",
+    "ist",
+    "sind",
+    "seid",
+    "war",
+    "warst",
+    "waren",
+    "wart",
+    "sei",
+    "wäre",
+    "wären",
+    "bleibe",
+    "bleibst",
+    "bleibt",
+    "bleiben",
+    "blieb",
+    "blieben",
+    "heiße",
+    "heißt",
+    "heißen",
+    "hieß",
+    "scheint",
+    "scheinen",
+    "schien",
+    "gilt",
+    "gelten",
+    "sein",
+    "gewesen",
+    "geworden",
+    "geblieben",
+    "werden",
+    "worden",
+];
+
+/// Auxiliaries and modals: a verb at the end of the clause may still follow the object
+/// (*Ich möchte ein Kaffee trinken*). *werden* needs that verb, or it is the copula.
+const AUXILIARIES: &[&str] = &[
+    "habe",
+    "hast",
+    "hat",
+    "haben",
+    "habt",
+    "hatte",
+    "hatten",
+    "hätte",
+    "hättest",
+    "hätten",
+    "möchte",
+    "möchtest",
+    "möchten",
+    "möchtet",
+    "will",
+    "willst",
+    "wollen",
+    "wollt",
+    "wollte",
+    "kann",
+    "kannst",
+    "können",
+    "könnt",
+    "konnte",
+    "könnte",
+    "muss",
+    "musst",
+    "müssen",
+    "müsst",
+    "soll",
+    "sollst",
+    "sollen",
+    "sollt",
+    "sollte",
+    "darf",
+    "darfst",
+    "dürfen",
+    "dürft",
+    "mag",
+    "magst",
+    "mögen",
+    "werde",
+    "wirst",
+    "wird",
+    "werdet",
+    "würde",
+    "würdest",
+    "würden",
+    "würdet",
+];
+
+/// The nominative personal pronouns that can only be the subject. *es* is left out: *Es
+/// kommt ein Zug* has the noun as its subject.
+const SUBJECT_PRONOUNS: &[&str] = &["ich", "du", "er", "wir", "ihr", "sie", "man"];
+
+/// Separable particles that close a clause behind the object: *Ich rufe ein Kollege an*.
+const PARTICLES: &[&str] = &[
+    "an", "auf", "aus", "ein", "mit", "vor", "zu", "zurück", "weg", "fest", "los", "her", "hin",
+    "ab", "bei", "nach", "durch",
+];
+
 /// The nominative of the articles whose masculine accusative adds *-en*.
 const ARTICLES: &[(&str, &str)] = &[
     ("ein", "einen"),
@@ -60,6 +161,103 @@ impl GermanMasculineObject {
     }
 }
 
+impl GermanMasculineObject {
+    /// *Ich hätte gerne ein Kaffee*, *Brauchst du ein Termin?*, *Er kauft ein Tisch*: a
+    /// pronoun next to a verb that is no copula is the subject, so the noun phrase that ends
+    /// the clause can only be its object. Between the verb and the article only small
+    /// lowercase words may stand (*gerne*, *mir*, *noch*), behind the noun only the end of
+    /// the clause, a separable particle, or the verbs an auxiliary governs.
+    fn object_of_pronoun_subject(
+        words: &[&Token],
+        lower: &[String],
+        at: usize,
+        document: &Document,
+    ) -> bool {
+        let stops = |w: &str| {
+            SUBJECT_PRONOUNS.contains(&w)
+                || matches!(
+                    w,
+                    "es" | "und"
+                        | "oder"
+                        | "aber"
+                        | "dass"
+                        | "weil"
+                        | "ob"
+                        | "wenn"
+                        | "als"
+                        | "wie"
+                        | "denn"
+                        | "sondern"
+                        | "so"
+                        | "nicht"
+                        | "nur"
+                )
+        };
+        let mut j = at;
+        while j > 0 {
+            let t = words[j - 1];
+            let w = lower[j - 1].as_str();
+            if t.kind.is_punctuation()
+                || t.kind.is_verb()
+                || t.kind.is_preposition()
+                || starts_uppercase(t, document)
+                || stops(w)
+            {
+                break;
+            }
+            j -= 1;
+        }
+        if j < 2 {
+            return false;
+        }
+        let (a, b) = (lower[j - 2].as_str(), lower[j - 1].as_str());
+        let verb = if SUBJECT_PRONOUNS.contains(&a) && words[j - 1].kind.is_verb() {
+            b
+        } else if SUBJECT_PRONOUNS.contains(&b) && words[j - 2].kind.is_verb() {
+            a
+        } else {
+            return false;
+        };
+        if COPULAS.contains(&verb) {
+            return false;
+        }
+        // The pronoun opens the sentence or follows its verb: *Gestern sah er ein Hund* has
+        // *er* behind the verb; *weil er ein Hund* would have it behind a conjunction.
+        let first = j - 2;
+        if first > 0 && !words[first - 1].kind.is_punctuation() && !words[first].kind.is_verb() {
+            let before = lower[first - 1].as_str();
+            if !(words[first - 1].kind.is_adverb() || matches!(before, "dann" | "jetzt" | "heute"))
+            {
+                return false;
+            }
+        }
+        let tail: Vec<&str> = (at + 2..words.len())
+            .take_while(|&k| !words[k].kind.is_punctuation())
+            .map(|k| lower[k].as_str())
+            .collect();
+        let is_aux = AUXILIARIES.contains(&verb);
+        let needs_verb = matches!(
+            verb,
+            "werde" | "wirst" | "wird" | "werdet" | "würde" | "würdest" | "würden" | "würdet"
+        );
+        match tail.as_slice() {
+            [] => !needs_verb,
+            [p] if !is_aux => PARTICLES.contains(p),
+            rest if is_aux && rest.len() <= 2 => rest.iter().enumerate().all(|(i, w)| {
+                let token = words[at + 2 + i];
+                token.kind.is_verb()
+                    && !starts_uppercase(token, document)
+                    && !COPULAS.contains(w)
+                    && (w.ends_with("en")
+                        || w.ends_with('t')
+                        || w.ends_with("ern")
+                        || w.ends_with("eln"))
+            }),
+            _ => false,
+        }
+    }
+}
+
 impl Linter for GermanMasculineObject {
     fn lint(&mut self, document: &Document) -> Vec<Lint> {
         let mut lints = Vec::new();
@@ -73,9 +271,6 @@ impl Linter for GermanMasculineObject {
             let has_gibt = lower
                 .windows(2)
                 .any(|w| (w[0] == "gibt" && w[1] == "es") || (w[0] == "es" && w[1] == "gibt"));
-            if !has_haben && !has_gibt {
-                continue;
-            }
             for at in 1..words.len().saturating_sub(1) {
                 let Some((_, accusative)) = ARTICLES.iter().find(|(n, _)| *n == lower[at]) else {
                     continue;
@@ -134,7 +329,11 @@ impl Linter for GermanMasculineObject {
                         .is_some_and(|h| {
                             at - 1 - h >= 2 && !words[h..at].iter().any(|t| t.kind.is_comma())
                         });
-                if !(has_haben && participle && same_clause || ends_question || second_object) {
+                if !(has_haben && participle && same_clause
+                    || ends_question
+                    || second_object
+                    || Self::object_of_pronoun_subject(&words, &lower, at, document))
+                {
                     continue;
                 }
                 lints.push(Lint {
@@ -180,6 +379,13 @@ mod tests {
             "Die Wohnung hat zwei Schlafzimmer und ein Balkon.",
             "Gibt es hier in der Nähe ein Supermarkt?",
             "Es gibt kein Bahnhof.",
+            "Ich hätte gerne ein Kaffee.",
+            "Ich möchte ein Kaffee trinken.",
+            "Brauchst du ein Termin?",
+            "Wir suchen ein Mitarbeiter.",
+            "Dann kaufe ich ein Tisch.",
+            "Ich rufe morgen ein Kollege an.",
+            "Er kennt ein Arzt.",
         ] {
             assert_eq!(count(text), 1, "{text}");
         }
@@ -201,6 +407,20 @@ mod tests {
             "Er hat ein Haus und ein Auto.",
             "Sie hat Besuch und ein Kollege kommt.",
             "Ein Hunger hat alle ergriffen, ein Rausch geht durch die Welt.",
+            "Ich bin ein Lehrer.",
+            "Ich werde ein Lehrer.",
+            "Er möchte ein Lehrer werden.",
+            "Ich glaube ein Mann kommt.",
+            "Es kommt ein Zug.",
+            "Er arbeitet als ein Koch.",
+            "Ich und ein Freund kommen.",
+            "Ich hätte gerne einen Kaffee.",
+            "Ich möchte ein Bier.",
+            "Er bleibt ein Freund.",
+            "Weil er ein Hund hat.",
+            "Ich weiß, dass ein Mann kommt.",
+            "Wir gehen ein Stück.",
+            "Er läuft ein Marathon in Berlin.",
         ] {
             assert_eq!(count(text), 0, "{text}");
         }

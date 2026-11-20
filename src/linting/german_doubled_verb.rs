@@ -7,6 +7,7 @@ use harper_core::{
 };
 
 use crate::grammar::noun_phrase::lowercase_of;
+use crate::grammar::verbs::is_past_participle;
 
 const WERDEN: &[&str] = &["werde", "wirst", "wird", "werden", "werdet"];
 const WUERDE: &[&str] = &["würde", "würdest", "würden", "würdet"];
@@ -88,10 +89,18 @@ impl Linter for GermanDoubledVerb {
                 }
                 let last = lowercase_of(words[at], document);
                 let previous = lowercase_of(words[at - 1], document);
+                // A second clause joined by *und*, *oder*, *aber* has its own verbs:
+                // *dass es sinken würde und auf dem Grund zu liegen kommen würde*.
                 let earlier: Vec<String> = words[start..at - 1]
                     .iter()
                     .map(|t| lowercase_of(t, document))
                     .collect();
+                let earlier = earlier
+                    .iter()
+                    .rposition(|w| {
+                        matches!(w.as_str(), "und" | "oder" | "aber" | "sondern" | "denn")
+                    })
+                    .map_or(&earlier[..], |at| &earlier[at + 1..]);
                 let message = if WERDEN.contains(&last.as_str())
                     && WERDEN.contains(&previous.as_str())
                 {
@@ -103,8 +112,7 @@ impl Linter for GermanDoubledVerb {
                     Some("Der Konjunktiv steht schon im Satz; das zweite »würde« fällt weg.")
                 } else if last == "gehabt"
                     && words[at - 1].kind.is_verb()
-                    && (previous.starts_with("ge") || previous.ends_with('t'))
-                    && previous != "gut"
+                    && is_past_participle(&previous)
                     && earlier.iter().any(|w| HABEN.contains(&w.as_str()))
                 {
                     Some(
@@ -188,6 +196,9 @@ mod tests {
             "Er hat immer Pech gehabt.",
             "Er würde kommen, wenn er könnte.",
             "Sie wird gewählt werden.",
+            "Du hast recht gehabt.",
+            "Es war geplant, dass das Schiff sinken würde und aufrecht zum Liegen kommen würde.",
+            "Er hat es versucht und Erfolg gehabt.",
             "Wir sind einkaufen gewesen.",
         ] {
             assert_eq!(count(text), 0, "{text}");

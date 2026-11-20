@@ -115,6 +115,54 @@ pub fn participle_spelled_like_infinitive(word: &str) -> bool {
     })
 }
 
+/// The infinitive of a regular past participle, when the dictionary knows it as a verb:
+/// *repariert* → *reparieren*, *gewaschen* → *waschen*, *gemacht* → *machen*,
+/// *abgeholt* → *abholen*, *verkauft* → *verkaufen*. A strong participle that changes its
+/// vowel (*geschrieben*) has no regular infinitive and gives `None`.
+pub fn infinitive_of_participle(word: &str) -> Option<String> {
+    let lower = word.to_lowercase();
+    let (prefix, rest) = SEPARABLE_PREFIXES
+        .iter()
+        .find_map(|prefix| {
+            lower
+                .strip_prefix(prefix)
+                .filter(|rest| rest.starts_with("ge") && rest.chars().count() >= 5)
+                .map(|rest| (*prefix, rest))
+        })
+        .unwrap_or(("", &lower));
+    let without_ge = rest.strip_prefix("ge");
+    let stems = [without_ge, Some(rest)];
+    stems.into_iter().flatten().find_map(|stem| {
+        let candidates = [
+            stem.strip_suffix("et").map(|s| format!("{s}en")),
+            stem.strip_suffix('t').map(|s| format!("{s}en")),
+            stem.strip_suffix('t').map(|s| format!("{s}n")),
+            stem.ends_with("en").then(|| stem.to_string()),
+        ];
+        candidates
+            .into_iter()
+            .flatten()
+            .map(|infinitive| format!("{prefix}{infinitive}"))
+            .find(|infinitive| infinitive != &lower && is_verb(infinitive))
+    })
+}
+
+/// Is `word` a participle that is not also an infinitive? Wider than
+/// [`is_past_participle`] for strong participles the dictionary does not decline
+/// (*gewaschen*): a regular infinitive must lie behind it, and the word must have no
+/// first person of its own (*gefallen* — *ich gefalle* — is a verb).
+pub fn is_participle_not_infinitive(word: &str) -> bool {
+    if is_past_participle(word) {
+        return true;
+    }
+    let lower = word.to_lowercase();
+    looks_like_participle(&lower)
+        && infinitive_of_participle(&lower).is_some()
+        && !lower
+            .strip_suffix("en")
+            .is_some_and(|stem| is_verb(&format!("{stem}e")))
+}
+
 /// Whether `word` is spelled like an infinitive with its *zu* inside, as a
 /// separable verb writes it: *anzurufen*, *mitzunehmen*, *kennenzulernen*.
 ///
