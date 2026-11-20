@@ -916,8 +916,87 @@ impl<T: Dictionary> GermanSubjectVerbAgreement<T> {
         })
     }
 
+    /// The form `verb_text` should have for this subject, for the irregular verbs every
+    /// text uses and for regular ones built on the stem: *Die Kinder hat* → *haben*, *Meine
+    /// Eltern wohnt* → *wohnen*, *Der Hund bellen* → *bellt*. `None` when the subject's person
+    /// and number are not one slot, or the dictionary does not know the form.
+    fn regular_correction(subject: &Features, verb_text: &str) -> Option<String> {
+        // 1st, 2nd, 3rd singular, then 1st, 2nd, 3rd plural.
+        // A noun phrase may leave the person open; it is the third.
+        let person = if subject.person.is_empty() {
+            PersonSet::THIRD
+        } else {
+            subject.person
+        };
+        let slot = match (person, subject.number) {
+            (p, n) if p == PersonSet::FIRST && n == NumberSet::SINGULAR => 0,
+            (p, n) if p == PersonSet::SECOND && n == NumberSet::SINGULAR => 1,
+            (p, n) if p == PersonSet::THIRD && n == NumberSet::SINGULAR => 2,
+            (p, n) if p == PersonSet::FIRST && n == NumberSet::PLURAL => 3,
+            (p, n) if p == PersonSet::SECOND && n == NumberSet::PLURAL => 4,
+            (p, n) if p == PersonSet::THIRD && n == NumberSet::PLURAL => 5,
+            _ => return None,
+        };
+        const PARADIGMS: &[[&str; 6]] = &[
+            ["habe", "hast", "hat", "haben", "habt", "haben"],
+            ["bin", "bist", "ist", "sind", "seid", "sind"],
+            ["werde", "wirst", "wird", "werden", "werdet", "werden"],
+            ["kann", "kannst", "kann", "können", "könnt", "können"],
+            ["muss", "musst", "muss", "müssen", "müsst", "müssen"],
+            ["will", "willst", "will", "wollen", "wollt", "wollen"],
+            ["soll", "sollst", "soll", "sollen", "sollt", "sollen"],
+            ["darf", "darfst", "darf", "dürfen", "dürft", "dürfen"],
+            ["mag", "magst", "mag", "mögen", "mögt", "mögen"],
+            ["weiß", "weißt", "weiß", "wissen", "wisst", "wissen"],
+            ["war", "warst", "war", "waren", "wart", "waren"],
+            ["hatte", "hattest", "hatte", "hatten", "hattet", "hatten"],
+            ["wurde", "wurdest", "wurde", "wurden", "wurdet", "wurden"],
+        ];
+        let lower = verb_text.to_lowercase();
+        if let Some(paradigm) = PARADIGMS.iter().find(|p| p.contains(&lower.as_str())) {
+            return Some(paradigm[slot].to_owned());
+        }
+        let dictionary = crate::spell::curated_german_dictionary();
+        let is_verb = |w: &str| {
+            dictionary
+                .get_word_metadata(&w.chars().collect::<Vec<_>>())
+                .is_some_and(|m| m.is_verb())
+        };
+        // The stem: the form without its ending, whose infinitive is a verb.
+        let stem = ["est", "et", "en", "st", "t", "e", "n"]
+            .iter()
+            .filter_map(|ending| lower.strip_suffix(ending))
+            .find(|stem| {
+                stem.chars().count() >= 2
+                    && (is_verb(&format!("{stem}en"))
+                        || ((stem.ends_with("el") || stem.ends_with("er"))
+                            && is_verb(&format!("{stem}n"))))
+            })?;
+        // *arbeit-et*, *rechn-et*: a stem in -d or -t takes an e before -t and -st.
+        let e = if stem.ends_with('d')
+            || stem.ends_with('t')
+            || stem.ends_with("chn")
+            || stem.ends_with("ffn")
+        {
+            "e"
+        } else {
+            ""
+        };
+        // *wandern*, *sammeln*: the infinitive adds only -n. *spielen* is not one of them.
+        let short = !is_verb(&format!("{stem}en")) && is_verb(&format!("{stem}n"));
+        let form = match slot {
+            0 => format!("{stem}e"),
+            1 => format!("{stem}{e}st"),
+            2 | 4 => format!("{stem}{e}t"),
+            _ if short => format!("{stem}n"),
+            _ => format!("{stem}en"),
+        };
+        (form != lower && is_verb(&form)).then_some(form)
+    }
+
     fn report(subject_text: &str, subject: &Features, verb_text: &str, verb: &Token) -> Lint {
         let suggestions = Self::strong_correction(subject, verb_text)
+            .or_else(|| Self::regular_correction(subject, verb_text))
             .map(|fixed| {
                 let original: Vec<char> = verb_text.chars().collect();
                 vec![Suggestion::replace_with_match_case(
@@ -1550,6 +1629,35 @@ mod tests {
     /// A noun phrase can be the subject too, and the chunker is what makes the
     /// verb findable: it stands directly behind the phrase, not behind the head
     /// noun.
+    #[test]
+    fn the_agreeing_form_is_suggested() {
+        let suggested = |text: &str| -> Vec<String> {
+            let dictionary = combined_german_dictionary();
+            let document = Document::new(text, &PlainGerman, &dictionary);
+            GermanSubjectVerbAgreement::new(dictionary.clone())
+                .lint(&document)
+                .into_iter()
+                .flat_map(|lint| lint.suggestions)
+                .map(|s| s.to_string())
+                .collect()
+        };
+        for (text, form) in [
+            ("Die Kinder hat gespielt.", "haben"),
+            ("Meine Eltern wohnt in Berlin.", "wohnen"),
+            ("Die Studenten lernt für die Prüfung.", "lernen"),
+            ("Alle Kinder spielt im Garten.", "spielen"),
+            ("Der Hund bellen laut.", "bellt"),
+            ("Wir ist heute sehr müde.", "sind"),
+            ("Er weißt es nicht.", "weiß"),
+        ] {
+            assert_eq!(
+                suggested(text),
+                [format!("Replace with: “{form}”")],
+                "{text}"
+            );
+        }
+    }
+
     #[test]
     fn a_plural_noun_phrase_has_to_agree() {
         for text in [
