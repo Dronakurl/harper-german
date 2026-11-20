@@ -9,6 +9,8 @@ use crate::grammar::noun_gender::NounGender;
 use crate::grammar::noun_phrase::lowercase_of;
 use crate::linting::german_relative_clause_comma::GermanRelativeClauseComma;
 use crate::morphology::{Gender, GenderSet};
+use crate::spell::curated_german_dictionary;
+use harper_core::spell::Dictionary;
 
 const RELATIVES: &[&str] = &["der", "die", "das", "dem", "den", "dessen", "deren"];
 
@@ -91,6 +93,46 @@ impl GermanRelativePronoun {
                     "Nach »{noun_text}« leitet ein Relativpronomen (»der«, »die«, »das« …) den Satz ein, nicht »wo«."
                 ),
             });
+        }
+
+        // *das Auto, was ich kaufen will*: after a noun the relative pronoun is *das*, not
+        // *was*. Only for a neuter noun, whose *das* serves both cases, and not after a
+        // nominalized adjective, which takes *was* (*das Beste, was*).
+        if pronoun_text == "was" {
+            let lower: String = noun_text.to_lowercase();
+            let nominalized = curated_german_dictionary()
+                .get_word_metadata(&lower.chars().collect::<Vec<_>>())
+                .is_some_and(|m| m.is_adjective());
+            let neuter = self
+                .nouns
+                .gender_of(&noun_text)
+                .is_some_and(|(gender, singular)| gender == Gender::Neuter && singular);
+            // *gibt dem Kind, was es wünscht*: behind a dative the *was* clause is a free
+            // relative, an object of its own.
+            let article_is_singular = determiner_readings(&lowercase_of(article, document))
+                .is_some_and(|readings| {
+                    readings.iter().any(|r| r.gender == Some(Gender::Neuter))
+                        && readings.iter().all(|r| {
+                            matches!(
+                                r.case,
+                                crate::morphology::Case::Nominative
+                                    | crate::morphology::Case::Accusative
+                            )
+                        })
+                });
+            if neuter && !nominalized && article_is_singular {
+                GermanRelativeClauseComma::clause_end(words, comma + 1, document)?;
+                return Some(Lint {
+                    span: pronoun.span,
+                    lint_kind: LintKind::Grammar,
+                    suggestions: vec![Suggestion::ReplaceWith("das".chars().collect())],
+                    priority: 31,
+                    message: format!(
+                        "Nach dem Nomen »{noun_text}« ist das Relativpronomen »das«, nicht »was«."
+                    ),
+                });
+            }
+            return None;
         }
 
         if !RELATIVES.contains(&pronoun_text.as_str()) {
@@ -268,6 +310,22 @@ mod tests {
             .iter()
             .map(|l| document.get_span_content_str(&l.span))
             .collect()
+    }
+
+    #[test]
+    fn was_after_a_neuter_noun_is_das() {
+        assert_eq!(reported("Das ist das Auto, was ich kaufen will."), ["was"]);
+        assert_eq!(reported("Ich lese ein Buch, was mir gefällt."), ["was"]);
+        for text in [
+            "Das ist das Beste, was ich je gegessen habe.",
+            "Er tat alles, was er konnte.",
+            "Es ist das Einzige, was zählt.",
+            "Sabine gibt dem Kind, was es wünscht.",
+            "Das ist der Grund, warum ich gehe.",
+            "Das ist das Auto, das ich kaufen will.",
+        ] {
+            assert!(reported(text).is_empty(), "{text}: {:?}", reported(text));
+        }
     }
 
     #[test]

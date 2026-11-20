@@ -31,6 +31,33 @@ const FEMININE: &[&str] = &[
     "Sahara",
 ];
 
+/// Masculine names: *der Irak*, *im Iran*, *aus dem Libanon*.
+const MASCULINE: &[&str] = &[
+    "Irak",
+    "Iran",
+    "Libanon",
+    "Jemen",
+    "Sudan",
+    "Südsudan",
+    "Kongo",
+    "Tschad",
+    "Senegal",
+    "Oman",
+    "Kosovo",
+];
+
+/// What each preposition makes of the article for a masculine name.
+const MASCULINE_ARTICLES: &[(&str, &[&str])] = &[
+    ("aus", &["aus dem"]),
+    ("in", &["im", "in den"]),
+    ("nach", &["in den"]),
+    ("für", &["für den"]),
+    ("durch", &["durch den"]),
+    ("über", &["über den"]),
+    ("gegen", &["gegen den"]),
+    ("von", &["vom"]),
+];
+
 /// Plural names: *die USA*, *in den Niederlanden*.
 const PLURAL: &[&str] = &[
     "USA",
@@ -93,20 +120,31 @@ impl Linter for GermanCountryArticle {
                 }
                 let name_text: String = document.get_span_content(&name.span).iter().collect();
                 let plural = PLURAL.contains(&name_text.as_str());
-                if !plural && !FEMININE.contains(&name_text.as_str()) {
+                let masculine = MASCULINE.contains(&name_text.as_str());
+                if !plural && !masculine && !FEMININE.contains(&name_text.as_str()) {
                     continue;
                 }
                 if content.get(name.span.end) == Some(&'-') {
                     continue;
                 }
                 let preposition_text = lowercase_of(preposition, document);
-                let Some((_, feminine, plural_forms)) = ARTICLES
-                    .iter()
-                    .find(|(word, _, _)| *word == preposition_text)
-                else {
-                    continue;
+                let forms: &[&str] = if masculine {
+                    let Some((_, forms)) = MASCULINE_ARTICLES
+                        .iter()
+                        .find(|(word, _)| *word == preposition_text)
+                    else {
+                        continue;
+                    };
+                    forms
+                } else {
+                    let Some((_, feminine, plural_forms)) = ARTICLES
+                        .iter()
+                        .find(|(word, _, _)| *word == preposition_text)
+                    else {
+                        continue;
+                    };
+                    if plural { plural_forms } else { feminine }
                 };
-                let forms = if plural { plural_forms } else { feminine };
 
                 let span = preposition.span;
                 let original = document.get_span_content(&span);
@@ -120,7 +158,10 @@ impl Linter for GermanCountryArticle {
                         })
                         .collect(),
                     priority: 31,
-                    message: format!("»{name_text}« steht mit Artikel: »die {name_text}«."),
+                    message: format!(
+                        "»{name_text}« steht mit Artikel: »{} {name_text}«.",
+                        if masculine { "der" } else { "die" }
+                    ),
                 });
             }
         }
@@ -155,6 +196,13 @@ mod tests {
     #[test]
     fn a_missing_article_is_reported() {
         assert_eq!(fixes("Er kommt aus Türkei."), ["Replace with: “aus der”"]);
+        assert_eq!(
+            fixes("Er war in Irak."),
+            ["Replace with: “im”", "Replace with: “in den”"]
+        );
+        assert_eq!(fixes("Sie kommt aus Libanon."), ["Replace with: “aus dem”"]);
+        assert!(fixes("Er war im Irak.").is_empty());
+        assert!(fixes("Die Irak-Politik.").is_empty());
         assert_eq!(
             fixes("Wir fahren nach Schweiz."),
             ["Replace with: “in die”"]

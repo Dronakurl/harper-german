@@ -163,6 +163,38 @@ impl Linter for GermanMissingZu {
                 if !Self::is_infinitive(last, document) || Self::has_zu(group, document) {
                     continue;
                 }
+                // *Du brauchst nicht kommen*: *brauchen* with a negation or *nur* takes the
+                // infinitive with *zu*. The negation shows it is the modal use: *Ich brauche
+                // Hilfe* has an object, and a noun would end the clause.
+                if let Some(at) = group.iter().position(|t| {
+                    matches!(
+                        lowercase_of(t, document).as_str(),
+                        "brauche" | "brauchst" | "braucht" | "brauchen" | "brauchte" | "brauchten"
+                    )
+                }) && group.len() - at >= 3
+                    && group[at + 1..group.len() - 1].iter().any(|t| {
+                        matches!(
+                            lowercase_of(t, document).as_str(),
+                            "nicht"
+                                | "nur"
+                                | "kein"
+                                | "keine"
+                                | "keinen"
+                                | "erst"
+                                | "kaum"
+                                | "niemals"
+                        )
+                    })
+                    && !group[at + 1..group.len() - 1].iter().any(|t| {
+                        starts_lowercase(t, document)
+                            && GermanRelativeClauseComma::is_verb_token(t, document)
+                            && !t.kind.is_adverb()
+                            && !t.kind.is_adjective()
+                    })
+                {
+                    lints.push(Self::report(last, document));
+                    continue;
+                }
                 // No other verb in the group: *Um 8 Uhr gehen wir schlafen* has one.
                 let other_verb = group[..group.len() - 1].iter().skip(1).any(|token| {
                     starts_lowercase(token, document)
@@ -302,6 +334,32 @@ mod tests {
             .flat_map(|lint| lint.suggestions)
             .map(|suggestion| suggestion.to_string())
             .collect()
+    }
+
+    #[test]
+    fn brauchen_with_a_negation_takes_zu() {
+        assert_eq!(
+            fixes("Ich brauche nicht kommen."),
+            ["Replace with: “zu kommen”"]
+        );
+        assert_eq!(
+            fixes("Du brauchst morgen nicht mehr anrufen."),
+            ["Replace with: “anzurufen”"]
+        );
+        assert_eq!(
+            fixes("Ihr braucht nur klingeln."),
+            ["Replace with: “zu klingeln”"]
+        );
+        for text in [
+            "Ich brauche nicht zu kommen.",
+            "Ich brauche keine Hilfe.",
+            "Wir brauchen nicht alle Unterlagen.",
+            "Du brauchst nur anzurufen.",
+            "Ich brauche das nicht.",
+            "Das ist alles, was wir brauchen.",
+        ] {
+            assert!(fixes(text).is_empty(), "{text}: {:?}", fixes(text));
+        }
     }
 
     #[test]
