@@ -33,6 +33,28 @@ const EINANDER_PREPOSITIONS: &[&str] = &[
     "über", "um", "unter", "von", "vor", "zu",
 ];
 
+/// Words that make a colour lighter or darker and are written together with it: *hellblau*,
+/// *dunkelrote*, *blassgrün*.
+const SHADES: &[&str] = &["hell", "dunkel", "blass", "tief", "knall"];
+
+/// Colours, as the stem the declined forms add their ending to.
+const COLOURS: &[&str] = &[
+    "blau", "rot", "grün", "gelb", "grau", "braun", "lila", "rosa", "orange", "violett", "türkis",
+    "beige", "weiß", "schwarz", "pink", "bunt",
+];
+
+/// Is `word` a colour or one of its declined forms (*blaue*, *roten*)?
+fn is_colour(word: &str) -> bool {
+    COLOURS.iter().any(|colour| {
+        word.strip_prefix(colour)
+            .is_some_and(|ending| ["", "e", "en", "er", "es", "em"].contains(&ending))
+    })
+}
+
+/// Adjectives a writer splits into two words that are each a word: *Not wendige* is
+/// *notwendige*.
+const SPLIT_ADJECTIVES: &[(&str, &str)] = &[("not", "wendig"), ("not", "dürftig")];
+
 /// Words written together that belong apart, and apart that belong together.
 ///
 /// Both halves are words in their own right, so the spell checker has nothing to say: *mit
@@ -44,7 +66,9 @@ const EINANDER_PREPOSITIONS: &[&str] = &[
 /// * *wieviel* and its forms, closed up before 1996: *wieviele* → *wie viele*. The ordinal
 ///   *wievielte* is one word and stays;
 /// * *statt dessen* before anything but a noun, and a weekday with a time of day: *Dienstag
-///   Abend* → *Dienstagabend*.
+///   Abend* → *Dienstagabend*;
+/// * a shade and a colour: *hell blau* → *hellblau*, *ein dunkel rotes Kleid* →
+///   *dunkelrotes*; and *Not wendige* → *notwendige*.
 #[derive(Default)]
 pub struct GermanWrittenTogether;
 
@@ -129,6 +153,39 @@ impl Linter for GermanWrittenTogether {
             }
             let second_lower = lowercase(second);
 
+            // *hell blau* → *hellblau*, *Not wendige* → *notwendige*. The first word keeps
+            // its case only at the start of a sentence; *Not* is a noun on its own.
+            let shade = SHADES.contains(&first_lower.as_str()) && is_colour(&second_lower);
+            let split_adjective = SPLIT_ADJECTIVES.iter().any(|(head, tail)| {
+                first_lower == *head
+                    && second_lower
+                        .strip_prefix(tail)
+                        .is_some_and(|ending| ["", "e", "en", "er", "es", "em"].contains(&ending))
+            });
+            if shade || split_adjective {
+                let sentence_start = (0..at)
+                    .rev()
+                    .find(|&i| !tokens[i].kind.is_whitespace())
+                    .is_none_or(|i| tokens[i].kind.is_sentence_terminator());
+                let joined_text = format!("{first_lower}{second_lower}");
+                let joined: Vec<char> = if sentence_start {
+                    in_case_of(&joined_text, first)
+                } else {
+                    joined_text.chars().collect()
+                };
+                lints.push(Lint {
+                    span: Span::new(token.span.start, next.span.end),
+                    lint_kind: LintKind::Spelling,
+                    suggestions: vec![Suggestion::ReplaceWith(joined.clone())],
+                    message: format!(
+                        "»{}« wird zusammengeschrieben.",
+                        joined.iter().collect::<String>()
+                    ),
+                    priority: 31,
+                });
+                continue;
+            }
+
             // *Statt dessen gingen wir* → *Stattdessen*; *statt dessen Bruder* is a genitive.
             let stattdessen = first_lower == "statt"
                 && second_lower == "dessen"
@@ -186,6 +243,20 @@ mod tests {
                 other => panic!("{other:?}"),
             })
             .collect()
+    }
+
+    #[test]
+    fn joins_a_shade_and_a_colour() {
+        assert_eq!(fixes("Das Auto ist hell blau."), ["hellblau"]);
+        assert_eq!(fixes("Sie trägt ein dunkel rotes Kleid."), ["dunkelrotes"]);
+        assert_eq!(fixes("Hell grüne Wände gefallen mir."), ["Hellgrüne"]);
+        assert_eq!(fixes("Das ist eine Not wendige Maßnahme."), ["notwendige"]);
+        assert_eq!(fixes("Der Himmel war tief schwarz."), ["tiefschwarz"]);
+        assert!(fixes("Es wurde hell, blau leuchtete der Himmel.").is_empty());
+        assert!(fixes("Das Zimmer ist hell und blau.").is_empty());
+        assert!(fixes("Das Licht ist hell genug.").is_empty());
+        assert!(fixes("Er geriet in Not wegen der Schulden.").is_empty());
+        assert!(fixes("Das Auto ist hellblau.").is_empty());
     }
 
     #[test]

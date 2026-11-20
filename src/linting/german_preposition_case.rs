@@ -41,6 +41,108 @@ const FIXED_ADVERBIALS: &[(&str, &[&str])] = &[
     ("für", &["was"]),
 ];
 
+/// Verbs of position: with one of them in the clause, a two-way preposition names the
+/// place, which takes the dative: *Sie steht vor der Tür*, not *vor die Tür*. Only forms
+/// that cannot be a verb of placing; *hängen*, *stecken* and *parken* take both.
+const POSITION_VERBS: &[&str] = &[
+    "stehe",
+    "stehst",
+    "steht",
+    "stehen",
+    "stand",
+    "standen",
+    "gestanden",
+    "liege",
+    "liegst",
+    "liegt",
+    "liegen",
+    "lag",
+    "lagen",
+    "gelegen",
+    "sitze",
+    "sitzt",
+    "sitzen",
+    "saß",
+    "saßen",
+    "gesessen",
+    "wohne",
+    "wohnst",
+    "wohnt",
+    "wohnen",
+    "wohnte",
+    "wohnten",
+    "gewohnt",
+    "befindet",
+    "befinden",
+    "befand",
+    "befanden",
+    "schlafe",
+    "schläft",
+    "schlafen",
+    "schlief",
+    "geschlafen",
+    "übernachten",
+    "übernachtet",
+];
+
+/// A verb of position in the same clause as the word at `index` (tokens without
+/// whitespace counted), and no reason to read the preposition as a direction after all:
+/// *stehen auf* is *mögen* (*Er steht auf die Musik*), and *über* is an idiom in *über
+/// seine Verhältnisse leben*.
+fn clause_has_position_verb(
+    tokens: &[&Token],
+    index: usize,
+    preposition: &str,
+    document: &Document,
+) -> bool {
+    if matches!(preposition, "über" | "auf") {
+        return false;
+    }
+    let is_boundary = |t: &Token| {
+        matches!(
+            t.kind,
+            TokenKind::Punctuation(_) | TokenKind::ParagraphBreak | TokenKind::Newline(_)
+        ) && !t.kind.is_hyphen()
+    };
+    let start = tokens[..index]
+        .iter()
+        .rposition(|t| is_boundary(t))
+        .map_or(0, |at| at + 1);
+    let end = tokens[index..]
+        .iter()
+        .position(|t| is_boundary(t))
+        .map_or(tokens.len(), |at| index + at);
+    // *liegt ein Eingriff in die Rechte*: behind a noun the phrase may belong to the
+    // noun, which takes its own case.
+    if tokens[start..index]
+        .iter()
+        .rev()
+        .find(|t| t.kind.is_word())
+        .is_some_and(|t| {
+            document
+                .get_span_content(&t.span)
+                .first()
+                .is_some_and(|c| c.is_uppercase())
+        })
+    {
+        return false;
+    }
+    let words: Vec<String> = tokens[start..end]
+        .iter()
+        .filter(|t| t.kind.is_word())
+        .map(|t| document.get_span_content_str(&t.span).to_lowercase())
+        .collect();
+    // *Er stand auf und ging vor die Tür*: a second verb after *und* may be one of motion.
+    // *zwischen die beiden zu stehen kommen*: *zu stehen kommen* is a movement.
+    !words
+        .iter()
+        .any(|w| matches!(w.as_str(), "und" | "oder" | "aber" | "sich"))
+        && words.iter().enumerate().any(|(at, w)| {
+            POSITION_VERBS.contains(&w.as_str())
+                && !(at > 0 && matches!(words[at - 1].as_str(), "zu" | "zum"))
+        })
+}
+
 /// Genitive prepositions that are adverbs as well: *1811 wurde **außerhalb**
 /// eine Schienenbahn verlegt*, *dem Belvedere wurde **seitlich** ein Burghaus
 /// angegliedert*. Followed by a determiner with no genitive and no dative
@@ -348,9 +450,19 @@ impl Linter for GermanPrepositionCase {
                     continue;
                 }
 
-                let Some(government) = preposition_government(&preposition_text) else {
+                let Some(mut government) = preposition_government(&preposition_text) else {
                     continue;
                 };
+                if government.cases == CaseSet::ACCUSATIVE.union(CaseSet::DATIVE)
+                    && clause_has_position_verb(
+                        &tokens,
+                        index,
+                        &preposition_text.to_lowercase(),
+                        document,
+                    )
+                {
+                    government.cases = CaseSet::DATIVE;
+                }
 
                 // *nach wie vor*: the preposition closes an adverbial and the
                 // determiner behind it belongs to the clause, not to it.
@@ -575,7 +687,24 @@ impl Linter for GermanPrepositionCase {
                     }
                 }
 
-                let suggestions: Vec<Suggestion> = forms_for_readings(&readings, government.cases)
+                // A dative plural ends in *-n* (or *-s*, *-a* for loans): *in die Schublade*
+                // is *in der*, not *in den Schublade*. A plural that lost its *-n* (*mit die
+                // Kinder*) still wants *den*.
+                let no_dative_plural = head.as_deref().is_some_and(|head| {
+                    !head.ends_with(['n', 's', 'a']) && !self.nouns.lacks_dative_plural_n(head)
+                });
+                let mut forms = forms_for_readings(&readings, government.cases);
+                if no_dative_plural && forms.len() > 1 {
+                    let singular: Vec<_> = forms
+                        .iter()
+                        .filter(|form| !form.eq_ignore_ascii_case("den"))
+                        .cloned()
+                        .collect();
+                    if !singular.is_empty() {
+                        forms = singular;
+                    }
+                }
+                let suggestions: Vec<Suggestion> = forms
                     .into_iter()
                     .filter(|form| *form != determiner_text)
                     .map(|form| Suggestion::ReplaceWith(form.chars().collect()))
@@ -693,6 +822,46 @@ mod tests {
                 "{text}\n{:?}",
                 lints.iter().map(|l| &l.message).collect::<Vec<_>>()
             );
+        }
+    }
+
+    #[test]
+    fn a_verb_of_position_takes_the_dative() {
+        for text in [
+            "Sie steht vor die Tür.",
+            "Das Buch liegt in die Schublade.",
+            "Wir wohnen in die Nähe des Bahnhofs.",
+            "Er sitzt hinter das Haus.",
+            "Die Katze schläft unter das Bett.",
+        ] {
+            assert_eq!(lint(text).len(), 1, "{text}: {:?}", lint(text));
+        }
+        let fix = |text: &str| -> Vec<String> {
+            lint(text)[0]
+                .suggestions
+                .iter()
+                .map(|s| s.to_string())
+                .collect()
+        };
+        assert_eq!(
+            fix("Das Buch liegt in die Schublade."),
+            ["Replace with: “der”"]
+        );
+        assert!(fix("Ich spiele mit die Kinder.").contains(&"Replace with: “den”".to_owned()));
+        for text in [
+            "Sie steht vor der Tür.",
+            "Er stellt sich vor die Tür.",
+            "Er steht auf die Musik.",
+            "Er stand auf und ging vor die Tür.",
+            "Er lebt über seine Verhältnisse.",
+            "Das Buch liegt in der Schublade.",
+            "Wir wohnen in den Bergen.",
+            "Er hängt das Bild an die Wand.",
+            "Sie sitzt da, als ginge sie in die Stadt.",
+            "Darin liegt ein Eingriff in die Rechte der Schwangeren.",
+            "Das Metall kommt zwischen die beiden zu stehen.",
+        ] {
+            assert!(lint(text).is_empty(), "{text}: {:?}", lint(text));
         }
     }
 
