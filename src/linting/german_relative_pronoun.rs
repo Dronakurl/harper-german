@@ -113,7 +113,52 @@ impl GermanRelativePronoun {
         let (gender, surely_singular) = self.nouns.gender_of(&noun_text)?;
         // The article settles the number: it has to read as a singular of the
         // noun's gender, and not as a plural unless the noun is surely singular.
-        let readings = determiner_readings(&lowercase_of(article, document))?;
+        // A preposition fused with the article stands for it: *im Hotel* is *in dem Hotel*.
+        let article_lower = lowercase_of(article, document);
+        let fused = matches!(
+            article_lower.as_str(),
+            "im" | "am"
+                | "vom"
+                | "zum"
+                | "beim"
+                | "zur"
+                | "ins"
+                | "ans"
+                | "aufs"
+                | "durchs"
+                | "fürs"
+                | "ums"
+        );
+        // *Orte im Speicher, die …*: the phrase may belong to a noun in front, which the
+        // pronoun then refers to. Only checked when no noun precedes it in the clause.
+        if fused {
+            let article_at = comma - 2;
+            let clause_start = words[..article_at]
+                .iter()
+                .rposition(|t| t.kind.is_punctuation())
+                .map_or(0, |at| at + 1);
+            if words[clause_start..article_at]
+                .iter()
+                .enumerate()
+                .any(|(i, t)| {
+                    (clause_start + i > 0 || i > 0)
+                        && t.kind.is_word()
+                        && document
+                            .get_span_content(&t.span)
+                            .first()
+                            .is_some_and(|c| c.is_uppercase())
+                })
+            {
+                return None;
+            }
+        }
+        let article_lower = match article_lower.as_str() {
+            "im" | "am" | "vom" | "zum" | "beim" => "dem".to_owned(),
+            "zur" => "der".to_owned(),
+            "ins" | "ans" | "aufs" | "durchs" | "fürs" | "ums" => "das".to_owned(),
+            _ => article_lower,
+        };
+        let readings = determiner_readings(&article_lower)?;
         let singular = readings.iter().any(|r| r.gender == Some(gender));
         let plural = readings.iter().any(|r| r.gender.is_none());
         if !singular || (plural && !surely_singular) {
@@ -223,6 +268,17 @@ mod tests {
             .iter()
             .map(|l| document.get_span_content_str(&l.span))
             .collect()
+    }
+
+    #[test]
+    fn a_pronoun_behind_a_fused_article_is_checked() {
+        assert_eq!(
+            reported("Wir wohnen im Hotel, der sehr teuer ist."),
+            ["der"]
+        );
+        assert!(reported("Wir wohnen im Hotel, das sehr teuer ist.").is_empty());
+        assert!(reported("Er kam zur Tür, die offen stand.").is_empty());
+        assert!(reported("Variablen sind Orte im Speicher, die einen Wert aufnehmen.").is_empty());
     }
 
     #[test]

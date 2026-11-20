@@ -790,10 +790,20 @@ impl<T: Dictionary> GermanSubjectVerbAgreement<T> {
         if rest.is_empty() || Self::word_at(tokens, rest[0], document) == "zu" {
             return false;
         }
+        // *Die Polizei haben den Täter gefasst*: behind an auxiliary, the participle that
+        // closes the clause is the perfect, not a second finite verb.
+        let auxiliary = matches!(
+            Self::word_at(tokens, verb_at, document).as_str(),
+            "haben" | "sind" | "werden"
+        );
+        let last = rest.last().copied();
         !rest.iter().any(|&at| {
             let word = Self::word_at(tokens, at, document);
+            let closing_participle = auxiliary
+                && Some(at) == last
+                && crate::grammar::verbs::looks_like_participle(&word);
             irregular_finite_verb(&word).is_some()
-                || (tokens[at].kind.is_verb() && word.ends_with('t'))
+                || (tokens[at].kind.is_verb() && word.ends_with('t') && !closing_participle)
         })
     }
 
@@ -1764,6 +1774,8 @@ mod tests {
             "Ich sind bereit.",
             "Er haben das Auto gekauft.",
             "Du bin zu spät.",
+            "Die Polizei haben den Täter gefasst.",
+            "Die Frau haben den Täter gefasst.",
         ] {
             assert_eq!(lint_count(text), 1, "should fire on {text:?}");
         }
