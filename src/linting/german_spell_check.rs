@@ -262,7 +262,14 @@ impl<T: Dictionary> GermanSpellCheck<T> {
                             }
                         })
                         .collect();
-                    (with_stop(&lower) || with_stop(&capitalized))
+                    // A noun's abbreviation closes a capitalized compound (*Hauptstr.*); a
+                    // lower-case one only takes an abbreviation without a vowel
+                    // (*diesbzgl.*, *süddt.*), else every word that ends like one would
+                    // pass: *draussen* is not *draus* + *sen.*
+                    let vowelless = !lower.iter().any(|c| "aeiouäöüy".contains(*c));
+                    let capital = word.first().is_some_and(|c| c.is_uppercase());
+                    (capital || vowelless)
+                        && (with_stop(&lower) || with_stop(&capitalized))
                         && (self.dictionary.contains_word(head)
                             || self.try_compound_word_check(head))
                 }
@@ -1883,6 +1890,23 @@ mod tests {
         );
         // Each part still has to be a word when the whole is no entry.
         assert_eq!(spelling_reports("Das Know-hwo fehlt."), ["Know", "hwo"]);
+    }
+
+    /// *draussen.* at the end of a sentence is no compound of *draus* and the
+    /// abbreviation *sen.*; *Hauptstr.* is one of *Haupt* and *Str.*
+    #[test]
+    fn a_word_before_the_full_stop_is_no_abbreviation_compound() {
+        let dict = crate::spell::compound_aware_german_dictionary();
+        let lint = |text: &str| {
+            let document = Document::new(text, &PlainGerman, &*dict);
+            GermanSpellCheck::new(dict.clone())
+                .lint(&document)
+                .into_iter()
+                .map(|lint| document.get_span_content_str(&lint.span))
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(lint("Die Kinder sind draussen."), vec!["draussen"]);
+        assert!(lint("Wir wohnen in der Hauptstr. 5.").is_empty());
     }
 
     #[test]

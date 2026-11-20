@@ -1,0 +1,21 @@
+# "fliesend" is the present participle of "fliesen" (to tile). Next to a language or a
+# verb of speaking it can only be "fließend" (fluently).
+expr sprache [deutsch, englisch, französisch, spanisch, italienisch, russisch, türkisch, polnisch, arabisch, chinesisch, japanisch, portugiesisch, niederländisch, griechisch, schwedisch, latein]
+
+expr sprechen [spricht, sprechen, spreche, sprichst, sprecht, sprach, sprachen, gesprochen, beherrscht, beherrsche, beherrschen, lesen, liest, schreibt, schreiben]
+
+expr main [<(fliesend @sprache), fliesend>, <(@sprechen fliesend), fliesend>, <(fliesend sprechen), fliesend>, <(fliesendes @sprache), fliesendes>, <(fliesendem @sprache), fliesendem>]
+
+let message "»fliesen« heißt Fliesen legen; gemeint ist »fließend«."
+let description "Ersetzt »fliesend« neben einer Sprache oder »sprechen« durch »fließend«."
+let kind "Spelling"
+let becomes ["fließend"]
+let strategy "Exact"
+
+test "Er spricht fliesend Englisch." "Er spricht fließend Englisch."
+test "Sie kann fliesend Deutsch." "Sie kann fließend Deutsch."
+test "Ich möchte fliesend sprechen können." "Ich möchte fließend sprechen können."
+test "Wir sprechen fliesend." "Wir sprechen fließend."
+allows "Er spricht fließend Englisch."
+allows "Der Handwerker war gerade fliesend im Bad beschäftigt."
+allows "Das Wasser ist fließend warm."
