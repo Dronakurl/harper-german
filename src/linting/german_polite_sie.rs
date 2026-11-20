@@ -17,9 +17,118 @@ use harper_core::spell::Dictionary;
 #[derive(Default)]
 pub struct GermanPoliteSie;
 
+/// Does the text address someone formally? A salutation or closing of a letter, *Frau* or
+/// *Herr* with a name, or a capitalized *Sie*, *Ihnen*, *Ihr…* inside a sentence.
+fn addresses_formally(document: &Document) -> bool {
+    let words: Vec<&Token> = document
+        .get_tokens()
+        .iter()
+        .filter(|t| !t.kind.is_whitespace())
+        .collect();
+    let text = |t: &Token| document.get_span_content_str(&t.span);
+    words.windows(2).any(|pair| {
+        let (a, b) = (text(pair[0]), text(pair[1]));
+        let polite_inside = matches!(
+            b.as_str(),
+            "Sie" | "Ihnen" | "Ihr" | "Ihre" | "Ihren" | "Ihrem" | "Ihrer" | "Ihres"
+        ) && pair[0].kind.is_word();
+        polite_inside
+            || (a.eq_ignore_ascii_case("sehr") && b.to_lowercase().starts_with("geehrte"))
+            || (a.eq_ignore_ascii_case("freundlichen") && b.starts_with("Grü"))
+            || (matches!(a.as_str(), "Frau" | "Herr" | "Herrn")
+                && b.chars().next().is_some_and(char::is_uppercase)
+                && pair[1].kind.is_word())
+    })
+}
+
+/// The polite forms written small in the set phrases of a letter: *stehe ich ihnen zur
+/// Verfügung*, *sende ich ihnen*, *vielen Dank für ihre Antwort*, *von ihnen zu hören*,
+/// *Können sie mir sagen …?*. Only in a text that addresses someone formally.
+fn letter_phrases(words: &[&Token], document: &Document, lints: &mut Vec<Lint>) {
+    let lower: Vec<String> = words.iter().map(|t| lowercase_of(t, document)).collect();
+    let written = |at: usize| document.get_span_content_str(&words[at].span);
+    let first_person = |w: &str| matches!(w, "ich" | "wir");
+    let asks = words
+        .last()
+        .is_some_and(|t| document.get_span_content_str(&t.span) == "?");
+    for at in 0..words.len() {
+        let w = written(at);
+        let capital = match w.as_str() {
+            "ihnen" => "Ihnen",
+            "ihre" => "Ihre",
+            "ihren" => "Ihren",
+            "ihrem" => "Ihrem",
+            "ihrer" => "Ihrer",
+            "ihr" => "Ihr",
+            "sie" => "Sie",
+            _ => continue,
+        };
+        // *sende ich ihnen*, *ich danke ihnen*: a first-person subject next to the verb, then
+        // the pronoun.
+        let to_the_reader = w == "ihnen"
+            && at >= 2
+            && ((first_person(&lower[at - 1]) && words[at - 2].kind.is_verb())
+                || (first_person(&lower[at - 2]) && words[at - 1].kind.is_verb()));
+        // *von ihnen zu hören*.
+        let hear_from = w == "ihnen"
+            && at >= 1
+            && lower[at - 1] == "von"
+            && lower.get(at + 1).is_some_and(|n| n == "zu");
+        // *Dank für ihre Antwort*: thanks, then *für* and the possessive.
+        let thanks = w.starts_with("ihr")
+            && w != "ihnen"
+            && at >= 1
+            && lower[at - 1] == "für"
+            && lower[..at - 1]
+                .iter()
+                .rposition(|x| {
+                    matches!(
+                        x.as_str(),
+                        "dank" | "danke" | "danken" | "bedanke" | "bedanken" | "dankbar"
+                    )
+                })
+                .is_some_and(|thanked| !words[thanked..at].iter().any(|t| t.kind.is_comma()));
+        // *Können sie mir sagen, wo …?*: a modal opening a question.
+        let question = w == "sie"
+            && at == 1
+            && asks
+            && matches!(
+                lower[0].as_str(),
+                "können"
+                    | "könnten"
+                    | "würden"
+                    | "möchten"
+                    | "haben"
+                    | "hätten"
+                    | "wären"
+                    | "sind"
+                    | "wollen"
+                    | "dürfen"
+            );
+        if to_the_reader || hear_from || thanks || question {
+            lints.push(Lint {
+                span: words[at].span,
+                lint_kind: LintKind::Capitalization,
+                suggestions: vec![Suggestion::ReplaceWith(capital.chars().collect())],
+                message: format!("Die höfliche Anrede »{capital}« wird großgeschrieben."),
+                priority: 31,
+            });
+        }
+    }
+}
+
 impl Linter for GermanPoliteSie {
     fn lint(&mut self, document: &Document) -> Vec<Lint> {
         let mut lints = Vec::new();
+        if addresses_formally(document) {
+            for sentence in document.iter_sentences() {
+                let words: Vec<&Token> = sentence
+                    .iter()
+                    .filter(|token| !token.kind.is_whitespace())
+                    .collect();
+                letter_phrases(&words, document, &mut lints);
+            }
+        }
         for sentence in document.iter_sentences() {
             let words: Vec<&Token> = sentence
                 .iter()
@@ -128,6 +237,28 @@ mod tests {
         let dict = curated_german_dictionary();
         let document = Document::new(text, &PlainGerman, &dict);
         GermanPoliteSie.lint(&document).len()
+    }
+
+    #[test]
+    fn the_set_phrases_of_a_letter_are_capitalized() {
+        assert_eq!(
+            count("Hallo Frau Schmidt, vielen Dank für ihre schnelle Antwort."),
+            1
+        );
+        let letter = "Sehr geehrte Frau Schmidt,\n\nvielen Dank für ihre schnelle Antwort. \
+            Anbei sende ich ihnen die Unterlagen. Für Rückfragen stehe ich ihnen gerne zur \
+            Verfügung. Ich freue mich darauf, von ihnen zu hören. Können sie mir sagen, wann \
+            das Treffen ist?\n\nMit freundlichen Grüßen";
+        assert_eq!(count(letter), 5);
+        // Without a formal address the same words may mean *they* and *their*.
+        assert_eq!(
+            count("Die Kinder kamen. Ich danke ihnen für ihre Hilfe. Können sie morgen kommen?"),
+            0
+        );
+        assert_eq!(
+            count("Sehr geehrter Herr Meier, die Nachbarn haben ihre Hilfe angeboten."),
+            0
+        );
     }
 
     #[test]

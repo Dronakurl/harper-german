@@ -14,6 +14,7 @@ use crate::spell::curated_german_dictionary;
 /// `binary_search_by_key` can find them.
 const HAND_PICKED_TYPOS: &[(&str, &str)] = &[
     ("bischen", "bisschen"),
+    ("immernoch", "immer noch"),
     ("nichtmal", "nicht mal"),
     ("nocheinmal", "noch einmal"),
     ("packet", "Paket"),

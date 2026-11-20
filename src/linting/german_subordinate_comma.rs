@@ -490,6 +490,16 @@ impl GermanSubordinateComma {
             "verrate",
             "verrät",
             "verraten",
+            "mitteilen",
+            "mitgeteilt",
+            "nennen",
+            "beschreiben",
+            "erzählen",
+            "herausfinden",
+            "nachsehen",
+            "prüfen",
+            "überprüfen",
+            "klären",
         ];
         const BETWEEN: &[&str] = &[
             "mich", "dich", "ihn", "sie", "uns", "euch", "nicht", "genau", "auch", "noch", "nie",

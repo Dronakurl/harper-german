@@ -1,0 +1,14 @@
+# "Alles Liebe": the nominalized adjective after "alles" is capitalized, as in
+# "alles Gute". Only the greeting, with what usually follows it.
+expr main <(alles liebe [zum, und, dir, euch, ihnen, für, von, aus]), liebe>
+
+let message "In »Alles Liebe« wird »Liebe« großgeschrieben, wie in »alles Gute«."
+let description "Schreibt »Liebe« in »Alles Liebe« groß."
+let kind "Capitalization"
+let becomes "Liebe"
+let strategy "Exact"
+
+test "Alles liebe zum Geburtstag!" "Alles Liebe zum Geburtstag!"
+test "Ich wünsche dir alles liebe und Gute." "Ich wünsche dir alles Liebe und Gute."
+allows "Alles Liebe zum Geburtstag!"
+allows "Sie ist alles, was er liebt."

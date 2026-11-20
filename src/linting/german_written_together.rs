@@ -53,7 +53,14 @@ fn is_colour(word: &str) -> bool {
 
 /// Adjectives a writer splits into two words that are each a word: *Not wendige* is
 /// *notwendige*.
-const SPLIT_ADJECTIVES: &[(&str, &str)] = &[("not", "wendig"), ("not", "dürftig")];
+const SPLIT_ADJECTIVES: &[(&str, &str)] = &[
+    ("not", "wendig"),
+    ("not", "dürftig"),
+    ("nächst", "möglich"),
+    ("schnellst", "möglich"),
+    ("best", "möglich"),
+    ("größt", "möglich"),
+];
 
 /// Words written together that belong apart, and apart that belong together.
 ///
@@ -251,6 +258,10 @@ mod tests {
         assert_eq!(fixes("Sie trägt ein dunkel rotes Kleid."), ["dunkelrotes"]);
         assert_eq!(fixes("Hell grüne Wände gefallen mir."), ["Hellgrüne"]);
         assert_eq!(fixes("Das ist eine Not wendige Maßnahme."), ["notwendige"]);
+        assert_eq!(
+            fixes("Ich kündige zum nächst möglichen Zeitpunkt."),
+            ["nächstmöglichen"]
+        );
         assert_eq!(fixes("Der Himmel war tief schwarz."), ["tiefschwarz"]);
         assert!(fixes("Es wurde hell, blau leuchtete der Himmel.").is_empty());
         assert!(fixes("Das Zimmer ist hell und blau.").is_empty());
