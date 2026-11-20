@@ -734,8 +734,7 @@ impl<T: Dictionary> GermanSpellCheck<T> {
     /// that are not close are dropped, and the capital is kept.
     fn get_suggestions(&self, word: &[char]) -> Vec<Vec<char>> {
         let hints = &*GERMAN_HINTS;
-        let mut ranked: Vec<&[char]> =
-            suggest_correct_spelling_with_hints(word, 100, 2, &self.dictionary, hints);
+        let mut ranked = self.ranked_candidates(word);
 
         // A name is the likelier guess only when nothing else is close: *Wrot* is *Wort*, not *Wroth*.
         // A stable sort keeps the core's order within each group.
@@ -796,7 +795,7 @@ impl<T: Dictionary> GermanSpellCheck<T> {
             });
             match same {
                 Some(kept) => {
-                    if lower_initial(word) && lower_initial(candidate) && !lower_initial(kept) {
+                    if lower_initial(word) && lower_initial(&candidate) && !lower_initial(kept) {
                         *kept = candidate.to_vec();
                     }
                 }
@@ -868,6 +867,55 @@ impl<T: Dictionary> GermanSpellCheck<T> {
 
         suggestions.truncate(5);
         suggestions
+    }
+
+    /// The core's candidates, ranked. The search two edits away is the expensive part of a
+    /// suggestion, and its results are thrown away below whenever a candidate one slip away
+    /// exists. So one edit is tried first, together with the swapped neighbours (two edits
+    /// for the search, one slip for a writer) and the table's alternations, which the core
+    /// adds at any distance; only when none of them is close does the search go further.
+    fn ranked_candidates(&self, word: &[char]) -> Vec<Vec<char>> {
+        let hints = &*GERMAN_HINTS;
+        let close = |candidate: &[char]| {
+            hints.classify(word, candidate) != EditKind::Other
+                && keeps_first_letter(word, candidate)
+        };
+        let mut near: Vec<Vec<char>> =
+            suggest_correct_spelling_with_hints(word, 100, 1, &self.dictionary, hints)
+                .into_iter()
+                .map(<[char]>::to_vec)
+                .collect();
+        if !near.iter().any(|c| close(c)) {
+            return suggest_correct_spelling_with_hints(word, 100, 2, &self.dictionary, hints)
+                .into_iter()
+                .map(<[char]>::to_vec)
+                .collect();
+        }
+        let base = curated_german_dictionary();
+        // Swapped neighbours, placed where the core ranks a transposition: behind the
+        // alternations, doubled letters and neighbouring keys.
+        let at = near
+            .iter()
+            .position(|c| {
+                !matches!(
+                    hints.classify(word, c),
+                    EditKind::Map | EditKind::Rep | EditKind::DoubledChar | EditKind::KeyNeighbor
+                )
+            })
+            .unwrap_or(near.len());
+        let swaps: Vec<Vec<char>> = (0..word.len().saturating_sub(1))
+            .filter(|&i| word[i] != word[i + 1])
+            .map(|i| {
+                let mut swapped = word.to_vec();
+                swapped.swap(i, i + 1);
+                swapped
+            })
+            // The base dictionary: the compound splitter accepts *Abahndung* as well.
+            .filter(|swapped| base.contains_exact_word(swapped))
+            .filter(|swapped| !near.contains(swapped))
+            .collect();
+        near.splice(at..at, swaps);
+        near
     }
 
     /// Corrections of a compound with a slip in one part: one part is a word (or a
@@ -1160,6 +1208,9 @@ fn near_miss_lint(word: &Token, chars: &[char]) -> Option<Lint> {
 impl<T: Dictionary> Linter for GermanSpellCheck<T> {
     fn lint(&mut self, document: &Document) -> Vec<Lint> {
         let mut lints = Vec::new();
+        // A name or a foreign word the dictionary lacks comes back many times in a text, and
+        // its suggestions are the costly part. Kept for this text only.
+        let mut suggested: HashMap<Vec<char>, Vec<Vec<char>>> = HashMap::new();
 
         for paragraph in document.iter_paragraphs() {
             // Across sentences: Harper ends one at the stop of *Dr.-Ing.*
@@ -1384,7 +1435,10 @@ impl<T: Dictionary> Linter for GermanSpellCheck<T> {
                     }
 
                     // Get spelling suggestions
-                    let suggestions = self.get_suggestions(word_chars);
+                    let suggestions = suggested
+                        .entry(word_chars.to_vec())
+                        .or_insert_with(|| self.get_suggestions(word_chars))
+                        .clone();
                     let word_str: String = word_chars.iter().collect();
 
                     let message = if !suggestions.is_empty() {

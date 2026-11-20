@@ -1,0 +1,31 @@
+# "viel" (much) written for "fiel", the preterite of "fallen". Behind a personal
+# pronoun "viel" cannot be the adverb when a particle of direction or an article
+# follows: "Er viel die Treppe hinunter", "Mir viel auf", "Es viel mir schwer".
+expr pron [ich, er, sie, es, man]
+expr dat [mir, dir, ihm, ihr, uns, euch, ihnen]
+expr richtung [hin, um, herunter, hinunter, runter, ab, ins, aus]
+expr ende [hinunter, herunter, runter, um, hin]
+
+# A noun with its article works as the subject too: "Das Kind viel ins Wasser".
+expr main [<(@pron viel @richtung), viel>, <([der, die, das] * viel [hin, um, herunter, hinunter, runter, ins]), viel>, <(@pron viel [die, der, das, den] * @ende), viel>, <(@dat viel [auf, ein]), viel>, <(es viel @dat [schwer, leicht, auf, ein]), viel>]
+
+let message "Gemeint ist das Verb »fallen«: »fiel«."
+let description "Ersetzt »viel« durch »fiel«, wenn es das Verb »fallen« ist (»Er viel hin«)."
+let kind "Spelling"
+let becomes "fiel"
+let strategy "MatchCase"
+
+test "Er viel die Treppe hinunter." "Er fiel die Treppe hinunter."
+test "Sie viel hin." "Sie fiel hin."
+test "Das Kind viel ins Wasser." "Das Kind fiel ins Wasser."
+test "Mir viel auf, dass er fehlte." "Mir fiel auf, dass er fehlte."
+test "Es viel mir schwer." "Es fiel mir schwer."
+test "Ich viel um." "Ich fiel um."
+
+allows "Er hat viel zu tun."
+allows "Sie weiß viel über Pflanzen."
+allows "Es gibt viel zu sehen."
+allows "Er fiel die Treppe hinunter."
+allows "Ich habe viel aus dem Buch gelernt."
+allows "Das Kind hat viel ins Heft geschrieben."
+allows "Mir ist viel eingefallen."

@@ -1,0 +1,17 @@
+# "die Vereinigten Staaten" is a plural: the dative is "den Vereinigten Staaten".
+# "dem" in front comes from reading it as one country. "der" is left alone: it is
+# also the genitive plural ("der Präsident der Vereinigten Staaten").
+expr main <(dem vereinigten staaten), dem>
+
+let message "»Vereinigte Staaten« ist ein Plural: »den Vereinigten Staaten«."
+let description "Ersetzt »dem Vereinigten Staaten« durch »den Vereinigten Staaten«."
+let kind "Agreement"
+let becomes "den"
+let strategy "MatchCase"
+
+test "Die Staffel aus dem Vereinigten Staaten gewann." "Die Staffel aus den Vereinigten Staaten gewann."
+test "Er wohnt seit Jahren in dem Vereinigten Staaten." "Er wohnt seit Jahren in den Vereinigten Staaten."
+test "Dem Vereinigten Staaten fehlt das Geld." "Den Vereinigten Staaten fehlt das Geld."
+
+allows "Er lebt in den Vereinigten Staaten."
+allows "Der Präsident der Vereinigten Staaten spricht."

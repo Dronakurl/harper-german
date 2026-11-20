@@ -200,6 +200,96 @@ mod tests {
         }
     }
 
+    /// Times every rule on its own over the files named by `HARPER_TIME_RULES` (a file or a
+    /// directory) and prints the slowest, with the time to build the documents first:
+    /// `HARPER_TIME_RULES=texts/ cargo test --release --lib time_rules -- --ignored --nocapture`.
+    #[test]
+    #[ignore = "reads the files from the environment"]
+    fn time_rules() {
+        use crate::dialects::GermanDialect;
+        use crate::linting::new_curated_german;
+        use crate::parsers::PlainGerman;
+        use harper_core::Document;
+        use std::time::Instant;
+
+        let Ok(path) = std::env::var("HARPER_TIME_RULES") else {
+            return;
+        };
+        let path = std::path::PathBuf::from(path);
+        let files: Vec<_> = if path.is_dir() {
+            let mut files: Vec<_> = std::fs::read_dir(&path)
+                .unwrap()
+                .map(|entry| entry.unwrap().path())
+                .collect();
+            files.sort();
+            files
+        } else {
+            vec![path]
+        };
+        let dict = crate::spell::compound_aware_german_dictionary();
+        let texts: Vec<String> = files
+            .iter()
+            .map(|f| std::fs::read_to_string(f).unwrap())
+            .collect();
+        let start = Instant::now();
+        let documents: Vec<Document> = texts
+            .iter()
+            .map(|text| Document::new(text, &PlainGerman, &*dict))
+            .collect();
+        let chars: usize = texts.iter().map(|t| t.chars().count()).sum();
+        println!(
+            "TIME documents {:.0} ms for {chars} characters",
+            start.elapsed().as_secs_f64() * 1000.0
+        );
+        let mut group = new_curated_german(GermanDialect::Standard, dict.clone());
+        let start = Instant::now();
+        for document in &documents {
+            group.organized_lints(document);
+        }
+        println!(
+            "TIME together {:.0} ms",
+            start.elapsed().as_secs_f64() * 1000.0
+        );
+        group.set_all_rules_to(Some(false));
+        for key in crate::linting::weir_rules::lint_group().iter_keys() {
+            group.config.set_rule_enabled(key, true);
+        }
+        let start = Instant::now();
+        for document in &documents {
+            group.organized_lints(document);
+        }
+        println!(
+            "TIME weir rules together {:.0} ms",
+            start.elapsed().as_secs_f64() * 1000.0
+        );
+        group.set_all_rules_to(Some(false));
+        let start = Instant::now();
+        for document in &documents {
+            group.organized_lints(document);
+        }
+        println!(
+            "TIME none {:.0} ms (the cost of a pass with every rule off)",
+            start.elapsed().as_secs_f64() * 1000.0
+        );
+        let keys: Vec<String> = group.iter_keys().map(str::to_owned).collect();
+        let mut times: Vec<(f64, String)> = Vec::new();
+        for key in keys {
+            group.set_all_rules_to(Some(false));
+            group.config.set_rule_enabled(&key, true);
+            let start = Instant::now();
+            for document in &documents {
+                group.organized_lints(document);
+            }
+            times.push((start.elapsed().as_secs_f64() * 1000.0, key));
+        }
+        times.sort_by(|a, b| b.0.total_cmp(&a.0));
+        let total: f64 = times.iter().map(|(t, _)| t).sum();
+        println!("TIME all rules {total:.0} ms");
+        for (ms, key) in times.iter().take(25) {
+            println!("TIME {ms:8.0} ms  {key}");
+        }
+    }
+
     /// Writes every spelling of the base dictionary, one per line, to the file
     /// named by `HARPER_DUMP_WORDS`.
     #[test]
