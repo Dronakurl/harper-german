@@ -952,7 +952,8 @@ impl<T: Dictionary> GermanSpellCheck<T> {
                 out.push(candidate);
             }
         };
-        let splits: Vec<usize> = (MIN_PART..=word.len() - MIN_PART).collect();
+        // A known tail may be short (*Tür*, *Bad*); the part to correct needs MIN_PART.
+        let splits: Vec<usize> = (MIN_PART..=word.len() - 3).collect();
         // The longer known part first: it is the likelier one to be typed right.
         let mut by_known = splits.clone();
         by_known.sort_by_key(|&at| std::cmp::Reverse(at.max(word.len() - at)));
@@ -1716,6 +1717,20 @@ mod tests {
         let lints = GermanSpellCheck::new(dict.clone()).lint(&document);
         assert_eq!(lints.len(), 1, "{lints:?}");
         assert_eq!(document.get_span_content_str(&lints[0].span), "3ten");
+    }
+
+    #[test]
+    fn a_compound_with_a_slip_in_one_part_is_repaired() {
+        assert_eq!(
+            suggestions_for("Terassentür").first().map(String::as_str),
+            Some("Terrassentür")
+        );
+        assert_eq!(
+            suggestions_for("Marktwirtschsft")
+                .first()
+                .map(String::as_str),
+            Some("Marktwirtschaft")
+        );
     }
 
     #[test]
