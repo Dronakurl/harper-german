@@ -55,7 +55,31 @@ static GERMAN_HINTS: LazyLock<SuggestionHints> = LazyLock::new(|| {
         .expect("the German annotations parse")
 });
 
-/// Do the two words start with the same letter, ignoring case?
+/// How common a word is in running text, as its place in `data/word_frequency.txt` (see
+/// `scripts/build_word_frequency.py`), looked up in lower case. It only orders suggestions
+/// that are equally close to the misspelling.
+static WORD_RANK: LazyLock<HashMap<String, u32>> = LazyLock::new(|| {
+    include_str!("../../data/word_frequency.txt")
+        .lines()
+        .enumerate()
+        .map(|(rank, word)| (word.to_lowercase(), rank as u32))
+        .collect()
+});
+
+/// A coarse band of [`WORD_RANK`]: 0 for the few hundred commonest words, 4 for words
+/// outside the list. Bands rather than ranks, so that only a clear difference in frequency
+/// reorders two candidates.
+fn frequency_band(word: &[char]) -> u8 {
+    let lower: String = word.iter().flat_map(|c| c.to_lowercase()).collect();
+    match WORD_RANK.get(&lower) {
+        Some(rank) if *rank < 300 => 0,
+        Some(rank) if *rank < 2000 => 1,
+        Some(rank) if *rank < 6000 => 2,
+        Some(_) => 3,
+        None => 4,
+    }
+}
+
 /// The conjunctions and pronouns that take the clitic *'s* (*wenn's*, *wie's*) besides verbs.
 const CLITIC_HOSTS: &[&str] = &[
     "wie", "wenn", "ob", "so", "da", "was", "als", "weil", "dass",
@@ -728,6 +752,24 @@ impl<T: Dictionary> GermanSpellCheck<T> {
             });
         }
 
+        // Among candidates equally close, the common word is the likelier one: *git* is
+        // *gibt* before *Gift*. The sort is stable.
+        let tier = |candidate: &[char]| match hints.classify(word, candidate) {
+            EditKind::Other => 2,
+            _ if keeps_first_letter(word, candidate) => 0,
+            _ => 1,
+        };
+        // How likely the slip is: a doubled letter, an alternation from the table or a
+        // neighbouring key before a missing or a wrong letter. A band of frequency weighs as
+        // much as a step of this, so *git* gives *gibt* before *gilt*, but a rare word one
+        // keystroke away still beats a common one that needs a less likely slip.
+        let slip = |candidate: &[char]| match hints.classify(word, candidate) {
+            EditKind::Map | EditKind::Rep | EditKind::DoubledChar => 0,
+            EditKind::KeyNeighbor | EditKind::Transposition => 1,
+            _ => 2,
+        };
+        ranked.sort_by_key(|c| (tier(c), frequency_band(c) + slip(c)));
+
         // *wichten* and *Wichten* are two words but one suggestion. Each keeps the
         // place of its best-ranked spelling, and takes the lower-case spelling
         // when the writer typed lower case.
@@ -776,6 +818,12 @@ impl<T: Dictionary> GermanSpellCheck<T> {
             suggestions.insert(at, split);
         }
 
+        // *Marktwirtschsft*, *Wissenschafttheorie*: a compound the dictionary does not list,
+        // with the slip in one of its parts. The edit search finds nothing that long.
+        if suggestions.is_empty() {
+            suggestions = self.compound_repairs(word);
+        }
+
         // Also try a simple capitalization fix (common German error).
         if suggestions.is_empty() && word.len() > 1 {
             let mut capitalized = word.to_vec();
@@ -808,6 +856,94 @@ impl<T: Dictionary> GermanSpellCheck<T> {
 
         suggestions.truncate(5);
         suggestions
+    }
+
+    /// Corrections of a compound with a slip in one part: one part is a word (or a
+    /// compound) the dictionary accepts, the other is corrected on its own and the two
+    /// are joined again, and the result must be accepted as a whole. A missing *s* at the
+    /// seam is tried too (*Wissenschafttheorie*). Splits that leave the longer known part
+    /// come first.
+    fn compound_repairs(&self, word: &[char]) -> Vec<Vec<char>> {
+        const MIN_PART: usize = 4;
+        if word.len() < 2 * MIN_PART + 1 {
+            return Vec::new();
+        }
+        let hints = &*GERMAN_HINTS;
+        let base = curated_german_dictionary();
+        let capitalized = |part: &[char]| -> Vec<char> {
+            let mut out = part.to_vec();
+            if let Some(first) = out.first_mut() {
+                *first = first.to_uppercase().next().unwrap_or(*first);
+            }
+            out
+        };
+        let lowered = |part: &[char]| -> Vec<char> {
+            let mut out = part.to_vec();
+            if let Some(first) = out.first_mut() {
+                *first = first.to_lowercase().next().unwrap_or(*first);
+            }
+            out
+        };
+        let accepted =
+            |candidate: &[char]| candidate != word && self.dictionary.contains_word(candidate);
+        let mut out: Vec<Vec<char>> = Vec::new();
+        let push = |candidate: Vec<char>, out: &mut Vec<Vec<char>>| {
+            if !out.contains(&candidate) {
+                out.push(candidate);
+            }
+        };
+        let splits: Vec<usize> = (MIN_PART..=word.len() - MIN_PART).collect();
+        // The longer known part first: it is the likelier one to be typed right.
+        let mut by_known = splits.clone();
+        by_known.sort_by_key(|&at| std::cmp::Reverse(at.max(word.len() - at)));
+        for at in by_known {
+            let (left, right) = word.split_at(at);
+            let left_known = self.dictionary.contains_word(left);
+            let right_cap = capitalized(right);
+            let right_known = base.contains_word(&right_cap);
+            if left_known && right_known {
+                // Both parts are words, yet the whole is not: the seam lacks its *s*.
+                let joined: Vec<char> = left
+                    .iter()
+                    .copied()
+                    .chain(['s'])
+                    .chain(lowered(right))
+                    .collect();
+                if accepted(&joined) {
+                    push(joined, &mut out);
+                }
+                continue;
+            }
+            if left_known && right.len() >= MIN_PART {
+                for candidate in suggest_correct_spelling_with_hints(&right_cap, 4, 1, &base, hints)
+                    .into_iter()
+                    .filter(|c| keeps_first_letter(&right_cap, c))
+                    .take(2)
+                {
+                    let joined: Vec<char> =
+                        left.iter().copied().chain(lowered(candidate)).collect();
+                    if accepted(&joined) {
+                        push(joined, &mut out);
+                    }
+                }
+            } else if right_known && left.len() >= MIN_PART {
+                for candidate in suggest_correct_spelling_with_hints(left, 4, 1, &base, hints)
+                    .into_iter()
+                    .filter(|c| keeps_first_letter(left, c))
+                    .take(2)
+                {
+                    let joined: Vec<char> =
+                        candidate.iter().copied().chain(lowered(right)).collect();
+                    if accepted(&joined) {
+                        push(joined, &mut out);
+                    }
+                }
+            }
+            if out.len() >= 3 {
+                break;
+            }
+        }
+        out
     }
 
     /// The spelling after the 1996 reform: *ß* after a short vowel became *ss*
@@ -1527,7 +1663,8 @@ mod tests {
 
     /// How often the intended word is the first suggestion, and among the first
     /// five, over a file of misspellings: one `kind<TAB>typo<TAB>intended` per line.
-    /// Prints one line per kind and one for all.
+    /// Prints one line per kind and one for all; with `HARPER_TYPO_MISSES` set, also every
+    /// typo whose first suggestion is not the intended word.
     ///
     /// ```bash
     /// HARPER_TYPO_EVAL=typos.tsv cargo test --release --lib suggestion_accuracy -- --ignored --nocapture
@@ -1559,6 +1696,12 @@ mod tests {
                 .collect();
             let top1 = suggestions.first().is_some_and(|s| s == intended);
             let top5 = suggestions.iter().take(5).any(|s| s == intended);
+            if !top1 && std::env::var_os("HARPER_TYPO_MISSES").is_some() {
+                println!(
+                    "MISS\t{kind}\t{typo}\t{intended}\t{}",
+                    suggestions.join(" ")
+                );
+            }
             for key in [kind, "ALL"] {
                 let entry = stats.entry(key.to_owned()).or_default();
                 entry.0 += 1;
