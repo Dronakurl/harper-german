@@ -10,7 +10,7 @@ use harper_core::spell::{Dictionary, MergedDictionary, MutableDictionary};
 use harper_core::{DictWordMetadata, Document, remove_overlaps_map};
 use harper_plugin_api::{
     ABI_VERSION, DialectInfo, LanguagePlugin, LintRequest, PluginConfig, PluginInfo, PluginLint,
-    Region, export_plugin, lint_to_plugin,
+    Region, RuleGroup, export_plugin, lint_to_plugin,
 };
 
 use crate::dialects::GermanDialect;
@@ -228,6 +228,10 @@ impl LanguagePlugin for German {
             .iter_keys()
             .map(|rule| (rule.to_owned(), Some(true)))
             .collect()
+    }
+
+    fn rule_groups() -> Vec<RuleGroup> {
+        crate::rule_groups::rule_groups()
     }
 
     fn detect(text: &str, english_ratio: Option<f32>) -> Option<f32> {

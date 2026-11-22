@@ -10,6 +10,7 @@ pub mod module;
 pub mod morphology;
 pub mod parsers;
 pub mod plugin;
+pub mod rule_groups;
 pub mod spell;
 #[cfg(test)]
 pub mod testing;
