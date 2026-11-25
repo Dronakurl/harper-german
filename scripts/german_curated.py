@@ -637,6 +637,11 @@ Kundenberater M =
 Kundenkonto N Kundenkonten
 Hotelzimmer N =
 Reisebüro N Reisebüros
+Frühzeit F Frühzeiten
+Vorzeit F Vorzeiten
+Spätzeit F Spätzeiten
+Endzeit F Endzeiten
+Frühgeschichte F -
 """.strip().splitlines()
 
 CORE_ADVERBS = """
@@ -720,6 +725,14 @@ EXTRA_VERBS = [
     "toppen", "shoppen", "pushen", "köcheln", "punkten", "verzinken", "entzünden", "chippen", "launchen",
     "spitzeln", "türmen",  # not *stutzen*: it would let *unterstutzt* pass for *unterstützt*
 ]
+
+# English verbs stressed after their first syllable take no *ge-*: *Wir haben es reviewt*.
+PARTICIPLES_WITHOUT_GE = {
+    "reviewen": "reviewt",
+    "recyceln": "recycelt",
+    "designen": "designt",
+    "deployen": "deployt",
+}
 
 # Verbs that begin with the letters of a separable prefix without having one: *geantwortet*, not
 # *angetwortet*.

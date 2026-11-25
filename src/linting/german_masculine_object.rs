@@ -48,6 +48,10 @@ const COPULAS: &[&str] = &[
     "geblieben",
     "werden",
     "worden",
+    "wurde",
+    "wurden",
+    "wurdest",
+    "wurdet",
 ];
 
 /// Auxiliaries and modals: a verb at the end of the clause may still follow the object
@@ -171,6 +175,7 @@ impl GermanMasculineObject {
         words: &[&Token],
         lower: &[String],
         at: usize,
+        noun_at: usize,
         document: &Document,
     ) -> bool {
         let stops = |w: &str| {
@@ -231,7 +236,7 @@ impl GermanMasculineObject {
                 return false;
             }
         }
-        let tail: Vec<&str> = (at + 2..words.len())
+        let tail: Vec<&str> = (noun_at + 1..words.len())
             .take_while(|&k| !words[k].kind.is_punctuation())
             .map(|k| lower[k].as_str())
             .collect();
@@ -243,14 +248,14 @@ impl GermanMasculineObject {
         // *Er hat ein Termin beim Zahnarzt*: a prepositional phrase behind the object. Without
         // an auxiliary in front, a verb at its end would start a clause of its own (*Ich glaube
         // ein Mann im Park kommt*).
-        let preposition_first = (at + 2 < words.len())
-            && (words[at + 2].kind.is_preposition()
+        let preposition_first = (noun_at + 1 < words.len())
+            && (words[noun_at + 1].kind.is_preposition()
                 || matches!(
                     tail.first().copied(),
                     Some("beim" | "im" | "am" | "zum" | "zur" | "vom" | "ins" | "ans")
                 ));
         if preposition_first && !tail.is_empty() && !needs_verb {
-            let last = words[at + 1 + tail.len()];
+            let last = words[noun_at + tail.len()];
             let verb_last = last.kind.is_verb() && !starts_uppercase(last, document);
             return is_aux || !verb_last || PARTICLES.contains(tail.last().unwrap_or(&""));
         }
@@ -258,7 +263,7 @@ impl GermanMasculineObject {
             [] => !needs_verb,
             [p] if !is_aux => PARTICLES.contains(p),
             rest if is_aux && rest.len() <= 2 => rest.iter().enumerate().all(|(i, w)| {
-                let token = words[at + 2 + i];
+                let token = words[noun_at + 1 + i];
                 token.kind.is_verb()
                     && !starts_uppercase(token, document)
                     && !COPULAS.contains(w)
@@ -296,7 +301,16 @@ impl Linter for GermanMasculineObject {
                 {
                     continue;
                 }
-                let noun = words[at + 1];
+                // *ein großer Hund*: an adjective in the strong masculine nominative between
+                // the article and the noun changes with it, to *einen großen Hund*.
+                let adjective = (at + 2 < words.len()
+                    && words[at + 1].kind.is_adjective()
+                    && !starts_uppercase(words[at + 1], document)
+                    && lower[at + 1].ends_with("er")
+                    && lower[at + 1].chars().count() >= 4)
+                    .then(|| document.get_span_content_str(&words[at + 1].span));
+                let noun_at = if adjective.is_some() { at + 2 } else { at + 1 };
+                let noun = words[noun_at];
                 if !starts_uppercase(noun, document) || !noun.kind.is_word() {
                     continue;
                 }
@@ -304,14 +318,14 @@ impl Linter for GermanMasculineObject {
                 if self.genders(&text) != GenderSet::MASCULINE {
                     continue;
                 }
-                let after = words.get(at + 2).map(|t| lowercase_of(t, document));
+                let after = words.get(noun_at + 1).map(|t| lowercase_of(t, document));
                 let participle = after.as_deref().is_some_and(|w| {
                     w.chars().count() >= 6
                         && ["ge", "ver", "be", "er", "ent", "zer", "über"]
                             .iter()
                             .any(|prefix| w.starts_with(prefix))
                         && (w.ends_with('t') || w.ends_with("en"))
-                }) && words[at + 2].kind.is_verb();
+                }) && words[noun_at + 1].kind.is_verb();
                 // The auxiliary stands in the same clause: no comma between them.
                 let same_clause = lower[..at]
                     .iter()
@@ -330,13 +344,17 @@ impl Linter for GermanMasculineObject {
                             || h == 0 && lower.get(1).is_some_and(|w| pronoun(w)))
                             && !words[h..at].iter().any(|t| t.kind.is_comma())
                     });
-                let ends_question =
-                    has_gibt && words.get(at + 2).is_none_or(|t| t.kind.is_punctuation());
+                let ends_question = has_gibt
+                    && words
+                        .get(noun_at + 1)
+                        .is_none_or(|t| t.kind.is_punctuation());
                 // *Die Wohnung hat zwei Schlafzimmer und ein Balkon.*: a second object of *haben*
                 // behind *und*, at the end of the clause.
                 let second_object = at >= 3
                     && lower[at - 1] == "und"
-                    && words.get(at + 2).is_none_or(|t| t.kind.is_punctuation())
+                    && words
+                        .get(noun_at + 1)
+                        .is_none_or(|t| t.kind.is_punctuation())
                     && lower[..at - 1]
                         .iter()
                         .rposition(|w| matches!(w.as_str(), "hat" | "haben" | "hast" | "habe"))
@@ -346,16 +364,23 @@ impl Linter for GermanMasculineObject {
                 if !(has_haben && participle && same_clause
                     || ends_question
                     || second_object
-                    || Self::object_of_pronoun_subject(&words, &lower, at, document))
+                    || Self::object_of_pronoun_subject(&words, &lower, at, noun_at, document))
                 {
                     continue;
                 }
+                let (end, replacement) = match &adjective {
+                    Some(adjective) => {
+                        let stem = &adjective[..adjective.len() - 2];
+                        (words[at + 1].span.end, format!("{accusative} {stem}en"))
+                    }
+                    None => (words[at].span.end, accusative.to_string()),
+                };
                 lints.push(Lint {
-                    span: Span::new(words[at].span.start, words[at].span.end),
+                    span: Span::new(words[at].span.start, end),
                     lint_kind: LintKind::Agreement,
-                    suggestions: vec![Suggestion::ReplaceWith(accusative.chars().collect())],
+                    suggestions: vec![Suggestion::ReplaceWith(replacement.chars().collect())],
                     message: format!(
-                        "»{text}« ist hier das Objekt im Akkusativ: »{accusative} {text}«."
+                        "»{text}« ist hier das Objekt im Akkusativ: »{replacement} {text}«."
                     ),
                     priority: 31,
                 });
@@ -402,6 +427,8 @@ mod tests {
             "Er kennt ein Arzt.",
             "Er hat ein Termin beim Zahnarzt.",
             "Ich sehe ein Mann im Park.",
+            "Ich sehe ein großer Hund.",
+            "Wir suchen ein neuer Mitarbeiter.",
         ] {
             assert_eq!(count(text), 1, "{text}");
         }
@@ -438,6 +465,11 @@ mod tests {
             "Wir gehen ein Stück.",
             "Ich glaube ein Mann im Park kommt.",
             "Er hat einen Termin beim Zahnarzt.",
+            "Ich sehe einen großen Hund.",
+            "Das ist ein großer Hund.",
+            "Ein großer Hund bellt.",
+            "Ich glaube ein großer Hund kommt.",
+            "Außerdem wurde er ein bekannter Sportfunktionär.",
         ] {
             assert_eq!(count(text), 0, "{text}");
         }

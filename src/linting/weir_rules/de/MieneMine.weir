@@ -1,0 +1,17 @@
+# "die Miene" is the face one makes; "die Mine" is a mine or a pencil lead.
+# With an adjective of mood, or with "verziehen", the face is meant.
+expr mood [ernste, ernsten, finstere, finsteren, böse, bösen, freundliche, freundlichen, traurige, traurigen, saure, sauren, betretene, betretenen, ausdruckslose, ausdruckslosen, unbewegte, unbewegten, besorgte, besorgten, gute, düstere, düsteren, versteinerte, versteinerten]
+expr main [<(@mood Mine), Mine>, <(keine Mine verzogen), Mine>, <(gute Mine zum bösen Spiel), Mine>]
+
+let message "Gemeint ist »die Miene« (Gesichtsausdruck), nicht »die Mine«."
+let description "Ersetzt »Mine« durch »Miene« in »eine ernste Mine machen« und »keine Mine verziehen«."
+let kind "Spelling"
+let becomes "Miene"
+let strategy "Exact"
+
+test "Er macht eine ernste Mine." "Er macht eine ernste Miene."
+test "Er hat keine Mine verzogen." "Er hat keine Miene verzogen."
+test "Sie machte gute Mine zum bösen Spiel." "Sie machte gute Miene zum bösen Spiel."
+allows "Er macht eine ernste Miene."
+allows "Die Mine des Bleistifts ist abgebrochen."
+allows "Die alte Mine wurde geschlossen."

@@ -1,0 +1,16 @@
+# "die Wahl" (election, choice) is feminine; "der Wal" is the whale. With "die"
+# or "zur" and a verb of winning or voting, the election is meant, and the
+# article is right: the noun is misspelt.
+expr verb [gewonnen, verloren, gewinnen, verlieren, gewinnt, verliert, gewann, verlor, abhalten, angefochten, verschoben]
+expr main <(die Wal @verb), (die Wal)>
+
+let message "Gemeint ist »die Wahl« (mit »h«); »der Wal« ist das Tier."
+let description "Ersetzt »die Wal« durch »die Wahl« vor einem Verb wie »gewinnen«."
+let kind "Spelling"
+let becomes "die Wahl"
+let strategy "MatchCase"
+
+test "Wir haben die Wal gewonnen." "Wir haben die Wahl gewonnen."
+test "Er wird die Wal verlieren." "Er wird die Wahl verlieren."
+allows "Wir haben die Wahl gewonnen."
+allows "Wir haben den Wal gesehen."

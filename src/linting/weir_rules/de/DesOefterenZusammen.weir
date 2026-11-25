@@ -1,0 +1,11 @@
+# "desöfteren" written as one word: "des Öfteren".
+expr main desöfteren
+
+let message "Es heißt »des Öfteren« – getrennt und großgeschrieben."
+let description "Korrigiert »desöfteren« zu »des Öfteren«."
+let kind "Spelling"
+let becomes "des Öfteren"
+let strategy "Exact"
+
+test "Er kam desöfteren zu spät." "Er kam des Öfteren zu spät."
+allows "Er kam des Öfteren zu spät."

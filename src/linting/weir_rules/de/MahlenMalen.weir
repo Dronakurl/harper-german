@@ -1,0 +1,13 @@
+# Coffee and grain are ground, "mahlen"; pictures are painted, "malen".
+expr grain [Kaffee, Kaffeebohnen, Mehl, Getreide, Korn, Pfeffer]
+expr main <(@grain malen), malen>
+
+let message "Kaffee und Getreide werden »gemahlen« (mit »h«); »malen« heißt Bilder malen."
+let description "Ersetzt »malen« durch »mahlen« bei Kaffee, Mehl und Getreide."
+let kind "Spelling"
+let becomes "mahlen"
+let strategy "Exact"
+
+test "Ich muss noch Kaffee malen." "Ich muss noch Kaffee mahlen."
+allows "Ich muss noch Kaffee mahlen."
+allows "Sie malt ein Bild."

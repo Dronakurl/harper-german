@@ -1,0 +1,14 @@
+# "abhängen von": "Das hängt am Wetter ab" → "vom Wetter".
+expr haengt [hängt, hängen, hängst, hing, hingen]
+expr main <[(@haengt am * ab), (@haengt am * * ab), (@haengt * am * ab)], am>
+
+let message "Etwas hängt »vom« Wetter ab, nicht »am« Wetter."
+let description "Ersetzt »am« durch »vom« in »abhängen«."
+let kind "WordChoice"
+let becomes "vom"
+let strategy "MatchCase"
+
+test "Das hängt am Wetter ab." "Das hängt vom Wetter ab."
+test "Das hängt ganz am Wetter ab." "Das hängt ganz vom Wetter ab."
+allows "Das hängt vom Wetter ab."
+allows "Das Bild hängt am Haken."

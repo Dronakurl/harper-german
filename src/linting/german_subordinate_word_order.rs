@@ -180,6 +180,33 @@ impl GermanSubordinateWordOrder {
             return None;
         }
 
+        // *Wenn du Zeit hast ruf mich an*: a second verb right behind the
+        // first opens the main clause, which the missing comma ran into. The
+        // particle belongs to that verb, so the fix is the comma.
+        // The joined verb may be either of the two: *hast ruf … an* joins
+        // *anhast*, *hast komm … vorbei* joins *vorbeikomm*.
+        let position = words.iter().position(|&index| index == verb_at)?;
+        let lowercase_verb = |index: usize| {
+            tokens[index].kind.is_verb() && starts_lowercase(tokens[index], document)
+        };
+        let clause_end =
+            if words[position + 1] != particle_at && lowercase_verb(words[position + 1]) {
+                Some(verb_at)
+            } else if position >= 2 && lowercase_verb(words[position - 1]) {
+                Some(words[position - 1])
+            } else {
+                None
+            };
+        if let Some(clause_end) = clause_end {
+            return Some(Lint {
+                span: tokens[clause_end].span,
+                lint_kind: LintKind::Punctuation,
+                suggestions: vec![Suggestion::InsertAfter(vec![','])],
+                message: "Hier endet der Nebensatz; davor fehlt das Komma zum Hauptsatz.".into(),
+                priority: 31,
+            });
+        }
+
         // The particle itself moves with the verb, so the rest of the clause
         // runs up to the word in front of it.
         let before_particle = words[words.len() - 2];
@@ -317,6 +344,16 @@ mod tests {
             ),
         ] {
             assert_eq!(fixes(text), [format!("Replace with: “{fixed}”")], "{text}");
+        }
+    }
+
+    #[test]
+    fn a_main_clause_run_into_the_clause_gets_a_comma() {
+        for text in [
+            "Wenn du Zeit hast ruf mich an.",
+            "Wenn du Zeit hast komm doch vorbei.",
+        ] {
+            assert_eq!(fixes(text), ["Insert “,”"], "{text}");
         }
     }
 

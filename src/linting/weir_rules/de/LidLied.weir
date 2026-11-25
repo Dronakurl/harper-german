@@ -1,0 +1,13 @@
+# "das Lid" covers the eye; "das Lied" is a song.
+expr main [<(Lied [über, unter, am, auf] dem Auge), Lied>, <([obere, oberen, untere, unteren, geschwollene, geschwollenen] Lied), Lied>]
+
+let message "Gemeint ist »das Lid« (Augenlid), nicht »das Lied«."
+let description "Ersetzt »Lied« durch »Lid« am Auge."
+let kind "Spelling"
+let becomes "Lid"
+let strategy "Exact"
+
+test "Sie trägt ein Lied über dem Auge." "Sie trägt ein Lid über dem Auge."
+test "Das obere Lied ist geschwollen." "Das obere Lid ist geschwollen."
+allows "Sie singt ein Lied über die Liebe."
+allows "Das obere Lid ist geschwollen."

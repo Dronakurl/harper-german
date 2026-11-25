@@ -1,0 +1,20 @@
+# "lies" is the imperative of "lesen"; behind a subject and with an infinitive of
+# "lassen" at the end, the preterite "ließ" of "lassen" is meant: "Sie ließ das
+# Buch liegen".
+expr subject [er, sie, es, man, ich]
+expr inf [liegen, stehen, fallen, sitzen, warten, kommen, gehen, los, frei, offen, zurück]
+expr main <[(@subject lies @inf), (@subject lies * @inf), (@subject lies * * @inf), (@subject lies * * * @inf), (@subject lies * * * * @inf), (@subject lies * * * * * @inf), (@subject lies sich)], lies>
+
+let message "»lies« ist der Imperativ von »lesen«; gemeint ist »ließ« (von »lassen«)."
+let description "Ersetzt »lies« durch »ließ« hinter einem Subjekt, wenn ein Infinitiv zu »lassen« folgt."
+let kind "Spelling"
+let becomes "ließ"
+let strategy "Exact"
+
+test "Sie lies das Buch auf dem Tisch liegen." "Sie ließ das Buch auf dem Tisch liegen."
+test "Er lies uns lange warten." "Er ließ uns lange warten."
+test "Sie lies sich nicht beirren." "Sie ließ sich nicht beirren."
+test "Er lies das Seil los." "Er ließ das Seil los."
+allows "Sie ließ das Buch liegen."
+allows "Lies das Buch und lass es liegen."
+allows "Er sagte: Lies das Buch."

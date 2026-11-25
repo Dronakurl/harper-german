@@ -352,6 +352,8 @@ class Builder:
 
     def pp_regular(self, lemma):
         """The past participle of a weak verb: `lernen` -> `gelernt`."""
+        if lemma in curated.PARTICIPLES_WITHOUT_GE:
+            return curated.PARTICIPLES_WITHOUT_GE[lemma]
         verbs = getattr(self, "all_verb_lemmas", set())
         for p in sorted(self.SEPARABLE, key=len, reverse=True):
             rest = lemma[len(p):]

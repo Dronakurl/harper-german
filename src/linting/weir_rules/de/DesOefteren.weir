@@ -1,0 +1,11 @@
+# "des Öfteren" is a nominalization, like "des Weiteren": separate and capitalised.
+expr main <(des öfteren), öfteren>
+
+let message "Die feste Wendung schreibt man groß: »des Öfteren«."
+let description "Schreibt »des öfteren« als »des Öfteren«."
+let kind "Capitalization"
+let becomes "Öfteren"
+let strategy "Exact"
+
+test "Er kam des öfteren zu spät." "Er kam des Öfteren zu spät."
+allows "Er kam des Öfteren zu spät."

@@ -1,0 +1,15 @@
+# "die Saite" is the string of an instrument; "die Seite" a side or a page. A
+# string tears, is tuned or put on.
+expr instrument [Gitarre, Geige, Harfe, Violine, Bratsche, Laute, Mandoline, Zither]
+expr torn [gerissen, abgerissen]
+expr main <(Seite der @instrument [ist, war] @torn), Seite>
+
+let message "Gemeint ist die »Saite« eines Instruments, nicht die »Seite«."
+let description "Ersetzt »Seite« durch »Saite«, wenn sie an einem Instrument reißt."
+let kind "Spelling"
+let becomes "Saite"
+let strategy "Exact"
+
+test "Die Seite der Gitarre ist gerissen." "Die Saite der Gitarre ist gerissen."
+allows "Die Saite der Gitarre ist gerissen."
+allows "Die Seite der Gitarre ist zerkratzt."

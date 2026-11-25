@@ -1,0 +1,18 @@
+# "abhängen von": something depends "von" something, not "an" (from "hängen an").
+# Only with the particle "ab" closing the phrase, so "Das hängt an der Wand" stays.
+expr haengt [hängt, hängen, hängst, hing, hingen]
+expr det [dem, der, den, einem, einer, deinem, deiner, seinem, seiner, ihrem, ihrer, unserem, unserer]
+expr main <[(@haengt an @det * ab), (@haengt an @det * * ab), (@haengt * an @det * ab), (@haengt ganz an @det * ab)], an>
+
+let message "Etwas hängt »von« etwas ab, nicht »an« etwas."
+let description "Ersetzt »abhängen an« durch »abhängen von«."
+let kind "WordChoice"
+let becomes "von"
+let strategy "MatchCase"
+
+test "Das hängt an dem Wetter ab." "Das hängt von dem Wetter ab."
+test "Es hängt an der neuen Regel ab." "Es hängt von der neuen Regel ab."
+test "Das hängt stark an der Zeit ab." "Das hängt stark von der Zeit ab."
+allows "Das hängt vom Wetter ab."
+allows "Das Bild hängt an der Wand."
+allows "Er hängt an der Wand ein Bild auf."

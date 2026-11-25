@@ -17,7 +17,11 @@ They ask for the German label of
   languages (*Jörg* has 6 sitelinks, and 1147 bearers);
 * the family names of the best known people (*Putin*, *Baerbock*), by the sitelinks of the
   best known bearer;
-* organisations, companies and clubs.
+* organisations, companies and clubs;
+* every municipality of Germany, Austria and Switzerland (they carry an official key: AGS,
+  Gemeindekennziffer, BFS number) and the lakes, mountains and rivers of the three countries
+  with an article in at least three Wikipedias: *Todtnau*, *Titisee*, small places a text
+  about a hike or a holiday names.
 
 Each kind has a budget (BUDGET), filled from the top of its ranking. Only one-word labels of
 four letters or more are kept (shorter ones are typos as often as names). The file has one
@@ -41,7 +45,8 @@ PREFIXES = (
 )
 
 # How many names of each kind the word list may carry.
-BUDGET = {"geo": 2500, "place": 8000, "demonym": 2000, "given": 4000, "family": 6000, "person": 5000, "org": 1500}
+BUDGET = {"geo": 2500, "place": 8000, "demonym": 2000, "given": 4000, "family": 6000, "person": 5000, "org": 1500,
+          "local": 30000}
 
 # People with an article in the German Wikipedia.
 DEWIKI_PEOPLE = "?a schema:about ?x . ?a schema:isPartOf <https://de.wikipedia.org/> . "
@@ -64,6 +69,12 @@ QUERIES = {
     "org": 'SELECT ?l ?s WHERE { VALUES ?c { wd:Q4830453 wd:Q783794 wd:Q43229 wd:Q891723 wd:Q327333 wd:Q7278 '
            'wd:Q484652 } ?x wdt:P31 ?c . ?x wikibase:sitelinks ?s . ?x rdfs:label ?l . FILTER(?s>=25) '
            'FILTER(LANG(?l)="de") }',
+    # Municipalities by their official key, and the lakes, mountains and rivers of the three
+    # countries (any subclass: a reservoir is a lake), with their sitelinks.
+    "local": 'SELECT ?l (MAX(?s) AS ?m) WHERE { { { ?x wdt:P439 ?k } UNION { ?x wdt:P964 ?k } UNION '
+             '{ ?x wdt:P771 ?k } ?x wikibase:sitelinks ?s . } UNION { VALUES ?land { wd:Q183 wd:Q40 wd:Q39 } '
+             'VALUES ?top { wd:Q23397 wd:Q8502 wd:Q4022 } ?x wdt:P17 ?land . ?x wdt:P31/wdt:P279* ?top . '
+             '?x wikibase:sitelinks ?s . FILTER(?s>=3) } ?x rdfs:label ?l . FILTER(LANG(?l)="de") } GROUP BY ?l',
 }
 
 
@@ -96,6 +107,24 @@ def run(query):
     return out
 
 
+def one_slip_apart(a, b):
+    """One letter left out, added, changed, or two neighbours swapped."""
+    if a == b or abs(len(a) - len(b)) > 1:
+        return False
+    if len(a) == len(b):
+        diff = [i for i in range(len(a)) if a[i] != b[i]]
+        return len(diff) == 1 or (
+            len(diff) == 2 and diff[1] == diff[0] + 1 and a[diff[0]] == b[diff[1]] and a[diff[1]] == b[diff[0]]
+        )
+    short, long_ = sorted((a, b), key=len)
+    return any(long_[:i] + long_[i + 1 :] == short for i in range(len(long_)))
+
+
+def frequent_words(here):
+    path = here.parent / "data" / "frequent_words.txt"
+    return {w.strip().lower() for w in path.read_text(encoding="utf-8").splitlines() if w.strip() and not w.startswith("#")}
+
+
 def keep(label):
     return (
         len(label) >= 4
@@ -112,6 +141,9 @@ def main():
     ap.add_argument("--only", nargs="*", help="ask for these kinds only; the rest of an existing file is kept")
     args = ap.parse_args()
     rows = {}  # label -> kind
+    # A small place one slip away from an everyday word would hide that slip at the start of a
+    # sentence (*Kuden*, *Strunde*, *Nehmten*); the well known names of the other kinds stay.
+    frequent = frequent_words(here)
     old = pathlib.Path(args.out)
     if args.only and old.exists():
         for line in old.read_text(encoding="utf-8").splitlines():
@@ -128,8 +160,11 @@ def main():
             print(f"{kind}: skipped ({err})", file=sys.stderr)
             continue
         for label, links in got:
-            if keep(label):
-                best[label] = max(links, best.get(label, 0))
+            if not keep(label):
+                continue
+            if kind == "local" and any(one_slip_apart(label.lower(), w) for w in frequent):
+                continue
+            best[label] = max(links, best.get(label, 0))
         ranked = sorted(best, key=lambda w: (-best[w], w))[: BUDGET[kind]]
         for label in ranked:
             rows.setdefault(label, kind)

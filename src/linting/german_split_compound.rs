@@ -98,7 +98,9 @@ impl<T: Dictionary> Linter for GermanSplitCompound<T> {
                 if at > 0 && {
                     let before = tokens[at - 1];
                     matches!(before.kind, TokenKind::Number(_))
-                        || Self::noun(before)
+                        // *einen tollen Kunden Service*: a small word with a noun reading
+                        // (*die Tolle*) is the adjective.
+                        || Self::noun(before) && source[before.span.start].is_uppercase()
                         || QUANTITIES.contains(
                             &document
                                 .get_span_content(&before.span)
@@ -229,6 +231,7 @@ mod tests {
             "Die Kaffee Maschine ist kaputt.",
             "Wir haben einen Computer Bildschirm gekauft.",
             "Das ist ein Haus Schlüssel.",
+            "Wir bieten einen tollen Kunden Service.",
         ] {
             assert_eq!(count(text), 1, "{text}");
         }

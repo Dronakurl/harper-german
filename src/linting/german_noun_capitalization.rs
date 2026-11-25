@@ -834,6 +834,22 @@ impl<T: Dictionary> GermanNounCapitalization<T> {
         })
     }
 
+    /// Is the capital spelling of `word` a common noun and nothing else: *Jahre*, *Jahren*?
+    fn capital_is_only_a_noun(&self, word: &[char]) -> bool {
+        let mut capital: Vec<char> = word.iter().flat_map(|c| c.to_lowercase()).collect();
+        let Some(first) = capital.first_mut() else {
+            return false;
+        };
+        *first = first.to_uppercase().next().unwrap_or(*first);
+        self.dictionary
+            .get_word_metadata_exact(&capital)
+            .is_some_and(|m| {
+                m.noun.as_ref().is_some_and(|n| n.is_proper != Some(true))
+                    && m.verb.is_none()
+                    && m.adjective.is_none()
+            })
+    }
+
     fn check_if_word_is_noun(
         &self,
         word_chars: &[char],
@@ -1065,17 +1081,24 @@ impl<T: Dictionary> Linter for GermanNounCapitalization<T> {
                     if next.is_some_and(|n| n.kind.is_hyphen()) {
                         continue;
                     }
-                    if Self::is_hyphen_compound_fragment(token, prev, next)
-                        || Self::follows_language_gloss(&tokens, i, document)
-                        || Self::in_foreign_stretch(&tokens, i, document)
-                        || (Self::follows_subject_pronoun(prev, document)
-                            && !Self::object_before_haben(&tokens, i, document))
-                        || Self::is_predicative_noun(&tokens, i, document)
-                        || Self::is_coordinated_attribute(&tokens, i, document)
-                        || Self::follows_clause_initial_ihr(&tokens, i, document)
-                        || Self::is_clause_initial_imperative(&tokens, i, document)
-                        || Self::is_not_a_noun_here(&tokens, i, document)
-                        || self.is_subjunctive_after_pronoun(&tokens, i, document)
+                    // *der 1970er jahre*: the tokenizer reads the decade as a number and the
+                    // pronoun *er*. Behind it stands a noun of time, never a verb.
+                    let after_decade = i >= 2
+                        && matches!(tokens[i - 2].kind, TokenKind::Number(_))
+                        && tokens[i - 2].span.end == tokens[i - 1].span.start
+                        && document.get_span_content(&tokens[i - 1].span) == ['e', 'r'];
+                    if !after_decade
+                        && (Self::is_hyphen_compound_fragment(token, prev, next)
+                            || Self::follows_language_gloss(&tokens, i, document)
+                            || Self::in_foreign_stretch(&tokens, i, document)
+                            || (Self::follows_subject_pronoun(prev, document)
+                                && !Self::object_before_haben(&tokens, i, document))
+                            || Self::is_predicative_noun(&tokens, i, document)
+                            || Self::is_coordinated_attribute(&tokens, i, document)
+                            || Self::follows_clause_initial_ihr(&tokens, i, document)
+                            || Self::is_clause_initial_imperative(&tokens, i, document)
+                            || Self::is_not_a_noun_here(&tokens, i, document)
+                            || self.is_subjunctive_after_pronoun(&tokens, i, document))
                     {
                         continue;
                     }
@@ -1102,13 +1125,15 @@ impl<T: Dictionary> Linter for GermanNounCapitalization<T> {
                     if !already_capitalized
                         && all_alphabetic
                         && !is_sentence_initial
-                        && self.check_if_word_is_noun(
-                            word_chars,
-                            prev,
-                            np_roles[i],
-                            Self::is_verb_second(&tokens, i, document)
-                                || Self::precedes_subject_pronoun(&tokens, i, document),
-                        )
+                        && (after_decade && self.capital_is_only_a_noun(word_chars)
+                            || !after_decade
+                                && self.check_if_word_is_noun(
+                                    word_chars,
+                                    prev,
+                                    np_roles[i],
+                                    Self::is_verb_second(&tokens, i, document)
+                                        || Self::precedes_subject_pronoun(&tokens, i, document),
+                                ))
                     {
                         let mut replacement: Vec<char> = word_chars.to_vec();
                         if let Some(first_char) = replacement.first_mut() {
@@ -1167,6 +1192,8 @@ mod tests {
             ("Das wappen ist alt.", "wappen"),
             ("Das ist meine mutter.", "mutter"),
             ("In der mitte steht ein Baum.", "mitte"),
+            ("Das war in den 1970er jahren.", "jahren"),
+            ("Die Mode der 1920er jahre kehrt zurück.", "jahre"),
         ] {
             assert!(
                 flagged_words(text).contains(&word.to_string()),
@@ -1179,6 +1206,8 @@ mod tests {
             "Die leben dort.",
             "Er hat das alles gesagt.",
             "Wir haben die besten.",
+            "Es kostet 45 km weniger.",
+            "In den 1970er Jahren war das so.",
         ] {
             assert!(
                 flagged_words(text).is_empty(),
