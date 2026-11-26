@@ -425,6 +425,61 @@ impl Linter for GermanRelativeClauseComma {
                         continue;
                     }
                 }
+                // *Das Auto mit den wir gefahren sind*: a preposition that takes only the
+                // dative, then *den* and a subject pronoun, behind a singular noun. *den* is
+                // no dative singular, so it is the relative *dem* in the wrong case.
+                if pronoun == "den"
+                    && at >= 2
+                    && Self::is_capitalized(words[at - 2], document)
+                    && matches!(
+                        Self::text(words[at - 1], document).as_str(),
+                        "mit" | "von" | "zu" | "aus" | "bei" | "nach" | "seit"
+                    )
+                    && words.get(at + 1).is_some_and(|next| {
+                        SUBJECT_PRONOUNS.contains(&Self::text(next, document).as_str())
+                    })
+                    && {
+                        let noun = Self::text(words[at - 2], document);
+                        let genders = self.nouns.genders(&noun);
+                        !genders.is_empty()
+                            && !genders.contains(GenderSet::from(Gender::Feminine))
+                            && !self.nouns.is_surely_plural(&noun)
+                    }
+                    && let Some((last, main_clause_continues)) =
+                        Self::clause_end(&words, at, document)
+                {
+                    lints.push(Lint {
+                        span: words[at - 2].span,
+                        lint_kind: LintKind::Punctuation,
+                        suggestions: vec![Suggestion::InsertAfter(vec![','])],
+                        priority: 28,
+                        message: format!(
+                            "»{} dem« leitet hier einen Relativsatz ein. Davor steht ein Komma.",
+                            Self::text(words[at - 1], document)
+                        ),
+                    });
+                    lints.push(Lint {
+                        span: token.span,
+                        lint_kind: LintKind::Grammar,
+                        suggestions: vec![Suggestion::ReplaceWith(vec!['d', 'e', 'm'])],
+                        priority: 28,
+                        message: format!(
+                            "»{}« verlangt den Dativ: »dem«, nicht »den«.",
+                            Self::text(words[at - 1], document)
+                        ),
+                    });
+                    if main_clause_continues {
+                        lints.push(Lint {
+                            span: words[last].span,
+                            lint_kind: LintKind::Punctuation,
+                            suggestions: vec![Suggestion::InsertAfter(vec![','])],
+                            priority: 28,
+                            message: "Der Relativsatz endet hier. Danach steht ein Komma."
+                                .to_string(),
+                        });
+                    }
+                    continue;
+                }
                 let Some((genders, plural)) = Self::antecedents(&pronoun) else {
                     continue;
                 };
@@ -458,7 +513,9 @@ impl Linter for GermanRelativeClauseComma {
                     && i > 0
                 {
                     let between = Self::text(words[i], document);
-                    let is_participle = between.starts_with("ge")
+                    // *angeschaut*, *mitgebracht*: the participle of a separable verb too.
+                    let is_participle = (between.starts_with("ge")
+                        || crate::grammar::verbs::is_past_participle(&between))
                         && (between.ends_with('t') || between.ends_with("en"))
                         && Self::is_verb(words[i], document);
                     if between == "nicht" || is_participle {
@@ -498,7 +555,9 @@ impl Linter for GermanRelativeClauseComma {
                     continue;
                 };
                 let next_text = Self::text(next, document);
-                let opens_with_subject = SUBJECT_PRONOUNS.contains(&next_text.as_str());
+                // *die Unterlagen die Sie angefordert haben*: the polite *Sie* too.
+                let opens_with_subject =
+                    SUBJECT_PRONOUNS.contains(&next_text.as_str()) || next_text == "Sie";
                 let masculine_subject = !behind_preposition
                     && pronoun == "der"
                     && noun_genders == GenderSet::from(Gender::Masculine)

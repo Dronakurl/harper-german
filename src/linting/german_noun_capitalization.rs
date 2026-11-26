@@ -612,6 +612,83 @@ impl<T: Dictionary> GermanNounCapitalization<T> {
             })
     }
 
+    /// *legislative und judikative Aufgabe*, *katabol und anabol*: coordinated with a small word
+    /// that ends the same way. Two words with one ending in a list are the same kind of word, and
+    /// the first one is small. *Kaffee und tee* share too little to count.
+    fn is_coordinated_with_small_word(
+        tokens: &[&Token],
+        index: usize,
+        document: &Document,
+    ) -> bool {
+        if index < 2
+            || !matches!(
+                noun_phrase::lowercase_of(tokens[index - 1], document).as_str(),
+                "und" | "oder" | "sowie" | "bzw"
+            )
+        {
+            return false;
+        }
+        let first = document.get_span_content_str(&tokens[index - 2].span);
+        let word = noun_phrase::lowercase_of(tokens[index], document);
+        let ending = |w: &str| w.chars().rev().take(3).collect::<String>();
+        tokens[index - 2].kind.is_word()
+            && first.chars().next().is_some_and(char::is_lowercase)
+            && first.chars().count() > 3
+            && word.chars().count() > 3
+            && ending(&first) == ending(&word)
+    }
+
+    /// *nicht mehr effektiv bekämpfen*: an adjective behind *mehr* or *weniger* with a verb
+    /// behind it grades the verb. *nicht mehr Geld ausgeben* has a noun with no adjective reading.
+    fn is_graded_adverb(&self, tokens: &[&Token], index: usize, document: &Document) -> bool {
+        index >= 1
+            && matches!(
+                noun_phrase::lowercase_of(tokens[index - 1], document).as_str(),
+                "mehr" | "weniger"
+            )
+            && tokens.get(index + 1).is_some_and(|next| {
+                next.kind.is_verb()
+                    && document
+                        .get_span_content(&next.span)
+                        .first()
+                        .is_some_and(|c| c.is_lowercase())
+            })
+            && self
+                .dictionary
+                .get_word_metadata(document.get_span_content(&tokens[index].span))
+                .is_some_and(|m| m.adjective.is_some() || m.adverb.is_some())
+    }
+
+    /// *übersteigt*: a finite verb form in *-t* whose infinitive is in the dictionary, though the
+    /// form itself is reached only by taking it apart (*Über* + *steigt*).
+    fn is_verb_form(&self, lower: &str) -> bool {
+        let chars: Vec<char> = lower.chars().collect();
+        let mut capital = chars.clone();
+        if let Some(first) = capital.first_mut() {
+            *first = first.to_uppercase().next().unwrap_or(*first);
+        }
+        if self.dictionary.get_word_metadata_exact(&chars).is_some()
+            || self.dictionary.get_word_metadata_exact(&capital).is_some()
+        {
+            return false;
+        }
+        let stems = [
+            lower.strip_suffix("et"),
+            lower.strip_suffix("st"),
+            lower.strip_suffix('t'),
+        ];
+        stems.into_iter().flatten().any(|stem| {
+            stem.chars().count() > 3
+                && [format!("{stem}en"), format!("{stem}n")]
+                    .iter()
+                    .any(|infinitive| {
+                        self.dictionary
+                            .get_word_metadata_exact(&infinitive.chars().collect::<Vec<_>>())
+                            .is_some_and(|m| m.verb.is_some())
+                    })
+        })
+    }
+
     /// Is this one of [`PREDICATIVE_NOUNS`] in the position German writes it
     /// lower case: no determiner in front, a licensing verb in the clause?
     fn is_predicative_noun(tokens: &[&Token], index: usize, document: &Document) -> bool {
@@ -1095,6 +1172,9 @@ impl<T: Dictionary> Linter for GermanNounCapitalization<T> {
                                 && !Self::object_before_haben(&tokens, i, document))
                             || Self::is_predicative_noun(&tokens, i, document)
                             || Self::is_coordinated_attribute(&tokens, i, document)
+                            || Self::is_coordinated_with_small_word(&tokens, i, document)
+                            || self.is_graded_adverb(&tokens, i, document)
+                            || self.is_verb_form(&noun_phrase::lowercase_of(token, document))
                             || Self::follows_clause_initial_ihr(&tokens, i, document)
                             || Self::is_clause_initial_imperative(&tokens, i, document)
                             || Self::is_not_a_noun_here(&tokens, i, document)
@@ -1353,6 +1433,19 @@ mod tests {
                 .map(|l| document_word(&doc, l))
                 .collect::<Vec<_>>()
         );
+    }
+
+    #[test]
+    fn coordinated_adjectives_graded_adverbs_and_verb_forms_stay_small() {
+        for text in [
+            "Das Ergebnis übersteigt alle Erwartungen.",
+            "Das ist eine legislative und judikative Aufgabe.",
+            "Das Immunsystem kann Krankheitserreger nicht mehr effektiv bekämpfen.",
+            "Die Prozesse laufen katabol und anabol ab.",
+        ] {
+            assert!(flagged_words(text).is_empty(), "{text}");
+        }
+        assert_eq!(flagged_words("Er hat Hunger und durst."), ["durst"]);
     }
 
     #[test]

@@ -330,7 +330,7 @@ impl<T: Dictionary> Linter for GermanSentenceCapitalization<T> {
                             lint_kind: LintKind::Capitalization,
                             suggestions: vec![Suggestion::ReplaceWith(replacement_chars)],
                             priority: 30,
-                            message: "Sentences must start with a capital letter".to_string(),
+                            message: "Ein Satz beginnt mit einem Großbuchstaben.".to_string(),
                         });
                     }
                 }

@@ -113,7 +113,19 @@ expr quantor [alles, nichts, jeder, jede, jedes, viele, niemand, keiner, keine, 
 expr sagepartizip [gesagt, erzählt, versprochen, mitgeteilt, geschrieben, verraten, erklärt, gestanden]
 expr dativ [mir, dir, ihm, ihr, uns, euch, ihnen, Ihnen]
 
-expr main <[(@esurteil(,) das @subjekt), (@esurteil(,) das @urteilssubjekt), (@partizip das @subjektohnekomma), (@partizip das @quantor), (@dativ @sagepartizip, das @subjektohnekomma), (@verb @nachgestellt(,) das @subjekt), (@verb @nachgestellt(,) das @artikel), (@ausloeser(,) das @subjekt), (@ausloeser @einschub(,) das @subjekt), (@verb(,) das @artikel), (@verb @einschub(,) das @artikel), (@ausloeser das @subjektohnekomma), (@ausloeser @einschub das @subjektohnekomma), (@sagepartizip(,) das @artikel), (zu [sagen, hoffen, glauben, wissen, denken, behaupten, meinen, erzählen, erwähnen, vergessen, bedauern] das @subjektohnekomma)], das>
+# Verbs of telling at the end of the main clause: "ich wollte Sie informieren,
+# dass …". With the comma only a subject pronoun counts, because "über das
+# Projekt informieren, das sich …" is a relative clause; without it "sich" and
+# an article count too.
+expr mitteilen [informieren, mitteilen, benachrichtigen, versichern, bestätigen, hinweisen, erinnern, verraten, ausrichten]
+
+# Findings as the subject of "zeigen" and its kin, right in front of the verb:
+# "die Ergebnisse zeigen, dass …". A noun in front puts the verb second, so no
+# infinitive closes a clause there ("das Bild zeigen, das er gemalt hat").
+expr befund [Ergebnisse, Studien, Daten, Untersuchungen, Zahlen, Analysen, Messungen, Experimente, Umfragen, Tests, Befunde, Erfahrungen, Beobachtungen, Studie, Untersuchung, Analyse, Umfrage, Erfahrung]
+expr belegen [zeigen, zeigt, belegen, belegt, beweisen, beweist, bestätigen, bestätigt, zeigten, zeigte, belegten, bewiesen]
+
+expr main <[(@esurteil(,) das @subjekt), (@mitteilen(,) das @subjektohnekomma), (@mitteilen das [sich, @artikel]), (@befund @belegen(,) das [@subjekt, @artikel]), (@esurteil(,) das @urteilssubjekt), (@partizip das @subjektohnekomma), (@partizip das @quantor), (@dativ @sagepartizip, das @subjektohnekomma), (@verb @nachgestellt(,) das @subjekt), (@verb @nachgestellt(,) das @artikel), (@ausloeser(,) das @subjekt), (@ausloeser @einschub(,) das @subjekt), (@verb(,) das @artikel), (@verb @einschub(,) das @artikel), (@ausloeser das @subjektohnekomma), (@ausloeser @einschub das @subjektohnekomma), (@sagepartizip(,) das @artikel), (zu [sagen, hoffen, glauben, wissen, denken, behaupten, meinen, erzählen, erwähnen, vergessen, bedauern] das @subjektohnekomma)], das>
 
 let message "Hier steht die Konjunktion »dass«. Das Pronomen »das« schreibt man mit einem »s«, die Konjunktion mit zwei."
 let description "Ersetzt das Pronomen »das« durch die Konjunktion »dass«, wenn ein Nebensatz folgt."
@@ -220,3 +232,7 @@ allows "Es ist schön, das alles zu sehen."
 allows "Es ist gut, das dem Kind zu zeigen."
 allows "Ich finde es gut, das Buch zu lesen."
 allows "Das Bild ist schön, das du gemalt hast."
+test "Ich wollte Sie nur kurz informieren das sich der Liefertermin ändert." "Ich wollte Sie nur kurz informieren dass sich der Liefertermin ändert."
+test "Die Ergebnisse zeigen, das der Effekt deutlich größer ist als erwartet." "Die Ergebnisse zeigen, dass der Effekt deutlich größer ist als erwartet."
+allows "Wir wollen Sie über das Projekt informieren, das sich gut entwickelt."
+allows "Er wollte uns das Bild zeigen, das der Künstler gemalt hat."

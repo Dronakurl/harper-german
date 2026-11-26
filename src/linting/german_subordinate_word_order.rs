@@ -271,6 +271,21 @@ impl Linter for GermanSubordinateWordOrder {
         for sentence in document.iter_sentences() {
             let tokens: Vec<&Token> = sentence.iter().collect();
             for (at, token) in tokens.iter().enumerate() {
+                // *, weil er war krank*: behind a comma, in writing, *weil* takes the verb at the
+                // end. Only the auxiliary is moved there; the split verb of spoken *weil* (*weil
+                // er kommt morgen an*) is left alone.
+                let weil = token.kind.is_word()
+                    && lowercase_of(token, document) == "weil"
+                    && tokens[..at]
+                        .iter()
+                        .rev()
+                        .find(|t| !t.kind.is_whitespace())
+                        .is_some_and(|t| t.kind.is_comma());
+                if weil {
+                    let clause = Self::clause(&tokens, at, document);
+                    lints.extend(Self::early_auxiliary(&tokens, &clause, document));
+                    continue;
+                }
                 if !token.kind.is_word() || !Self::opens_clause(&lowercase_of(token, document)) {
                     continue;
                 }
@@ -393,6 +408,24 @@ mod tests {
     }
 
     #[test]
+    fn weil_behind_a_comma_puts_the_auxiliary_last() {
+        assert_eq!(
+            fixes("Er blieb im Bett, weil er war krank."),
+            ["Replace with: “krank war”"]
+        );
+        assert_eq!(
+            fixes("Ich komme nicht, weil ich habe keine Zeit."),
+            ["Replace with: “keine Zeit habe”"]
+        );
+        for text in [
+            "Er blieb im Bett, weil er krank war.",
+            "Er blieb im Bett, denn er war krank.",
+        ] {
+            assert!(fixes(text).is_empty(), "{text}");
+        }
+    }
+
+    #[test]
     fn verb_final_clauses_and_main_clauses_are_quiet() {
         for text in [
             "Ich bin der Meinung, dass sich Kriminalität nicht auszahlt.",
@@ -414,7 +447,7 @@ mod tests {
             "Ich weiß, dass wir können das machen wollen.",
             "Ich glaube, dass sie haben möchte, was er hat.",
             "Ich weiß, dass ich bin.",
-            "Ich komme nicht, weil ich habe keine Zeit.",
+            "Ich komme nicht weil ich habe keine Zeit.",
             "Ich weiß, dass er hat Zeit und Lust.",
         ] {
             assert!(fixes(text).is_empty(), "{text}: {:?}", fixes(text));

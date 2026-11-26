@@ -1,0 +1,13 @@
+# "sonder" on its own is archaic ("sonder Zahl"); before "auch" it is the
+# conjunction "sondern" with its "n" lost.
+expr main <(sonder auch), sonder>
+
+let message "Gemeint ist die Konjunktion »sondern«."
+let description "Ersetzt »sonder« durch »sondern«: »nicht nur …, sondern auch«."
+let kind "Spelling"
+let becomes "sondern"
+let strategy "MatchCase"
+
+test "Er ist nicht nur klug, sonder auch freundlich." "Er ist nicht nur klug, sondern auch freundlich."
+allows "Er ist nicht nur klug, sondern auch freundlich."
+allows "Die Sonderausgabe erscheint morgen."

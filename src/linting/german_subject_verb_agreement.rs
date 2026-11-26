@@ -913,6 +913,20 @@ impl<T: Dictionary> GermanSubjectVerbAgreement<T> {
             return None;
         }
 
+        // *…, einen Standpunkt abzulehnen*, *jeden Wert annehmen*: an infinitive, with *zu* or
+        // behind a modal or *werden* earlier in the sentence, has no subject of its own.
+        let infinitive = crate::grammar::verbs::has_zu_infix(&verb_text)
+            || phrase.open > 0 && Self::word_at(tokens, phrase.open - 1, document) == "zu"
+            || phrase.end > 0 && Self::word_at(tokens, phrase.end - 1, document) == "zu"
+            || (verb_text.ends_with('n')
+                && (0..phrase.open).any(|at| {
+                    let w = Self::word_at(tokens, at, document);
+                    MODALS.contains(&w.as_str()) || PASSIVE.contains(&w.as_str())
+                }));
+        if infinitive {
+            return None;
+        }
+
         // The rest of the clause, up to its punctuation.
         let clause_end = (phrase.end + 1..tokens.len())
             .find(|&at| matches!(tokens[at].kind, TokenKind::Punctuation(_)))
@@ -934,7 +948,7 @@ impl<T: Dictionary> GermanSubjectVerbAgreement<T> {
             .filter(|r| r.case == Case::Nominative)
             .collect();
         let determiner_token = tokens[phrase.open];
-        let suggestions = forms_with_gender(&nominative, gender)
+        let suggestions: Vec<Suggestion> = forms_with_gender(&nominative, gender)
             .into_iter()
             .map(|form| {
                 Suggestion::replace_with_match_case(
@@ -944,6 +958,10 @@ impl<T: Dictionary> GermanSubjectVerbAgreement<T> {
             })
             .collect();
 
+        // Without a form to offer, the reader cannot act on the message.
+        if suggestions.is_empty() {
+            return None;
+        }
         let original: String = document
             .get_span_content(&determiner_token.span)
             .iter()
@@ -2337,5 +2355,12 @@ mod tests {
         ] {
             assert_eq!(lint_count(text), 0, "{text}");
         }
+    }
+    #[test]
+    fn issue_129_stays_quiet() {
+        assert_eq!(
+            lint_count("Es ist natürlich, einen Standpunkt abzulehnen, der nicht stimmt."),
+            0
+        );
     }
 }

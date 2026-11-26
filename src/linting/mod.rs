@@ -77,7 +77,11 @@ use std::sync::Arc;
 use crate::dialects::GermanDialect;
 use crate::module::rust_lint_group;
 
-/// The German rules, all enabled: the Weir rules and the Rust linters.
+/// Rules that are off until the user turns them on: they report text that is correct, as a
+/// matter of style. *Mit Hilfe* and *mithilfe* are both right; Duden only prefers one.
+pub const OFF_BY_DEFAULT: &[&str] = &["GermanRecommendedFusion"];
+
+/// The German rules, all enabled except [`OFF_BY_DEFAULT`]: the Weir rules and the Rust linters.
 ///
 /// The dialect does not change which rules run, only what the spell checker accepts: Swiss
 /// German writes *ss* for *ß*.
@@ -89,6 +93,9 @@ pub fn new_curated_german(
     group.merge_from(weir_rules::lint_group());
     group.merge_from(rust_lint_group(dictionary, dialect));
     group.set_all_rules_to(Some(true));
+    for rule in OFF_BY_DEFAULT {
+        group.config.set_rule_enabled(rule, false);
+    }
 
     group
 }

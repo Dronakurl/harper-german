@@ -226,7 +226,10 @@ impl LanguagePlugin for German {
     fn default_config(&self) -> PluginConfig {
         self.group
             .iter_keys()
-            .map(|rule| (rule.to_owned(), Some(true)))
+            .map(|rule| {
+                let on = !crate::linting::OFF_BY_DEFAULT.contains(&rule);
+                (rule.to_owned(), Some(on))
+            })
             .collect()
     }
 
@@ -304,6 +307,21 @@ mod tests {
         }
         assert!(!info.answers_to("English"));
         assert_eq!(info.dialect_named("ch").unwrap().id, "Swiss");
+    }
+
+    /// A rule that reports correct text (*Mit Hilfe* beside *mithilfe*) is off until turned on.
+    #[test]
+    fn style_preferences_are_off_by_default() {
+        let mut german = German::new();
+        assert_eq!(
+            german.default_config().get("GermanRecommendedFusion"),
+            Some(&Some(false))
+        );
+        let text = "Mit Hilfe eines Hammers schlug er den Nagel ein.";
+        assert!(german.lint(LintRequest::plain(text)).is_empty());
+        let mut req = LintRequest::plain(text);
+        req.config = Some([("GermanRecommendedFusion".to_owned(), Some(true))].into());
+        assert_eq!(german.lint(req).len(), 1);
     }
 
     #[test]

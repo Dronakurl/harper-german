@@ -1003,8 +1003,62 @@ impl GermanVerbCase {
             "Hände", "Hand", "Zähne", "Haare", "Bein", "Arm", "Gesicht", "Fuß", "Füße", "Kopf",
             "Nase", "Finger", "Knie", "Rücken", "Augen", "Ohren",
         ];
+        // Verbs whose reflexive is the dative beside a thing in the accusative: *ich habe mir
+        // einen Laptop gekauft*, *ich wünsche mir ein Fahrrad*.
+        const DATIVE_REFLEXIVES: &[&str] = &[
+            "kaufen",
+            "bestellen",
+            "wünschen",
+            "leisten",
+            "holen",
+            "besorgen",
+            "ansehen",
+            "anschauen",
+            "merken",
+            "nehmen",
+            "gönnen",
+            "kochen",
+            "suchen",
+            "aussuchen",
+            "mieten",
+            "ausleihen",
+            "leihen",
+            "vorstellen",
+            "zulegen",
+            "anhören",
+        ];
+        const THING_ARTICLES: &[&str] = &[
+            "einen", "ein", "eine", "den", "das", "die", "meinen", "mein", "meine", "deinen",
+            "dein", "deine", "keinen", "kein", "keine", "neue", "neuen",
+        ];
         let mut lints = Vec::new();
         let has = |w: &str| clause.iter().any(|t| lowercase_of(t, document) == w);
+        let dative_verb = verbs
+            .iter()
+            .any(|v| DATIVE_REFLEXIVES.contains(&v.as_str()))
+            || clause.iter().any(|t| {
+                let w = lowercase_of(t, document);
+                // The finite forms: *wünschst*, *kaufe*.
+                DATIVE_REFLEXIVES.iter().any(|v| {
+                    v.strip_suffix("en").is_some_and(|stem| {
+                        stem.len() >= 4 && w.starts_with(stem) && w.len() <= stem.len() + 3
+                    })
+                }) || [
+                    "gekauft",
+                    "bestellt",
+                    "gewünscht",
+                    "geleistet",
+                    "geholt",
+                    "besorgt",
+                    "gegönnt",
+                    "zugelegt",
+                    "ausgesucht",
+                    "gemietet",
+                    "ausgeliehen",
+                    "geliehen",
+                ]
+                .contains(&w.as_str())
+            });
         let accusative_verb = verbs
             .iter()
             .any(|v| ACCUSATIVE_REFLEXIVES.contains(&v.as_str()));
@@ -1015,7 +1069,18 @@ impl GermanVerbCase {
             }) && clause.get(at + 2).is_some_and(|t| {
                 BODY_PARTS.contains(&document.get_span_content_str(&t.span).as_str())
             });
+            let thing_follows = dative_verb
+                && !accusative_verb
+                && clause
+                    .get(at + 1)
+                    .is_some_and(|t| THING_ARTICLES.contains(&lowercase_of(t, document).as_str()));
             let (fix, why) = match written.as_str() {
+                "mich" if has("ich") && thing_follows => {
+                    ("mir", "den Dativ, weil schon ein Akkusativobjekt folgt")
+                }
+                "dich" if has("du") && thing_follows => {
+                    ("dir", "den Dativ, weil schon ein Akkusativobjekt folgt")
+                }
                 "mir" if accusative_verb && has("ich") && !body_part_follows => {
                     ("mich", "den Akkusativ")
                 }
@@ -1224,6 +1289,22 @@ mod tests {
             "Wir treffen uns in den Ferien.",
             "Wir treffen uns vor dem Bahnhof.",
             "Er trifft auf den Gegner.",
+        ] {
+            assert!(fixed(quiet).is_empty(), "{quiet}");
+        }
+    }
+
+    #[test]
+    fn the_reflexive_beside_an_accusative_object_is_the_dative() {
+        assert_eq!(
+            fixes("Ich habe mich einen neuen Laptop gekauft.")[0].1,
+            ["mir"]
+        );
+        assert_eq!(fixes("Wünschst du dich ein Fahrrad?")[0].1, ["dir"]);
+        for quiet in [
+            "Ich habe mir einen neuen Laptop gekauft.",
+            "Ich habe mich für einen Laptop entschieden.",
+            "Ich kaufe mich nicht frei.",
         ] {
             assert!(fixed(quiet).is_empty(), "{quiet}");
         }

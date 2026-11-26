@@ -279,6 +279,17 @@ impl GermanDativePlural {
         if !self.nouns.lacks_dative_plural_n(&text) {
             return None;
         }
+        // *gesunder Freiwilliger*, *vieler Deutscher*: an adjective used as a noun, whose plural
+        // in *-er* is the genitive; its dative is *-en*, never *-ern*.
+        if let Some(stem) = text.strip_suffix("er") {
+            let lower: Vec<char> = stem.to_lowercase().chars().collect();
+            if crate::spell::curated_german_dictionary()
+                .get_word_metadata(&lower)
+                .is_some_and(|m| m.adjective.is_some())
+            {
+                return None;
+            }
+        }
         let fixed = format!("{text}n");
         Some(Lint {
             span: head.span,
@@ -348,7 +359,14 @@ impl Linter for GermanDativePlural {
                         .then_some(false)
                     })
                     && words.get(at + 1).is_some_and(|next| {
-                        determiner_readings(&lowercase_of(next, document)).is_none()
+                        let next = lowercase_of(next, document);
+                        determiner_readings(&next).is_none()
+                            // *von denen gesunder Freiwilliger*: a pronoun is the object.
+                            && !matches!(
+                                next.as_str(),
+                                "denen" | "deren" | "dessen" | "ihnen" | "ihm" | "ihr" | "uns"
+                                    | "euch" | "mir" | "dir"
+                            )
                     })
                 {
                     Self::bare_head_from(&words, at + 1, document, !conjunction)
@@ -497,6 +515,15 @@ mod tests {
             "Das verdient meiner Meinung nach fünf Sterne.",
         ] {
             assert!(fixes(text).is_empty(), "{text}: {:?}", fixes(text));
+        }
+    }
+    #[test]
+    fn issue_129_stays_quiet() {
+        for text in [
+            "Seine Gehirnaktivitäten unterschieden sich nicht von denen gesunder Freiwilliger.",
+            "Das sagen die Sprecher vieler Deutscher.",
+        ] {
+            assert!(fixes(text).is_empty(), "{text}");
         }
     }
 }

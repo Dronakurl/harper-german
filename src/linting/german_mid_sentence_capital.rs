@@ -264,6 +264,24 @@ impl GermanMidSentenceCapital {
         }
         let previous_lower = previous_word.to_lowercase();
         let lower: String = chars.iter().flat_map(|c| c.to_lowercase()).collect();
+        // *Gehen und Stehen*: coordinated with a capitalized word, a noun like it.
+        // *instrumentenbezogenes Lernen*: behind an inflected adjective, the noun it describes.
+        let coordinated_with_noun = matches!(previous_lower.as_str(), "und" | "oder" | "sowie")
+            && at > 1
+            && words[at - 2].kind.is_word()
+            && is_capitalized(document.get_span_content(&words[at - 2].span));
+        let behind_inflected_adjective = previous_word.chars().all(char::is_lowercase)
+            && ["es", "en", "em", "er"]
+                .iter()
+                .any(|ending| previous_lower.ends_with(ending))
+            && self
+                .dictionary
+                .get_word_metadata(previous.span.get_content(document.get_source()))
+                .is_some_and(|m| m.adjective.is_some() && m.adverb.is_none())
+            && !COPULAS.contains(&previous_lower.as_str());
+        if coordinated_with_noun || behind_inflected_adjective {
+            return None;
+        }
         let next = words.get(at + 1);
         let next_is_capitalized = next.is_some_and(|t| {
             t.kind.is_word()
@@ -341,7 +359,7 @@ impl GermanMidSentenceCapital {
                         && !self
                             .dictionary
                             .get_word_metadata(&stem.chars().collect::<Vec<_>>())
-                            .is_some_and(|m| m.adjective.is_some())
+                            .is_some_and(|m| m.adjective.is_some() && m.adverb.is_none())
             }
             None => true,
         };
@@ -402,6 +420,8 @@ impl GermanMidSentenceCapital {
             && !matches!(
                 previous_lower.as_str(),
                 "guten" | "jeden" | "diesen" | "den" | "einen" | "am" | "vom" | "zum"
+                    // *heute Morgen*, *gestern Abend*: the time of day behind the day.
+                    | "heute" | "gestern" | "morgen" | "vorgestern" | "übermorgen"
             );
         let recurring = RECURRING_ADVERBS.contains(&lower.as_str())
             && !matches!(
@@ -530,6 +550,14 @@ mod tests {
         assert_eq!(flagged("Sie hat Morgen Geburtstag."), ["Morgen"]);
         assert!(flagged("Wir hatten gestern Morgen Besuch.").is_empty());
         assert!(flagged("Guten Morgen Herr Müller.").is_empty());
+        for text in [
+            "Ich habe heute Morgen verschlafen.",
+            "Heute Morgen war es kalt.",
+            "Das Kind hat Spaß am aufrechten Gehen und Stehen.",
+            "Wir fördern instrumentenbezogenes Lernen.",
+        ] {
+            assert!(flagged(text).is_empty(), "{text}");
+        }
     }
 
     #[test]

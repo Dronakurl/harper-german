@@ -50,7 +50,7 @@ mod tests {
 
         let cap_lints: Vec<_> = lints
             .iter()
-            .filter(|l| l.message.contains("capital") || l.message.contains("Capital"))
+            .filter(|l| l.message.contains("Großbuchstaben"))
             .collect();
 
         assert!(

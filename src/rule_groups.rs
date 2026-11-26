@@ -195,6 +195,7 @@ const THEMES: &[Theme] = &[
             "MahlenMalen",
             "GemahlenGemalt",
             "LidLied",
+            "SonderSondern",
             "VielFiel",
             "GenantGenannt",
             "GilbtGilt",

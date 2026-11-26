@@ -18,6 +18,14 @@ use crate::spell::curated_german_dictionary;
 const IRREGULAR: &[&str] = &[
     "hab", "werd", "wiss", "könn", "müss", "woll", "soll", "dürf", "mög", "sei", "tu", "weiß",
     "kann", "muss", "will", "darf", "mag", "wird", "ist",
+    // The infinitive *tun*, whose *-t* form *tunt* is another verb's (*tunen*).
+    "tun",
+];
+
+/// Finite forms that close a subordinate clause behind an infinitive: *was man tun **muss***.
+const CLOSING_FINITE: &[&str] = &[
+    "muss", "musste", "müsste", "soll", "sollte", "kann", "konnte", "könnte", "will", "wollte",
+    "darf", "durfte", "dürfte", "mag", "möchte", "wird", "würde", "werde", "lässt", "ließ",
 ];
 
 /// Reports the bare stem of a verb behind *er*, *es* or *man*, with the third person singular:
@@ -117,6 +125,12 @@ impl Linter for GermanBareStem {
                 if document.get_full_content().get(verb.span.end) == Some(&'\'') {
                     continue;
                 }
+                // *was man lern muss*: an infinitive group in front of the finite verb.
+                if words.get(at + 1).is_some_and(|next| {
+                    CLOSING_FINITE.contains(&lowercase_of(next, document).as_str())
+                }) {
+                    continue;
+                }
                 let Some(fixed) = self.third_person(&written) else {
                     continue;
                 };
@@ -181,6 +195,10 @@ mod tests {
             "Er weiß es.",
             "Es gelang ihm nicht.",
             "Heute war er schon da.",
+            "Ich weiß, was man tun muss.",
+            "Was man tun wird, weiß niemand.",
+            "Er fragt, was man tun könnte.",
+            "Was er lern muss, weiß er.",
             "Er bald.",
         ] {
             assert!(fixes(text).is_empty(), "{text}: {:?}", fixes(text));
