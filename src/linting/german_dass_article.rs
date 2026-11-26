@@ -15,6 +15,37 @@ const FINITE_VERBS: &[&str] = &[
     "bedeutet", "zeigt", "liegt", "bringt", "kostet",
 ];
 
+/// Judgements that open a sentence on their own, with the clause they judge
+/// behind the comma: *Schön, dass du da bist*.
+const OPENING_JUDGEMENTS: &[&str] = &[
+    "schön",
+    "gut",
+    "toll",
+    "super",
+    "prima",
+    "klasse",
+    "wunderbar",
+    "schade",
+    "klar",
+    "wichtig",
+    "komisch",
+    "seltsam",
+    "merkwürdig",
+    "erstaunlich",
+    "unglaublich",
+    "verrückt",
+    "traurig",
+    "schlimm",
+    "blöd",
+    "praktisch",
+    "herrlich",
+    "furchtbar",
+    "schrecklich",
+];
+
+/// The subject pronouns that may open the judged clause.
+const SUBJECT_PRONOUNS: &[&str] = &["ich", "du", "er", "sie", "es", "wir", "ihr", "man"];
+
 /// *Dass Wetter ist heute schlecht*: the conjunction written for the article.
 ///
 /// `DassDas.weir` catches *dass* directly in front of a finite verb, where it
@@ -65,6 +96,27 @@ impl Linter for GermanDassArticle {
                 .iter()
                 .filter(|token| !token.kind.is_whitespace())
                 .collect();
+
+            // *Schön, das du da bist*: a judgement opening the sentence, then a
+            // clause with a subject pronoun. No noun stands in front for a
+            // relative pronoun to refer to, so only the conjunction fits.
+            if let [judgement, comma, das, pronoun, ..] = words.as_slice()
+                && OPENING_JUDGEMENTS
+                    .contains(&Self::text(judgement, document).to_lowercase().as_str())
+                && Self::text(comma, document) == ","
+                && Self::text(das, document) == "das"
+                && SUBJECT_PRONOUNS.contains(&Self::text(pronoun, document).as_str())
+            {
+                lints.push(Lint {
+                    span: das.span,
+                    lint_kind: LintKind::Grammar,
+                    suggestions: vec![Suggestion::ReplaceWith("dass".chars().collect())],
+                    message: "Hier steht die Konjunktion »dass«. Das Pronomen »das« schreibt man \
+                              mit einem »s«, die Konjunktion mit zwei."
+                        .to_owned(),
+                    priority: 31,
+                });
+            }
 
             for window in words.windows(4) {
                 let [dass, noun, verb, after] = window else {
@@ -153,6 +205,22 @@ mod tests {
             ),
         ] {
             assert_eq!(fixes(wrong), vec![right.to_owned()], "{wrong}");
+        }
+    }
+
+    #[test]
+    fn corrects_das_after_an_opening_judgement() {
+        assert_eq!(fixes("Schön, das du da bist."), ["Schön, dass du da bist."]);
+        assert_eq!(
+            fixes("Gut, das wir gewartet haben."),
+            ["Gut, dass wir gewartet haben."]
+        );
+        for text in [
+            "Schön, dass du da bist.",
+            "Gut, das Buch ist da.",
+            "Schön, das zu hören.",
+        ] {
+            assert!(fixes(text).is_empty(), "{text}");
         }
     }
 

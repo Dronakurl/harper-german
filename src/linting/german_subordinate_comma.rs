@@ -1580,6 +1580,24 @@ impl Linter for GermanSubordinateComma {
                     continue;
                 }
                 if conjunction == "ob" && Self::word_in(previous, document, OB_MODIFIERS) {
+                    // *Er tut so als ob er schläft*: the comma goes in front of
+                    // *als ob*. *egal* and the others may be a predicate, *das ist
+                    // mir egal, ob …*, so only *als* moves it.
+                    if Self::word_in(previous, document, &["als"])
+                        && let Some(before) = index.checked_sub(2).map(|i| tokens[i])
+                        && matches!(before.kind, TokenKind::Word(_))
+                        && !Self::word_in(before, document, CLAUSE_COORDINATORS)
+                        && document.get_span_content(&before.span).last() != Some(&'.')
+                    {
+                        lints.push(Lint {
+                            span: before.span,
+                            lint_kind: LintKind::Punctuation,
+                            suggestions: vec![Suggestion::InsertAfter(vec![','])],
+                            priority: 28,
+                            message: "»als ob« leitet einen Nebensatz ein. Davor steht ein Komma."
+                                .to_owned(),
+                        });
+                    }
                     continue;
                 }
 
@@ -1615,6 +1633,20 @@ mod tests {
         let dict = combined_german_dictionary();
         let document = Document::new(text, &PlainGerman, &dict);
         GermanSubordinateComma.lint(&document).len()
+    }
+
+    #[test]
+    fn als_ob_takes_the_comma_in_front_of_the_pair() {
+        assert_eq!(lint_count("Er tut so als ob er schläft."), 1);
+        assert_eq!(lint_count("Er tut als ob er schläft."), 1);
+        for text in [
+            "Er tut so, als ob er schläft.",
+            "Als ob er schläft.",
+            "Es sieht aus, als ob es regnet.",
+            "Das ist mir egal ob er kommt.",
+        ] {
+            assert_eq!(lint_count(text), 0, "{text}");
+        }
     }
 
     #[test]

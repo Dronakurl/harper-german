@@ -62,6 +62,20 @@ expr einschub [sehr, fest, dringend, erneut, zunächst, bereits, nicht, auch, sc
 
 expr ausloeser [@verb, @adjektiv, @nomen, @gefuehl]
 
+# A judgement with the expletive "es": "es ist schön, dass …", "ich finde es
+# gut, dass …". The "es" points ahead to the clause, so no noun is left for a
+# relative pronoun, and the everyday adjectives are safe here that are not on
+# their own ("das Bild ist schön, das du gemalt hast").
+expr wertung [@adjektiv, schön, gut, toll, super, prima, wunderbar, schlimm, schlecht, blöd, besser, praktisch, interessant, nett, lieb, fair, unfair, richtig, falsch, normal, logisch, typisch, okay, angenehm, unangenehm, beruhigend, schrecklich, furchtbar, herrlich, gerecht, ungerecht]
+expr kopula [ist, war, wäre, sei, bleibt, scheint, wird, würde]
+expr esurteil [(es @kopula @wertung), (es @kopula @einschub @wertung), (es @kopula sehr @wertung), (es @wertung), (es sehr @wertung), (es @einschub @wertung)]
+
+# After such a judgement a subject may follow "das" that is no pronoun: "es ist
+# wichtig, das alle Mitarbeiter …". Only nominative forms, so "es ist gut, das
+# dem Kind zu zeigen" stays out, and no "alles", for "es ist schön, das alles zu
+# sehen".
+expr urteilssubjekt [alle, jeder, jede, niemand, keiner, beide, viele, manche, einige, der, die, ein, mein, meine, dein, deine, sein, seine, unser, unsere]
+
 # A subject may follow the conjunction; a finite verb or a capitalized noun may
 # not, and neither is in this list. "das" itself is left out on purpose: in
 # "dass das stimmt" it is not clear which of the two the rule would be pointing
@@ -99,7 +113,7 @@ expr quantor [alles, nichts, jeder, jede, jedes, viele, niemand, keiner, keine, 
 expr sagepartizip [gesagt, erzählt, versprochen, mitgeteilt, geschrieben, verraten, erklärt, gestanden]
 expr dativ [mir, dir, ihm, ihr, uns, euch, ihnen, Ihnen]
 
-expr main <[(@partizip das @subjektohnekomma), (@partizip das @quantor), (@dativ @sagepartizip, das @subjektohnekomma), (@verb @nachgestellt(,) das @subjekt), (@verb @nachgestellt(,) das @artikel), (@ausloeser(,) das @subjekt), (@ausloeser @einschub(,) das @subjekt), (@verb(,) das @artikel), (@verb @einschub(,) das @artikel), (@ausloeser das @subjektohnekomma), (@ausloeser @einschub das @subjektohnekomma), (@sagepartizip(,) das @artikel), (zu [sagen, hoffen, glauben, wissen, denken, behaupten, meinen, erzählen, erwähnen, vergessen, bedauern] das @subjektohnekomma)], das>
+expr main <[(@esurteil(,) das @subjekt), (@esurteil(,) das @urteilssubjekt), (@partizip das @subjektohnekomma), (@partizip das @quantor), (@dativ @sagepartizip, das @subjektohnekomma), (@verb @nachgestellt(,) das @subjekt), (@verb @nachgestellt(,) das @artikel), (@ausloeser(,) das @subjekt), (@ausloeser @einschub(,) das @subjekt), (@verb(,) das @artikel), (@verb @einschub(,) das @artikel), (@ausloeser das @subjektohnekomma), (@ausloeser @einschub das @subjektohnekomma), (@sagepartizip(,) das @artikel), (zu [sagen, hoffen, glauben, wissen, denken, behaupten, meinen, erzählen, erwähnen, vergessen, bedauern] das @subjektohnekomma)], das>
 
 let message "Hier steht die Konjunktion »dass«. Das Pronomen »das« schreibt man mit einem »s«, die Konjunktion mit zwei."
 let description "Ersetzt das Pronomen »das« durch die Konjunktion »dass«, wenn ein Nebensatz folgt."
@@ -198,3 +212,11 @@ allows "Ich bin froh, dass es geklappt hat."
 allows "Es freut mich, das Haus zu sehen."
 allows "Es freut mich, das zu hören."
 allows "Es ist unmöglich, das Eine vom Anderen zu trennen."
+test "Ich finde es gut, das ihr hier seid." "Ich finde es gut, dass ihr hier seid."
+test "Es ist wichtig, das alle Mitarbeiter geschult werden." "Es ist wichtig, dass alle Mitarbeiter geschult werden."
+test "Es ist schön, das du da bist." "Es ist schön, dass du da bist."
+test "Es war toll, das die Kinder mitgekommen sind." "Es war toll, dass die Kinder mitgekommen sind."
+allows "Es ist schön, das alles zu sehen."
+allows "Es ist gut, das dem Kind zu zeigen."
+allows "Ich finde es gut, das Buch zu lesen."
+allows "Das Bild ist schön, das du gemalt hast."

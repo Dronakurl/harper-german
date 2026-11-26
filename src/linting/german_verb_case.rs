@@ -196,6 +196,11 @@ const STRONG_FORMS: &[(&str, &[&str])] = &[
         &["wirf", "wirfst", "wirft", "warf", "warfen", "geworfen"],
     ),
     ("vertrauen", &["vertraut"]),
+    ("anrufen", &["angerufen", "anzurufen"]),
+    (
+        "hängen",
+        &["hänge", "hängst", "hängt", "hängte", "hängten", "gehängt"],
+    ),
 ];
 
 /// Words of time, after which *an* is a date and not an object: *an dem Tag*.
@@ -233,6 +238,36 @@ const DATIVE_TO_ACCUSATIVE: &[(&str, &str)] = &[
     ("Jemandem", "Jemanden"),
     ("Niemandem", "Niemanden"),
 ];
+
+/// Adverbs that may stand between an object pronoun and the verb that closes
+/// the clause: *er hat mir **gestern** angerufen*, *kannst du mich **bitte** helfen*.
+const MIDFIELD_ADVERBS: &[&str] = &[
+    "bitte", "gestern", "morgen", "heute", "jetzt", "gleich", "sofort", "bald", "schon", "noch",
+    "nicht", "doch", "mal", "auch", "nie", "oft", "immer", "wieder", "endlich", "kurz", "kaum",
+    "gern", "gerne", "später", "vorhin", "nochmal", "einmal", "eben", "schnell", "dann", "nur",
+    "sicher", "bestimmt", "leider", "trotzdem",
+];
+
+/// Whether the word at `at` is followed, past at most two adverbs of
+/// [`MIDFIELD_ADVERBS`], by a verb that is the clause's last word: the participle or
+/// infinitive of *er hat mir gestern angerufen*, *ich werde dir anrufen*.
+fn closing_verb_follows(
+    clause: &[&Token],
+    at: usize,
+    document: &Document,
+    is_verb: impl Fn(&Token) -> bool,
+) -> bool {
+    let mut next = at + 1;
+    while clause
+        .get(next)
+        .is_some_and(|t| MIDFIELD_ADVERBS.contains(&lowercase_of(t, document).as_str()))
+        && next - at <= 2
+    {
+        next += 1;
+    }
+    clause.get(next).is_some_and(|t| is_verb(t))
+        && clause[next + 1..].iter().all(|t| !t.kind.is_word())
+}
 
 pub struct GermanVerbCase {
     dictionary: Arc<CompactDictionary>,
@@ -492,6 +527,7 @@ impl GermanVerbCase {
                 && clause.get(at + 2).is_some_and(|t| is_dative_verb(t));
             let next_to_verb = at.checked_sub(1).is_some_and(|i| is_dative_verb(clause[i]))
                 || clause.get(at + 1).is_some_and(|t| is_dative_verb(t))
+                || closing_verb_follows(clause, at, document, is_dative_verb)
                 || before_zu_infinitive;
             if !next_to_verb {
                 continue;
@@ -558,6 +594,10 @@ impl GermanVerbCase {
             None if verbs.iter().any(|v| v == "sehen") => &"sehen".to_owned(),
             None => return Vec::new(),
         };
+        // *Du brauchst mir nicht zu helfen*: the dative belongs to the other verb.
+        if verbs.iter().any(|v| DATIVE_VERBS.contains(&v.as_str())) {
+            return Vec::new();
+        }
         let is_verb = |t: &Token| {
             t.kind.is_word()
                 && document
@@ -597,7 +637,8 @@ impl GermanVerbCase {
                     })
             });
             let next_to_verb = !ACCUSATIVE_VERBS.contains(&verb.as_str())
-                || at.checked_sub(1).is_some_and(|i| is_verb(clause[i]));
+                || at.checked_sub(1).is_some_and(|i| is_verb(clause[i]))
+                || closing_verb_follows(clause, at, document, is_verb);
             let next_to_verb = next_to_verb && ACCUSATIVE_VERBS.contains(&verb.as_str());
             if !next_to_verb && !participle_follows {
                 continue;
@@ -696,7 +737,7 @@ impl GermanVerbCase {
     /// separable particle at the end of the clause makes it another verb
     /// (*Er stellt sich in dem Raum vor*), and the place is then a place.
     fn direction(&self, clause: &[&Token], verbs: &[String], document: &Document) -> Vec<Lint> {
-        const DIRECTION_VERBS: &[&str] = &["legen", "stellen", "setzen", "werfen"];
+        const DIRECTION_VERBS: &[&str] = &["legen", "stellen", "setzen", "werfen", "hängen"];
         const PARTICLES: &[&str] = &[
             "vor", "ab", "an", "fest", "ein", "aus", "um", "dar", "her", "hin", "zusammen", "auf",
             "zu", "nach", "bei", "mit", "fort", "weg", "zurück", "bereit", "dazu", "nahe", "frei",
@@ -705,6 +746,31 @@ impl GermanVerbCase {
         let Some(verb) = verbs.iter().find(|v| DIRECTION_VERBS.contains(&v.as_str())) else {
             return Vec::new();
         };
+        // *hängen* is a verb of position too, *das Bild hängt an der Wand*. It
+        // places something only with an accusative object: the weak forms
+        // (*hängte*, *gehängt*), or a subject pronoun in front and an article
+        // behind it, *sie hängt das Bild an …*.
+        if verb == "hängen" {
+            let weak = clause.iter().any(|t| {
+                let w = lowercase_of(t, document);
+                w.starts_with("hängte") || w.ends_with("gehängt")
+            });
+            let with_object = clause.len() > 2
+                && matches!(
+                    document
+                        .get_span_content_str(&clause[0].span)
+                        .to_lowercase()
+                        .as_str(),
+                    "ich" | "du" | "er" | "sie" | "wir" | "ihr" | "man"
+                )
+                && self
+                    .lemmas(&lowercase_of(clause[1], document))
+                    .contains(verb)
+                && determiner_readings(&lowercase_of(clause[2], document)).is_some();
+            if !weak && !with_object {
+                return Vec::new();
+            }
+        }
         // The last word before the next punctuation in the document: the
         // clause may have been cut at a conjunction or an article before it.
         let last_word = clause.first().and_then(|first| {
@@ -776,6 +842,129 @@ impl GermanVerbCase {
                 Case::Accusative,
                 document,
                 || format!("Nach »{verb}« steht die Richtung im Akkusativ: »{preposition}« mit Akkusativ."),
+            ));
+        }
+        lints
+    }
+
+    /// *Wir treffen uns vor den Bahnhof* → *dem*: where people meet is a place.
+    /// Only with the reflexive (*treffen auf* means to come upon and takes the
+    /// accusative), and only with prepositions of place that are not also of time
+    /// (*über den Winter*).
+    fn meeting_place(&self, clause: &[&Token], verbs: &[String], document: &Document) -> Vec<Lint> {
+        if !verbs.iter().any(|v| v == "treffen")
+            || !clause
+                .iter()
+                .any(|t| matches!(lowercase_of(t, document).as_str(), "uns" | "sich" | "euch"))
+        {
+            return Vec::new();
+        }
+        let Some(verb_at) = clause.iter().position(|t| {
+            t.kind.is_word()
+                && document
+                    .get_span_content(&t.span)
+                    .first()
+                    .is_some_and(|c| c.is_lowercase())
+                && self
+                    .lemmas(&lowercase_of(t, document))
+                    .iter()
+                    .any(|l| l == "treffen")
+        }) else {
+            return Vec::new();
+        };
+        let mut lints = Vec::new();
+        for at in verb_at + 1..clause.len() {
+            let preposition = lowercase_of(clause[at], document);
+            if !["vor", "hinter", "neben", "in", "an", "zwischen"].contains(&preposition.as_str()) {
+                continue;
+            }
+            let Some(object) = clause.get(at + 1).filter(|t| t.kind.is_word()) else {
+                continue;
+            };
+            let noun = clause.get(at + 2);
+            if noun.is_some_and(|t| {
+                TIME_WORDS.contains(&document.get_span_content_str(&t.span).as_str())
+            }) {
+                continue;
+            }
+            lints.extend(
+                self.wrong_determiner(object, noun, Case::Dative, document, || {
+                    format!("Der Treffpunkt ist ein Ort: »{preposition}« mit Dativ.")
+                }),
+            );
+        }
+        lints
+    }
+
+    /// *Er geht in der Schule* → *die*: *gehen* with *in* and the dative at the
+    /// end of the clause, where the place it goes to belongs. Anything after the
+    /// noun (*in der Stadt spazieren*, *in der Menge unter*) and the phrases of
+    /// time and manner (*in der Regel*, *in der Nacht*) leave it alone.
+    fn going_into(&self, clause: &[&Token], verbs: &[String], document: &Document) -> Vec<Lint> {
+        const NOT_PLACES: &[&str] = &[
+            "Regel",
+            "Lage",
+            "Tat",
+            "Nacht",
+            "Frühe",
+            "Früh",
+            "Pause",
+            "Zeit",
+            "Zwischenzeit",
+            "Woche",
+            "Mittagspause",
+            "Hitze",
+            "Kälte",
+            "Dunkelheit",
+            "Menge",
+            "Mitte",
+            "Nähe",
+            "Ferne",
+            "Masse",
+            "Gruppe",
+            "Reihe",
+            "Hand",
+            "Eile",
+            "Ruhe",
+            "Stille",
+            "Praxis",
+        ];
+        if !verbs.iter().any(|v| v == "gehen") {
+            return Vec::new();
+        }
+        let mut lints = Vec::new();
+        for at in 1..clause.len() {
+            if lowercase_of(clause[at], document) != "in"
+                || !clause[at - 1].kind.is_word()
+                || !self
+                    .lemmas(&lowercase_of(clause[at - 1], document))
+                    .iter()
+                    .any(|l| l == "gehen")
+            {
+                continue;
+            }
+            let (Some(object), Some(noun)) = (clause.get(at + 1), clause.get(at + 2)) else {
+                continue;
+            };
+            let noun_text = document.get_span_content_str(&noun.span);
+            if !matches!(
+                document.get_span_content_str(&object.span).as_str(),
+                "der" | "dem" | "einer" | "einem"
+            ) || !noun_text.chars().next().is_some_and(char::is_uppercase)
+                || NOT_PLACES.contains(&noun_text.as_str())
+                || clause.get(at + 3).is_some_and(|t| !t.kind.is_punctuation())
+                || clause
+                    .get(at + 3)
+                    .is_some_and(|t| document.get_span_content_str(&t.span) == "?")
+            {
+                continue;
+            }
+            lints.extend(self.wrong_determiner(
+                object,
+                Some(noun),
+                Case::Accusative,
+                document,
+                || "Nach »gehen« steht das Ziel im Akkusativ: »in« mit Akkusativ.".to_owned(),
             ));
         }
         lints
@@ -857,8 +1046,10 @@ impl GermanVerbCase {
     /// A place after a verb of position, in the accusative: *die Brille liegt
     /// auf den Tisch*.
     fn position(&self, clause: &[&Token], verbs: &[String], document: &Document) -> Vec<Lint> {
+        let mut lints = self.meeting_place(clause, verbs, document);
+        lints.extend(self.going_into(clause, verbs, document));
         let Some(verb) = verbs.iter().find(|v| POSITION_VERBS.contains(&v.as_str())) else {
-            return Vec::new();
+            return lints;
         };
         let is_position_verb = |t: &Token| {
             t.kind.is_word()
@@ -868,7 +1059,6 @@ impl GermanVerbCase {
                     .is_some_and(|c| c.is_lowercase())
                 && self.lemmas(&lowercase_of(t, document)).contains(verb)
         };
-        let mut lints = Vec::new();
         for (at, token) in clause.iter().enumerate() {
             let preposition = lowercase_of(token, document);
             if !TWO_WAY_PREPOSITIONS.contains(&preposition.as_str()) {
@@ -1014,6 +1204,44 @@ mod tests {
         assert_eq!(fixed("Ich denke an meinem Vater."), ["meinem"]);
         assert_eq!(fixed("Sie freut sich über dem Geschenk."), ["dem"]);
         assert_eq!(fixes("Sie freut sich über dem Geschenk.")[0].1, ["das"]);
+    }
+
+    #[test]
+    fn place_and_direction_after_treffen_gehen_haengen() {
+        assert_eq!(
+            fixes("Wir treffen uns am Montag um 10 Uhr vor den Bahnhof.")[0].1,
+            ["dem"]
+        );
+        assert_eq!(fixes("Er geht in der Schule.")[0].1, ["die"]);
+        assert_eq!(fixes("Sie hängt das Bild an der Wand.")[0].1, ["die"]);
+        assert_eq!(fixes("Er hängte das Bild an der Wand.")[0].1, ["die"]);
+        for quiet in [
+            "Das Bild hängt an der Wand.",
+            "Jetzt hängt das Bild an der Wand.",
+            "Er hängte das Bild an der Wand auf.",
+            "Er geht in der Stadt spazieren.",
+            "Er geht in der Regel.",
+            "Wir treffen uns in den Ferien.",
+            "Wir treffen uns vor dem Bahnhof.",
+            "Er trifft auf den Gegner.",
+        ] {
+            assert!(fixed(quiet).is_empty(), "{quiet}");
+        }
+    }
+
+    #[test]
+    fn reads_the_verb_that_closes_the_clause() {
+        assert_eq!(fixes("Er hat mir gestern angerufen.")[0].1, ["mich"]);
+        assert_eq!(fixes("Ich werde dir morgen anrufen.")[0].1, ["dich"]);
+        assert_eq!(fixes("Kannst du mich bitte helfen?")[0].1, ["mir"]);
+        for quiet in [
+            "Er hat mich gestern angerufen.",
+            "Kannst du mir bitte helfen?",
+            "Du brauchst mir nicht zu helfen.",
+            "Kannst du mich bitte helfen lassen?",
+        ] {
+            assert!(fixed(quiet).is_empty(), "{quiet}");
+        }
     }
 
     #[test]

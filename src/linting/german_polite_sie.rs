@@ -117,6 +117,66 @@ fn letter_phrases(words: &[&Token], document: &Document, lints: &mut Vec<Lint>) 
     }
 }
 
+/// *Haben Sie ihren Ausweis dabei?*, *Wie war ihre Reise, Herr Müller?*: the possessive written
+/// small in a sentence that addresses the reader. The reader is addressed by a capital *Sie*
+/// that does not open the sentence, or by *Herr*/*Frau* and a name set off by a comma at either
+/// end. The possessive must be followed by its noun, perhaps behind an adjective, so *ihr* as
+/// a pronoun (*haben Sie ihr geholfen*) stays. A sentence with a small *sie* or a *Frau* in
+/// between speaks of a woman, whose possessive is small.
+fn polite_possessive(words: &[&Token], document: &Document, lints: &mut Vec<Lint>) {
+    let written = |at: usize| document.get_span_content_str(&words[at].span);
+    let is_name = |at: usize| {
+        words.get(at).is_some_and(|t| t.kind.is_word())
+            && written(at).chars().next().is_some_and(char::is_uppercase)
+    };
+    let is_title = |at: usize| matches!(written(at).as_str(), "Herr" | "Frau" | "Herrn");
+    let last_word = words.iter().rposition(|t| t.kind.is_word());
+    let vocative = match last_word {
+        Some(last) if last >= 2 => {
+            (is_title(last - 1) && is_name(last) && words[last - 2].kind.is_comma())
+                || (words.len() > 3 && is_title(0) && is_name(1) && words[2].kind.is_comma())
+        }
+        _ => false,
+    };
+    let polite_sie =
+        (1..words.len()).find(|&at| written(at) == "Sie" && words[at - 1].kind.is_word());
+    let start = match (polite_sie, vocative) {
+        (Some(at), _) => at + 1,
+        (None, true) => 0,
+        _ => return,
+    };
+    if (0..words.len()).any(|at| written(at) == "sie") {
+        return;
+    }
+    for at in start..words.len() {
+        let capital = match written(at).as_str() {
+            "ihre" => "Ihre",
+            "ihren" => "Ihren",
+            "ihrem" => "Ihrem",
+            "ihrer" => "Ihrer",
+            "ihres" => "Ihres",
+            "ihr" => "Ihr",
+            "Frau" => return,
+            _ => continue,
+        };
+        let noun_follows = is_name(at + 1)
+            || (words
+                .get(at + 1)
+                .is_some_and(|t| t.kind.is_word() && starts_lowercase(t, document))
+                && is_name(at + 2));
+        if !noun_follows || lints.iter().any(|l| l.span == words[at].span) {
+            continue;
+        }
+        lints.push(Lint {
+            span: words[at].span,
+            lint_kind: LintKind::Capitalization,
+            suggestions: vec![Suggestion::ReplaceWith(capital.chars().collect())],
+            message: format!("Die höfliche Anrede »{capital}« wird großgeschrieben."),
+            priority: 31,
+        });
+    }
+}
+
 impl Linter for GermanPoliteSie {
     fn lint(&mut self, document: &Document) -> Vec<Lint> {
         let mut lints = Vec::new();
@@ -128,6 +188,13 @@ impl Linter for GermanPoliteSie {
                     .collect();
                 letter_phrases(&words, document, &mut lints);
             }
+        }
+        for sentence in document.iter_sentences() {
+            let words: Vec<&Token> = sentence
+                .iter()
+                .filter(|token| !token.kind.is_whitespace())
+                .collect();
+            polite_possessive(&words, document, &mut lints);
         }
         for sentence in document.iter_sentences() {
             let words: Vec<&Token> = sentence
@@ -259,6 +326,29 @@ mod tests {
             count("Sehr geehrter Herr Meier, die Nachbarn haben ihre Hilfe angeboten."),
             0
         );
+    }
+
+    #[test]
+    fn a_small_possessive_beside_the_polite_sie_is_reported() {
+        for text in [
+            "Haben Sie ihren Ausweis dabei?",
+            "Bitte schalten Sie ihr Handy aus.",
+            "Wie war ihre Reise, Herr Müller?",
+            "Wir möchten Sie bitten, ihre Daten zu prüfen.",
+            "Haben Sie ihre neue Adresse?",
+        ] {
+            assert_eq!(count(text), 1, "{text}");
+        }
+        for text in [
+            "Sie schalten ihr Handy besser aus.",
+            "Haben Sie ihr geholfen?",
+            "Haben Sie Frau Schmidt ihren Schlüssel gegeben?",
+            "Haben Sie gesehen, dass sie ihren Schlüssel vergessen hat?",
+            "Haben Sie Ihren Ausweis dabei?",
+            "Die Nachbarn haben ihre Hilfe angeboten.",
+        ] {
+            assert_eq!(count(text), 0, "{text}");
+        }
     }
 
     #[test]

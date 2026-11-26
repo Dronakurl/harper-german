@@ -301,6 +301,23 @@ impl Linter for GermanRelativeClauseComma {
                                 | "Größte"
                                 | "Schlechteste"
                         ));
+                    // *Man sollte nicht alles glauben was man liest*, *ich weiß nicht
+                    // was ich sagen soll*: a verb in front, past *nicht* or *genau*.
+                    // The pronoun behind *was* rules out *hast du was gesehen*.
+                    let verb_before = {
+                        let mut v = at - 1;
+                        while v > 0
+                            && matches!(
+                                Self::text(words[v], document).as_str(),
+                                "nicht" | "genau" | "auch" | "noch" | "schon"
+                            )
+                        {
+                            v -= 1;
+                        }
+                        !Self::is_capitalized(words[v], document)
+                            && Self::is_verb(words[v], document)
+                    };
+                    let antecedent = antecedent || verb_before;
                     let behind_comma = at > 1
                         && matches!(
                             words[at - 1].kind,
@@ -332,6 +349,81 @@ impl Linter for GermanRelativeClauseComma {
                         }
                     }
                     continue;
+                }
+                // *Jeder der will kann mitkommen*: a pronoun of persons as the
+                // antecedent, and a verb or a subject pronoun behind *der*. An
+                // article would have its noun there: *jeder der Teilnehmer*.
+                if (pronoun == "der" || pronoun == "die")
+                    && at > 0
+                    && let Some(next) = words.get(at + 1)
+                    && matches!(next.kind, TokenKind::Word(_))
+                    && !Self::is_capitalized(next, document)
+                    && (Self::is_verb(next, document)
+                        || SUBJECT_PRONOUNS.contains(&Self::text(next, document).as_str()))
+                {
+                    let before = Self::text(words[at - 1], document).to_lowercase();
+                    let fits = match pronoun.as_str() {
+                        "der" => matches!(before.as_str(), "jeder" | "keiner" | "derjenige"),
+                        _ => matches!(
+                            before.as_str(),
+                            "jede" | "keine" | "diejenige" | "diejenigen"
+                        ),
+                    };
+                    if fits
+                        && let Some((mut last, mut main_clause_continues)) =
+                            Self::clause_end(&words, at, document)
+                    {
+                        // *Jeder der will kann mitkommen*: the main clause's finite
+                        // verb right behind the clause's own, in one run of verbs.
+                        if let Some(first) =
+                            (at + 1..=last).find(|&i| Self::is_verb(words[i], document))
+                            && first < last
+                            && matches!(
+                                Self::text(words[first + 1], document).as_str(),
+                                "kann"
+                                    | "darf"
+                                    | "soll"
+                                    | "muss"
+                                    | "will"
+                                    | "wird"
+                                    | "hat"
+                                    | "ist"
+                                    | "sollte"
+                                    | "könnte"
+                                    | "müsste"
+                                    | "dürfte"
+                                    | "möchte"
+                                    | "bekommt"
+                                    | "kriegt"
+                                    | "geht"
+                                    | "kommt"
+                                    | "bleibt"
+                            )
+                        {
+                            last = first;
+                            main_clause_continues = true;
+                        }
+                        lints.push(Lint {
+                            span: words[at - 1].span,
+                            lint_kind: LintKind::Punctuation,
+                            suggestions: vec![Suggestion::InsertAfter(vec![','])],
+                            priority: 28,
+                            message: format!(
+                                "»{pronoun}« leitet hier einen Relativsatz ein. Davor steht ein Komma."
+                            ),
+                        });
+                        if main_clause_continues {
+                            lints.push(Lint {
+                                span: words[last].span,
+                                lint_kind: LintKind::Punctuation,
+                                suggestions: vec![Suggestion::InsertAfter(vec![','])],
+                                priority: 28,
+                                message: "Der Relativsatz endet hier. Danach steht ein Komma."
+                                    .to_string(),
+                            });
+                        }
+                        continue;
+                    }
                 }
                 let Some((genders, plural)) = Self::antecedents(&pronoun) else {
                     continue;
@@ -601,6 +693,25 @@ mod tests {
         assert_eq!(lint_count("Das Buch das ich lese ist spannend."), 2);
         assert_eq!(lint_count("Der Mann der dort steht ist mein Vater."), 2);
         assert_eq!(lint_count("Die Frau die ich kenne wohnt hier."), 2);
+    }
+
+    #[test]
+    fn a_free_relative_clause_behind_a_verb_needs_its_comma() {
+        assert_eq!(lint_count("Ich weiß nicht was ich sagen soll."), 1);
+        assert_eq!(
+            lint_count("Man sollte nicht alles glauben was man im Internet liest."),
+            1
+        );
+        assert_eq!(lint_count("Jeder der will kann mitkommen."), 2);
+        assert_eq!(lint_count("Jede die mitmacht bekommt einen Preis."), 2);
+        for text in [
+            "Hast du was gesehen?",
+            "Ich weiß nicht, was ich sagen soll.",
+            "Jeder der Teilnehmer kam.",
+            "Jeder, der will, kann mitkommen.",
+        ] {
+            assert_eq!(lint_count(text), 0, "{text}");
+        }
     }
 
     #[test]
