@@ -523,9 +523,14 @@ impl<T: Dictionary> GermanSubjectVerbAgreement<T> {
         let Some(head) = trusted_head(document, tokens, phrase) else {
             return false;
         };
-        let Some((gender, true)) = self.nouns.gender_of(&head) else {
+        // *jeder* has no plural to stand for, so its noun need not be surely singular:
+        // *Jeder Schüler*, though *Schüler* is spelled like its plural.
+        let Some((gender, singular)) = self.nouns.gender_of(&head) else {
             return false;
         };
+        if !singular && !determiner.starts_with("jed") {
+            return false;
+        }
         let mut fitting = readings
             .iter()
             .filter(|r| r.gender == Some(gender))
@@ -1718,6 +1723,24 @@ mod tests {
                 [format!("Replace with: “{form}”")],
                 "{text}"
             );
+        }
+    }
+
+    #[test]
+    fn jeder_and_a_singular_behind_a_plural_verb() {
+        for text in [
+            "Jeder Schüler müssen seine Hausaufgaben machen.",
+            "Jedes Kind müssen lernen.",
+        ] {
+            assert_eq!(lint_count(text), 1, "{text}");
+        }
+        for text in [
+            "Jeder Schüler muss seine Hausaufgaben machen.",
+            "Jede Frau hat ein Recht auf Bildung.",
+            "Jede Frau lieben die Kinder.",
+            "Die Lehrer jeder Schule haben ein Recht darauf.",
+        ] {
+            assert_eq!(lint_count(text), 0, "{text}");
         }
     }
 

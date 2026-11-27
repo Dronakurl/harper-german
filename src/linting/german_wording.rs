@@ -186,8 +186,8 @@ impl Linter for GermanDoubleComparison {
 /// *Das Haus wurde gebaut worden.* The passive has its auxiliary once: *wurde gebaut* or *ist
 /// gebaut worden*. *wurde* and *worden* in one clause is the two forms mixed.
 ///
-/// Only *wurde* and *wurden*, and *worden* within the next three words, with no comma, *und*,
-/// *oder* or *sein* in between or behind: *wird gebaut worden sein* is the future perfect and
+/// Only *wurde* and *wurden*, and *worden* within the next ten words, with no comma, *und*,
+/// *oder* or a subordinator in between and no finite *sein* behind (*… verhaftet worden war*): *wird gebaut worden sein* is the future perfect and
 /// right, and a comma ends the clause.
 #[derive(Default)]
 pub struct GermanDoublePassive;
@@ -202,7 +202,7 @@ impl Linter for GermanDoublePassive {
                 {
                     continue;
                 }
-                for offset in 1..=4 {
+                for offset in 1..=10 {
                     let Some(candidate) = tokens.get(index + offset) else {
                         break;
                     };
@@ -216,9 +216,12 @@ impl Linter for GermanDoublePassive {
                         break;
                     }
                     if text == "worden" {
-                        let followed_by_sein = tokens
-                            .get(index + offset + 1)
-                            .is_some_and(|t| is_word(t) && word(document, t).starts_with("sei"));
+                        let followed_by_sein = tokens.get(index + offset + 1).is_some_and(|t| {
+                            is_word(t)
+                                && (word(document, t).starts_with("sei")
+                                    || ["war", "waren", "ist", "sind", "wäre", "wären"]
+                                        .contains(&word(document, t).as_str()))
+                        });
                         if !followed_by_sein {
                             lints.push(Lint {
                                 span: candidate.span,
@@ -398,6 +401,8 @@ mod tests {
         for text in [
             "Das Haus wurde gebaut worden.",
             "Die Häuser wurden vor Jahren verkauft worden.",
+            "Die Straße wurde gestern von der Polizei gesperrt worden.",
+            "Das Gebäude wurde im letzten Jahr von der Stadt komplett saniert worden.",
         ] {
             assert_eq!(count(GermanDoublePassive, text), 1, "{text}");
         }
@@ -407,6 +412,7 @@ mod tests {
             "Das Haus wird gebaut worden sein.",
             "Das Haus wurde gebaut, nachdem es verkauft worden war.",
             "Das Haus wurde gebaut und verkauft worden ist es nie.",
+            "Er wurde von dem Mann der gestern verhaftet worden war bedroht.",
         ] {
             assert_eq!(count(GermanDoublePassive, text), 0, "{text}");
         }

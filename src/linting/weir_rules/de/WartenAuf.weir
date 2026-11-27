@@ -3,7 +3,7 @@
 # only before a pronoun that ends the sentence.
 expr warten [warte, wartest, wartet, warten, wartete, warteten, gewartet]
 
-expr main <[(@warten für dich(.)), (@warten für mich(.)), (@warten für ihn(.)), (@warten für sie(.)), (@warten für uns(.)), (@warten für euch(.)), (@warten für Sie(.)), (@warten gerne für), (@warten schon für)], für>
+expr main <[(@warten für dich(.)), (@warten für mich(.)), (@warten für ihn(.)), (@warten für sie(.)), (@warten für uns(.)), (@warten für euch(.)), (@warten für Sie(.)), (@warten gerne für), (@warten schon für), (@warten seit * für), (@warten seit * * für), (@warten schon seit * für), (@warten schon seit * * für)], für>
 
 let message "Man wartet »auf« jemanden, nicht »für« jemanden."
 let description "Ersetzt »warten für« durch »warten auf«."
@@ -14,6 +14,9 @@ let strategy "MatchCase"
 test "Ich warte für dich." "Ich warte auf dich."
 test "Wir warten für euch." "Wir warten auf euch."
 test "Er wartet schon für dich." "Er wartet schon auf dich."
+test "Ich warte schon seit zwei Stunden für dich." "Ich warte schon seit zwei Stunden auf dich."
+test "Wir warten seit Stunden für den Bus." "Wir warten seit Stunden auf den Bus."
 
 allows "Ich warte auf dich."
 allows "Ich warte für ihn auf den Bus."
+allows "Ich warte seit zwei Stunden auf dich."

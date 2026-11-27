@@ -8,6 +8,8 @@ use harper_core::{
 };
 
 use crate::grammar::token_text::starts_lowercase;
+use crate::grammar::verbs::lemma_of_participle;
+use crate::linting::german_perfect_auxiliary::SEIN_PARTICIPLES;
 use crate::{
     grammar::{
         noun_gender::NounGender,
@@ -202,6 +204,26 @@ impl GermanVerbCluster {
         if irregular_finite_verb_lemma(&last_word).is_some() {
             return None;
         }
+        // *würde ich ins Theater gegangen*: the conditional takes the infinitive. A
+        // participle of a verb that forms its perfect with *sein* has no passive
+        // (*er würde gelobt* is one), so only those are reported.
+        if words
+            .iter()
+            .any(|word| matches!(word.as_str(), "würde" | "würden" | "würdest" | "würdet"))
+            && SEIN_PARTICIPLES.contains(&last_word.as_str())
+            && last_word != "geworden"
+            && last_word != "gewesen"
+        {
+            let mut lint = Self::report(
+                last,
+                "Nach »würde« steht der Infinitiv, nicht das Partizip",
+                &last_word,
+            );
+            lint.suggestions = lemma_of_participle(&last_word)
+                .map(|infinitive| vec![Suggestion::ReplaceWith(infinitive.chars().collect())])
+                .unwrap_or_default();
+            return Some(lint);
+        }
         if lemmas
             .iter()
             .flatten()
@@ -265,8 +287,23 @@ impl GermanVerbCluster {
             && !matches!(previous, "viel" | "wenig" | "mehr")
             // Two infinitives: *hat ihn kommen sehen*, *hat schwimmen gehen*.
             && !(previous.ends_with("en") && tokens[*before.last()?].kind.is_verb());
+        // *Nachdem er gegessen hat ging er schlafen*: a second finite verb means the
+        // comma is missing and *schlafen* belongs to *ging*, not to *hat*.
+        let other_finite = lemmas
+            .iter()
+            .flatten()
+            .any(|lemma| *lemma != "haben" && !MODALS.contains(lemma))
+            || before.iter().zip(&words).any(|(&at, word)| {
+                tokens[at].kind.is_verb()
+                    && starts_lowercase(tokens[at], document)
+                    && irregular_finite_verb_lemma(word).is_none()
+                    && !word.ends_with('n')
+                    && !is_past_participle(word)
+                    && !looks_like_participle(word)
+            });
         if haben
             && !modal
+            && !other_finite
             && infinitive
             && bare
             && !self.is_a_noun_written_small(&last_word, tokens[*before.last()?], document)
@@ -340,6 +377,28 @@ mod tests {
             .flat_map(|lint| lint.suggestions)
             .map(|s| s.to_string())
             .collect()
+    }
+
+    #[test]
+    fn wuerde_takes_the_infinitive() {
+        assert_eq!(
+            suggested("Wenn ich mehr Zeit hätte, würde ich öfter ins Theater gegangen."),
+            ["Replace with: “gehen”"]
+        );
+        assert_eq!(
+            suggested("Ich würde gerne früher gekommen."),
+            ["Replace with: “kommen”"]
+        );
+        for text in [
+            "Wenn ich mehr Zeit hätte, würde ich öfter ins Theater gehen.",
+            "Er würde gelobt, wenn er pünktlich wäre.",
+            "Ich wäre gerne gekommen, wenn ich gekonnt hätte.",
+            "Er würde krank geworden sein.",
+            "Ich würde nicht gegangen sein.",
+            "Nachdem er gegessen hat ging er schlafen.",
+        ] {
+            assert!(flagged(text).is_empty(), "{text}: {:?}", flagged(text));
+        }
     }
 
     #[test]

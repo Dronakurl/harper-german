@@ -14,7 +14,7 @@ use crate::grammar::noun_phrase::lowercase_of;
 /// Only verbs with no transitive use that would take *haben*. *gefahren*,
 /// *geflogen* and *geritten* are left out (*Er hat das Auto gefahren*), as is
 /// *gefallen* (*das hat mir gefallen*) and every reflexive (*sich umgezogen*).
-const SEIN_PARTICIPLES: &[&str] = &[
+pub(crate) const SEIN_PARTICIPLES: &[&str] = &[
     "gegangen",
     "gekommen",
     "gestorben",

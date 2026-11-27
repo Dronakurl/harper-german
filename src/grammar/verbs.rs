@@ -362,6 +362,67 @@ pub fn raised_stem(stem: &str) -> Option<String> {
         .find(|raised| STRONG_PRESENT_FORMS.contains(&third_person_of_raised(raised)))
 }
 
+/// The infinitive of any past participle: the regular one by its shape, a strong one
+/// (*gegangen*, *gestiegen*) by the lemma the dictionary records for it.
+pub(crate) fn lemma_of_participle(word: &str) -> Option<String> {
+    infinitive_of_participle(word)
+        .or_else(|| strong_lemma_of_participle(word))
+        .or_else(|| {
+            let dictionary = curated_german_dictionary();
+            let chars: Vec<char> = word.chars().collect();
+            dictionary
+                .get_word_metadata(&chars)?
+                .derived_from
+                .iter()
+                .filter_map(|id| dictionary.get_word_from_id(id))
+                .map(|lemma| lemma.iter().collect::<String>().to_lowercase())
+                .find(|lemma| lemma.ends_with('n') && is_verb(lemma))
+        })
+}
+
+/// The ends of strong participles and of their infinitives, *ge* included where the
+/// verb takes it: a prefix in front carries over (*weg|gegangen* → *weg|gehen*,
+/// *ver|schwunden* → *ver|schwinden*).
+const STRONG_PARTICIPLE_ENDS: &[(&str, &str)] = &[
+    ("gegangen", "gehen"),
+    ("gestorben", "sterben"),
+    ("geblieben", "bleiben"),
+    ("gestiegen", "steigen"),
+    ("gesunken", "sinken"),
+    ("geflohen", "fliehen"),
+    ("gestanden", "stehen"),
+    ("geschlafen", "schlafen"),
+    ("gewachsen", "wachsen"),
+    ("gefallen", "fallen"),
+    ("gebrochen", "brechen"),
+    ("gekommen", "kommen"),
+    ("geflogen", "fliegen"),
+    ("gelaufen", "laufen"),
+    ("gefahren", "fahren"),
+    ("geschwommen", "schwimmen"),
+    ("gesprungen", "springen"),
+    ("gelungen", "gelingen"),
+    ("geschehen", "geschehen"),
+    ("gefunden", "finden"),
+    ("getroffen", "treffen"),
+    ("gesehen", "sehen"),
+    ("gelesen", "lesen"),
+    ("loren", "lieren"),
+    ("gessen", "gessen"),
+    ("schwunden", "schwinden"),
+    ("schienen", "scheinen"),
+    ("standen", "stehen"),
+];
+
+fn strong_lemma_of_participle(word: &str) -> Option<String> {
+    STRONG_PARTICIPLE_ENDS
+        .iter()
+        .find_map(|(participle, infinitive)| {
+            word.strip_suffix(participle)
+                .map(|prefix| format!("{prefix}{infinitive}"))
+        })
+}
+
 #[cfg(test)]
 mod tests {
     use super::{

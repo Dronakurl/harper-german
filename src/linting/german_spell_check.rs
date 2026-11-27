@@ -443,6 +443,21 @@ impl<T: Dictionary> GermanSpellCheck<T> {
         false
     }
 
+    /// *deployed* → *deployt*, *released* → *releast*, *updated* → *upgedatet* is not
+    /// reached: an English participle in *-ed* whose German form with *-t* the word
+    /// list has.
+    fn germanized_english_participle(&self, word: &[char]) -> Option<Vec<char>> {
+        let [stem @ .., 'e', 'd'] = word else {
+            return None;
+        };
+        [
+            stem.iter().copied().chain(['t']).collect::<Vec<char>>(),
+            stem.iter().copied().chain(['e', 't']).collect(),
+        ]
+        .into_iter()
+        .find(|candidate| stem.len() >= 3 && self.dictionary.contains_word(candidate))
+    }
+
     pub fn new(dictionary: T) -> Self {
         Self::for_dialect(dictionary, GermanDialect::Standard)
     }
@@ -962,6 +977,7 @@ impl<T: Dictionary> GermanSpellCheck<T> {
             self.strong_participle(word),
             self.strong_preterite(word),
             self.reformed_spelling(word),
+            self.germanized_english_participle(word),
         ]
         .into_iter()
         .flatten()
@@ -2163,6 +2179,17 @@ mod tests {
             ("Die Kardinalitat ist drei.", "Kardinalitat"),
         ] {
             assert_eq!(spelling_reports(text), [word], "{text}");
+        }
+    }
+
+    #[test]
+    fn an_english_participle_gets_its_german_form() {
+        for (word, fix) in [("deployed", "deployt"), ("released", "releast")] {
+            assert_eq!(
+                suggestions_for(word).first().map(String::as_str),
+                Some(fix),
+                "{word}"
+            );
         }
     }
 

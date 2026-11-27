@@ -14,7 +14,7 @@ use crate::grammar::determiners::{
     readings_allowed_by_spelling,
 };
 use crate::grammar::noun_phrase::lowercase_of;
-use crate::grammar::verbs::joined_separable_verb;
+use crate::grammar::verbs::{joined_separable_verb, lemma_of_participle};
 use crate::morphology::{Case, CaseSet, MorphologyExt};
 use crate::spell::compact_dict::CompactDictionary;
 use crate::spell::curated_german_dictionary;
@@ -267,6 +267,47 @@ fn closing_verb_follows(
     }
     clause.get(next).is_some_and(|t| is_verb(t))
         && clause[next + 1..].iter().all(|t| !t.kind.is_word())
+}
+
+/// A determiner with a case ending: *den*/*dem* as `("d", "en")`, *seinen* as
+/// `("sein", "en")`, *eurem* as `("eur", "em")`.
+fn split_determiner(word: &str) -> Option<(&str, &str)> {
+    const STEMS: &[&str] = &[
+        "d", "ein", "kein", "mein", "dein", "sein", "ihr", "unser", "eur", "dies", "jed", "welch",
+    ];
+    let ending = if word.ends_with("en") {
+        "en"
+    } else if word.ends_with("em") {
+        "em"
+    } else {
+        return None;
+    };
+    let stem = &word[..word.len() - 2];
+    STEMS.contains(&stem).then_some((stem, ending))
+}
+
+fn starts_lower(token: &Token, document: &Document) -> bool {
+    document
+        .get_span_content(&token.span)
+        .first()
+        .is_some_and(|c| c.is_lowercase())
+}
+
+/// `form` with the capital of the written determiner.
+fn match_case(form: &str, document: &Document, token: &Token) -> String {
+    if document
+        .get_span_content(&token.span)
+        .first()
+        .is_some_and(|c| c.is_uppercase())
+    {
+        let mut chars = form.chars();
+        chars
+            .next()
+            .map(|first| first.to_uppercase().chain(chars).collect())
+            .unwrap_or_default()
+    } else {
+        form.to_owned()
+    }
 }
 
 pub struct GermanVerbCase {
@@ -560,6 +601,122 @@ impl GermanVerbCase {
             }
             // A determiner is not checked: after the verb the subject may stand
             // too, *dazu gehören das Sieb und …*, *es folgt eine Übersicht*.
+        }
+        lints
+    }
+
+    /// The determiner of an object whose case shows on it: *er hilft seinen Vater*
+    /// (*helfen* takes the dative: *seinem*), *ich habe meinem Schlüssel verloren*
+    /// (*verlieren* takes the accusative: *meinen*). Only before a noun that is
+    /// surely singular, so that *den Kindern* and *seinen Eltern* (dative plural)
+    /// stay quiet, and only where the noun phrase is next to the verb.
+    fn object_determiner(
+        &self,
+        clause: &[&Token],
+        verbs: &[String],
+        document: &Document,
+    ) -> Vec<Lint> {
+        /// Verbs with an accusative object and no dative one, so that a
+        /// dative right before the closing verb is the mistake.
+        const ACCUSATIVE_ONLY: &[&str] = &[
+            "verlieren",
+            "finden",
+            "suchen",
+            "vergessen",
+            "besuchen",
+            "anrufen",
+            "kennen",
+            "lieben",
+            "vermissen",
+            "treffen",
+            "fragen",
+            "brauchen",
+            "verstehen",
+            "sehen",
+        ];
+        // A strong participle the word list gives no lemma for: *verloren*, *gefunden*.
+        let participle_lemmas: Vec<String> = clause
+            .iter()
+            .filter(|t| t.kind.is_word() && starts_lower(t, document))
+            .filter_map(|t| lemma_of_participle(&lowercase_of(t, document)))
+            .collect();
+        let dative_verb = verbs.iter().find(|v| DATIVE_VERBS.contains(&v.as_str()));
+        let accusative_verb = verbs
+            .iter()
+            .chain(&participle_lemmas)
+            .find(|v| ACCUSATIVE_ONLY.contains(&v.as_str()));
+        if dative_verb.is_none() && accusative_verb.is_none() {
+            return Vec::new();
+        }
+        let nouns = crate::grammar::noun_gender::NounGender::new();
+        let is_form_of = |t: &Token, verb: &str| {
+            t.kind.is_word()
+                && starts_lower(t, document)
+                && (self
+                    .lemmas(&lowercase_of(t, document))
+                    .iter()
+                    .any(|l| l == verb)
+                    || lemma_of_participle(&lowercase_of(t, document)).is_some_and(|l| l == verb))
+        };
+        let mut lints = Vec::new();
+        for (at, token) in clause.iter().enumerate() {
+            let Some(noun) = clause.get(at + 1) else {
+                break;
+            };
+            let determiner = lowercase_of(token, document);
+            let Some((stem, ending)) = split_determiner(&determiner) else {
+                continue;
+            };
+            let noun_text = document.get_span_content_str(&noun.span);
+            if starts_lower(noun, document) {
+                continue;
+            }
+            // Behind *-em* the noun is singular anyway; behind *-en* it has to be
+            // known as one (*seinen Eltern* is the dative plural).
+            let Some((gender, singular)) = nouns.gender_of(&noun_text) else {
+                continue;
+            };
+            if ending == "en" && !singular {
+                continue;
+            }
+            let closing = |verb: &str| {
+                closing_verb_follows(clause, at + 1, document, |t| is_form_of(t, verb))
+            };
+            if let Some(verb) = dative_verb
+                && ending == "en"
+                && gender == crate::morphology::Gender::Masculine
+                && (at
+                    .checked_sub(1)
+                    .is_some_and(|i| is_form_of(clause[i], verb))
+                    || closing(verb))
+            {
+                let dative = format!("{stem}em");
+                lints.extend(Self::report(
+                    token,
+                    vec![match_case(&dative, document, token)],
+                    format!("»{verb}« verlangt den Dativ: »{dative} {noun_text}«."),
+                ));
+            } else if let Some(verb) = accusative_verb
+                && ending == "em"
+                && gender != crate::morphology::Gender::Feminine
+                && !at
+                    .checked_sub(1)
+                    .is_some_and(|i| clause[i].kind.is_preposition())
+                && closing(verb)
+            {
+                let accusative = match (gender, stem) {
+                    (crate::morphology::Gender::Masculine, _) => format!("{stem}en"),
+                    (_, "d") => "das".to_owned(),
+                    (_, "dies" | "jed" | "welch") => format!("{stem}es"),
+                    (_, "eur") => "euer".to_owned(),
+                    _ => stem.to_owned(),
+                };
+                lints.extend(Self::report(
+                    token,
+                    vec![match_case(&accusative, document, token)],
+                    format!("»{verb}« verlangt den Akkusativ: »{accusative} {noun_text}«."),
+                ));
+            }
         }
         lints
     }
@@ -1211,6 +1368,7 @@ impl Linter for GermanVerbCase {
                 lints.extend(self.prepositional_object(&clause, &verbs, document));
                 lints.extend(self.dative_object(&clause, &verbs, document));
                 lints.extend(self.accusative_object(&clause, &verbs, document));
+                lints.extend(self.object_determiner(&clause, &verbs, document));
                 lints.extend(self.indirect_object(&clause, &verbs, document));
                 lints.extend(self.position(&clause, &verbs, document));
                 lints.extend(self.direction(&clause, &verbs, document));
@@ -1322,6 +1480,35 @@ mod tests {
             "Kannst du mich bitte helfen lassen?",
         ] {
             assert!(fixed(quiet).is_empty(), "{quiet}");
+        }
+    }
+
+    #[test]
+    fn the_determiner_of_an_object_shows_its_case() {
+        for (text, fix) in [
+            ("Er hilft seinen Vater im Garten.", "seinem"),
+            ("Er hilft seinen Freund.", "seinem"),
+            ("Ich danke den Mann.", "dem"),
+            ("Er hat seinen Bruder geholfen.", "seinem"),
+            ("Ich habe meinem Schlüssel verloren.", "meinen"),
+            ("Ich habe dem Buch gestern gesucht.", "das"),
+            ("Wir haben unserem Lehrer nicht verstanden.", "unseren"),
+        ] {
+            let suggested: Vec<String> = fixes(text).into_iter().flat_map(|(_, s)| s).collect();
+            assert_eq!(suggested, [fix], "{text}");
+        }
+        for text in [
+            "Er hilft seinem Vater im Garten.",
+            "Er hilft den Kindern.",
+            "Er hilft seinen Eltern.",
+            "Ich habe meinen Schlüssel verloren.",
+            "Ich habe mit meinem Schlüssel gesucht.",
+            "Ich habe meinem Bruder das Buch gefunden.",
+            "Er sieht seinem Vater ähnlich.",
+            "Dazu gehören den Regeln nach drei Teile.",
+            "Ich finde meinem Bruder ein Geschenk.",
+        ] {
+            assert!(fixes(text).is_empty(), "{text}: {:?}", fixes(text));
         }
     }
 
