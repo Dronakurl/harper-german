@@ -1,0 +1,15 @@
+# "meines Erachtens" already means "nach meiner Meinung"; a "nach" behind it
+# doubles the preposition. "meiner Meinung nach" is correct and not touched.
+expr main <([meines, deines, seines, ihres, unseres, eures] Erachtens nach), ( nach)>
+
+let message "»Erachtens« steht ohne »nach«: »meines Erachtens« heißt schon »nach meiner Meinung«."
+let description "Streicht das »nach« hinter »meines Erachtens«."
+let kind "Redundancy"
+let becomes ""
+
+test "Meines Erachtens nach ist das falsch." "Meines Erachtens ist das falsch."
+test "Das ist meines Erachtens nach richtig." "Das ist meines Erachtens richtig."
+test "Unseres Erachtens nach fehlt etwas." "Unseres Erachtens fehlt etwas."
+
+allows "Meines Erachtens ist das falsch."
+allows "Meiner Meinung nach ist das falsch."

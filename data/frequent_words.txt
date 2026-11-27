@@ -473,3 +473,16 @@ Kaffee
 Rückgrat
 Satellit
 Lizenz
+Weihnachten
+Geburtstag
+Ostern
+Silvester
+Wochenende
+Feierabend
+Krankenhaus
+Bahnhof
+Verabredung
+Entschuldigung
+Unterschrift
+Überweisung
+Kündigung

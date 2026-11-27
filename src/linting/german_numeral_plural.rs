@@ -200,6 +200,14 @@ impl Linter for GermanNumeralPlural {
                 {
                     continue;
                 }
+                // *18 jähriger Student*: the number counts the years of the adjective,
+                // not the noun.
+                if words
+                    .get(at + 1)
+                    .is_some_and(|t| lowercase_of(t, document).contains("jährig"))
+                {
+                    continue;
+                }
                 // Adjectives may stand between the number and the noun: *zwei kleine Bruder*.
                 let mut head = at + 1;
                 while words.get(head).is_some_and(|token| {
@@ -335,6 +343,7 @@ mod tests {
     fn plurals_measures_and_names_are_quiet() {
         for text in [
             "Ich habe zwei Brüder.",
+            "Er ist ein 18 jähriger Student.",
             "Das kostet drei Euro.",
             "Es ist zehn Grad warm.",
             "Ich war zwei Mal dort.",

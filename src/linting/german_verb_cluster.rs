@@ -117,6 +117,9 @@ impl GermanVerbCluster {
             match token.kind {
                 TokenKind::Word(_) => {
                     let word = lowercase_of(token, document);
+                    if Self::opens_relative_clause(tokens, at, document) {
+                        clauses.push(std::mem::take(&mut current));
+                    }
                     if COORDINATORS.contains(&word.as_str()) {
                         current = Vec::new();
                     } else if SUBORDINATORS.contains(&word.as_str()) || word == "wenn" {
@@ -149,6 +152,24 @@ impl GermanVerbCluster {
         }
         clauses.push(current);
         clauses
+    }
+
+    /// *… gekauft in dem wir wohnen*: a preposition, a relative pronoun and a
+    /// subject pronoun open a relative clause even where its comma is missing.
+    fn opens_relative_clause(tokens: &[&Token], at: usize, document: &Document) -> bool {
+        const RELATIVES: &[&str] = &[
+            "dem", "der", "den", "das", "denen", "deren", "dessen", "die",
+        ];
+        const SUBJECTS: &[&str] = &["ich", "du", "er", "sie", "es", "wir", "ihr", "man"];
+        let word_at = |i: usize| {
+            tokens
+                .get(i)
+                .filter(|t| matches!(t.kind, TokenKind::Word(_)))
+                .map(|t| lowercase_of(t, document))
+        };
+        tokens[at].kind.is_preposition()
+            && word_at(at + 1).is_some_and(|w| RELATIVES.contains(&w.as_str()))
+            && word_at(at + 2).is_some_and(|w| SUBJECTS.contains(&w.as_str()))
     }
 
     /// Does the rest of the sentence begin with a coordinator and end its
@@ -396,6 +417,7 @@ mod tests {
             "Er würde krank geworden sein.",
             "Ich würde nicht gegangen sein.",
             "Nachdem er gegessen hat ging er schlafen.",
+            "Wir haben ein Haus gekauft in dem wir wohnen.",
         ] {
             assert!(flagged(text).is_empty(), "{text}: {:?}", flagged(text));
         }

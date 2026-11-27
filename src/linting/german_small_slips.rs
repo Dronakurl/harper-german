@@ -117,7 +117,18 @@ impl Linter for GermanSmallSlips {
                 } else if source.get(end) == Some(&' ') {
                     // *18 jährig*
                     let (_, word) = word_at(end + 1);
-                    if word.ends_with("jährig") && word.chars().count() <= 12 {
+                    // *18 jähriger Student*: declined as well.
+                    let jaehrig = [
+                        "jährig",
+                        "jährige",
+                        "jährigen",
+                        "jähriger",
+                        "jähriges",
+                        "jährigem",
+                    ]
+                    .iter()
+                    .any(|form| word.ends_with(form));
+                    if jaehrig && word.chars().count() <= 13 {
                         lints.push(Lint {
                             span: Span::new(end, end + 1),
                             lint_kind: LintKind::Formatting,
@@ -299,6 +310,7 @@ mod tests {
             "Er sagte: „wir kommen morgen“.",
             "Das ist ein 3-Zimmer Wohnung.",
             "Er ist 18 jährig.",
+            "Er ist ein 18 jähriger Student.",
             "Er spricht auf deutsch mit mir.",
             "Bei fragen melden Sie sich.",
             "Das war schön.\n\nWir haben und gestern im Park getroffen.",

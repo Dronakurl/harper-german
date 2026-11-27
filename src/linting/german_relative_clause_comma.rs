@@ -503,12 +503,12 @@ impl Linter for GermanRelativeClauseComma {
                     });
                 let mut noun_at =
                     pronoun_phrase_at.and_then(|i| i.checked_sub(if behind_comma { 2 } else { 1 }));
-                // *den Mann **nicht** den du meinst*, *ein Auto **gekauft** das sehr teuer war*:
+                // *den Mann **nicht** den du meinst*, *ein Auto **gekauft** das sehr teuer war*,
+                // *einen Brief **geschrieben** in dem er sich entschuldigt*:
                 // a negation or a participle between the noun and the pronoun. An article
                 // cannot follow either, so the pronoun is a relative one.
                 let mut skipped_participle = false;
                 if !behind_comma
-                    && !behind_preposition
                     && let Some(i) = noun_at
                     && i > 0
                 {
@@ -814,6 +814,8 @@ mod tests {
             "Dort ist ein Geschäft wo man alles kaufen kann.",
             "Er hat ein Auto gekauft das sehr teuer war.",
             "Ich kenne den Mann nicht den du meinst.",
+            "Er hat mir einen Brief geschrieben in dem er sich entschuldigt.",
+            "Wir haben ein Haus gekauft in dem wir wohnen.",
         ] {
             assert_eq!(lint_count(text), 1, "{text}");
         }
@@ -823,6 +825,8 @@ mod tests {
             "Wo man alles kaufen kann, ist das Geschäft.",
             "Ich habe dem Kind das Buch gegeben.",
             "Er hat nicht das Buch gekauft.",
+            "Ich habe das Buch gelesen in dem Garten.",
+            "Er hat das Paket abgeholt in der Stadt.",
         ] {
             assert_eq!(lint_count(text), 0, "{text}");
         }

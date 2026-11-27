@@ -1298,6 +1298,19 @@ impl GermanVerbCase {
             let Some(object) = clause.get(at + 1).filter(|t| t.kind.is_word()) else {
                 continue;
             };
+            // *Er sitzt neben mich*: a person pronoun is a place here, in the dative.
+            let written = document.get_span_content_str(&object.span);
+            if let Some(&(_, dative)) = [("mich", "mir"), ("dich", "dir"), ("ihn", "ihm")]
+                .iter()
+                .find(|(accusative, _)| *accusative == written)
+            {
+                lints.extend(Self::report(
+                    object,
+                    vec![dative.to_owned()],
+                    format!("Nach »{verb}« steht der Ort im Dativ: »{preposition} {dative}«."),
+                ));
+                continue;
+            }
             // *in eine kleine Wohnung*: the noun may stand behind adjectives.
             let noun = clause[at + 2..]
                 .iter()
@@ -1480,6 +1493,20 @@ mod tests {
             "Kannst du mich bitte helfen lassen?",
         ] {
             assert!(fixed(quiet).is_empty(), "{quiet}");
+        }
+    }
+
+    #[test]
+    fn a_pronoun_after_a_verb_of_position_is_dative() {
+        for (text, fix) in [
+            ("Er sitzt neben mich.", "mir"),
+            ("Die Katze liegt neben ihn.", "ihm"),
+        ] {
+            let suggested: Vec<String> = fixes(text).into_iter().flat_map(|(_, s)| s).collect();
+            assert_eq!(suggested, [fix], "{text}");
+        }
+        for text in ["Er sitzt neben mir.", "Er setzt sich neben mich."] {
+            assert!(fixes(text).is_empty(), "{text}: {:?}", fixes(text));
         }
     }
 

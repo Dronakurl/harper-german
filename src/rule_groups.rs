@@ -279,6 +279,8 @@ const THEMES: &[Theme] = &[
             "TotSein",
             "TotUmgefallen",
             "StolzAuf",
+            "AngstVor",
+            "ErachtensNach",
             "WartenAuf",
             "AbhaengenVon",
             "AbhaengenVom",

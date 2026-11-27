@@ -123,7 +123,7 @@ impl GermanNominalizedInfinitive {
 
         // *vom oben erwähnten*, *vom gegen ihn gerichteten*: adverbs and
         // prepositions with a stray verb reading open an extended attribute.
-        if !meta.is_verb() || meta.is_adjective() || meta.is_adverb() || meta.preposition {
+        if !meta.is_verb() || meta.preposition {
             return false;
         }
 
@@ -147,7 +147,41 @@ impl GermanNominalizedInfinitive {
             && tokens
                 .get(index + 1)
                 .is_none_or(|next| matches!(next.kind, TokenKind::Punctuation(_)));
-        if !FUSED_PREPOSITIONS.contains(&preposition.as_str()) && !progressive {
+        // *nach langem überlegen*, *mit lautem lachen*: a preposition and a strong
+        // dative adjective in front. Not a pronoun or a determiner in *-em* (*von
+        // dem*, *in diesem*, *mit anderem*, *mit jemandem*), which may stand alone.
+        let dative_phrase = preposition.ends_with("em")
+            && document
+                .get_span_content(&prev.span)
+                .first()
+                .is_some_and(|c| c.is_lowercase())
+            && prev.kind.is_adjective()
+            && !prev.kind.is_determiner()
+            && !prev.kind.is_pronoun()
+            && !matches!(
+                preposition.as_str(),
+                "anderem"
+                    | "allem"
+                    | "jedem"
+                    | "diesem"
+                    | "jenem"
+                    | "welchem"
+                    | "manchem"
+                    | "solchem"
+                    | "gleichem"
+                    | "obigem"
+                    | "folgendem"
+                    | "erwähntem"
+            )
+            && index
+                .checked_sub(2)
+                .is_some_and(|i| tokens[i].kind.is_preposition());
+        if !FUSED_PREPOSITIONS.contains(&preposition.as_str()) && !progressive && !dative_phrase {
+            return false;
+        }
+        // An adjective or adverb reading (*überlegen*) counts only where the preposition and
+        // the dative leave no room for the adjective: *nach langem überlegen*.
+        if (meta.is_adjective() || meta.is_adverb()) && !dative_phrase {
             return false;
         }
 
@@ -271,6 +305,9 @@ mod tests {
             "Das essen in der Kantine war lecker.",
             "Das schwimmen im See ist verboten.",
             "Mein zeichnen wird immer besser.",
+            "Nach langem überlegen hat er zugestimmt.",
+            "Mit lautem lachen kam sie herein.",
+            "Nach kurzem zögern sagte er ja.",
         ] {
             assert_eq!(lint_count(text), 1, "should fire on {text:?}");
         }
@@ -290,6 +327,15 @@ mod tests {
             "Zum einen sind sie billig, zum anderen bequem.",
             "Er ging zum Schuhmacher.",
             "Wir laufen zum Bahnhof.",
+            "Nach langem Überlegen hat er zugestimmt.",
+            "Wir haben lange überlegen müssen.",
+            "Er hat mit dem Fahrrad fahren wollen.",
+            "Man kann ein Foto mit dem vergleichen, was es abbildet.",
+            "Sie wollen ihre Zeit mit anderem verbringen.",
+            "In diesem formulieren sie die Regeln.",
+            "Gleiches mit Gleichem vergelten.",
+            "Lebendes kann nur aus Lebendem hervorgehen.",
+            "Sind Teilsysteme im Gesamtsystem enthalten, müssen sie geprüft werden.",
             "Der Plan wurde vom oben dargestellten Plan abgeleitet.",
             "Dabei kommt es zum oben erwähnten Wandel.",
             "Sie erzählte vom gegen ihn gerichteten Verdacht.",

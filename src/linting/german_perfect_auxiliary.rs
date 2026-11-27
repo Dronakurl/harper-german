@@ -292,22 +292,34 @@ impl Linter for GermanPerfectAuxiliary {
                         .first()
                         .is_some_and(|c| c.is_uppercase())
                 });
-                // *Wir haben nach Hause gelaufen*, *Er hat nach Paris geflogen*: a destination
-                // and no object.
+                // *Wir haben nach Hause gelaufen*, *Er hat nach Paris geflogen*, *Wir haben mit
+                // dem Fahrrad zur Arbeit gefahren*: a destination and no object. Every noun has
+                // to stand in a prepositional phrase (*mit dem Fahrrad*), so that *Er hat seinen
+                // Sohn zur Schule gefahren* keeps its object.
+                let capitalized = |token: &Token| {
+                    document
+                        .get_span_content(&token.span)
+                        .first()
+                        .is_some_and(|c| c.is_uppercase())
+                };
                 let destination = lower.iter().enumerate().any(|(at, word)| {
-                    word == "nach"
-                        && clause.get(at + 1).is_some_and(|next| {
-                            document
-                                .get_span_content(&next.span)
-                                .first()
-                                .is_some_and(|c| c.is_uppercase())
-                        })
+                    ["nach", "zur", "zum", "ins"].contains(&word.as_str())
+                        && clause.get(at + 1).is_some_and(|next| capitalized(next))
                 }) && !lower.iter().any(|word| {
                     [
                         "den", "das", "die", "einen", "ein", "eine", "ihn", "es", "sie", "uns",
                         "euch", "mich", "dich",
                     ]
                     .contains(&word.as_str())
+                }) && clause.iter().enumerate().skip(1).all(|(at, token)| {
+                    !capitalized(token)
+                        || (1..=3).any(|back| {
+                            at.checked_sub(back).is_some_and(|i| {
+                                clause[i].kind.is_preposition()
+                                    || ["nach", "zur", "zum", "ins", "im", "am", "vom", "beim"]
+                                        .contains(&lower[i].as_str())
+                            })
+                        })
                 });
                 let participle_ok = |word: &str| {
                     (SEIN_PARTICIPLES.contains(&word) && !(word == "passiert" && has_noun))
@@ -388,6 +400,17 @@ mod tests {
         );
         assert!(fixes("Er hat das Auto nach Paris gefahren.").is_empty());
         assert!(fixes("Er hat die Kinder nach Hause gefahren.").is_empty());
+        assert_eq!(
+            fixes("Wir haben mit dem Fahrrad zur Arbeit gefahren."),
+            ["Replace with: “sind”"]
+        );
+        assert_eq!(
+            fixes("Er hat zur Schule gelaufen."),
+            ["Replace with: “ist”"]
+        );
+        assert!(fixes("Er hat seinen Sohn zur Schule gefahren.").is_empty());
+        assert!(fixes("Er hat Kinder zur Schule gefahren.").is_empty());
+        assert!(fixes("Er hat das Auto zur Werkstatt gefahren.").is_empty());
         assert!(fixes("Wir sind nach Hause gelaufen.").is_empty());
         assert_eq!(
             fixes("Hast du gut eingeschlafen?"),

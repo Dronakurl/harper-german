@@ -1,9 +1,10 @@
 # "wieder" means "again"; "wider" is the preposition "against" (wider Willen,
 # wider die Natur). After an adverb of time or frequency, or a verb of coming,
 # only "again" makes sense. "ist wider die Natur" is correct, so the copula is
-# not in the list. Before "!" the rule is silent: Weir reads "!" as its
+# not in the list. An object pronoun in front ("ihn wider getroffen") leaves
+# only "again" as well. Before "!" the rule is silent: Weir reads "!" as its
 # exception operator, so the punctuation mark cannot be spelled out.
-expr davor [immer, nie, niemals, schon, gleich, bald, morgen, heute, später, nochmal, jetzt, dann, komme, kommt, kommen, komm, kam, kamen, gehe, geht, tut, mache, macht, sehe, sehen, sieht]
+expr davor [ihn, mich, dich, uns, euch, immer, nie, niemals, schon, gleich, bald, morgen, heute, später, nochmal, jetzt, dann, komme, kommt, kommen, komm, kam, kamen, gehe, geht, tut, mache, macht, sehe, sehen, sieht]
 
 # "wider" as the preposition governs a noun phrase: "kam wider Erwarten",
 # "stellst dich immer wider mein Volk".
@@ -32,6 +33,8 @@ test "Später wider." "Später wieder."
 test "Wir sehen wider nichts." "Wir sehen wieder nichts."
 test "Er tut es nochmal wider." "Er tut es nochmal wieder."
 test "Ich mache das immer wider so." "Ich mache das immer wieder so."
+test "Ich habe ihn wider getroffen." "Ich habe ihn wieder getroffen."
+test "Wir haben uns wider gesehen." "Wir haben uns wieder gesehen."
 
 allows "Das ist wider die Natur."
 allows "Er handelte wider besseres Wissen."
@@ -41,3 +44,4 @@ allows "Das spricht wider jede Vernunft."
 allows "Er tat es wider Willen."
 allows "Er kam wider Erwarten sehr früh."
 allows "Du stellst dich noch immer wider mein Volk."
+allows "Er tat ihn wider Willen."

@@ -1,0 +1,19 @@
+# "Angst vor": one is afraid "vor" something. "Angst von" is a slip, but
+# "die Angst von Kindern" names whose fear it is, so only behind "haben".
+expr haben [habe, hast, hat, haben, habt, hatte, hattest, hatten, hattet, hätte, hätten]
+
+expr main <[(@haben Angst von), (@haben große Angst von), (@haben keine Angst von), (@haben furchtbare Angst von)], von>
+
+let message "Man hat »Angst vor« etwas, nicht »Angst von«."
+let description "Ersetzt »Angst von« hinter »haben« durch »Angst vor«."
+let kind "WordChoice"
+let becomes "vor"
+let strategy "MatchCase"
+
+test "Er hat Angst von Spinnen." "Er hat Angst vor Spinnen."
+test "Ich habe keine Angst von dir." "Ich habe keine Angst vor dir."
+test "Sie hatte große Angst von der Prüfung." "Sie hatte große Angst vor der Prüfung."
+
+allows "Er hat Angst vor Spinnen."
+allows "Die Angst von Kindern ist oft groß."
+allows "Er hat Angst, von der Leiter zu fallen."
