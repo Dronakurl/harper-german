@@ -659,6 +659,39 @@ impl<T: Dictionary> GermanNounCapitalization<T> {
                 .is_some_and(|m| m.adjective.is_some() || m.adverb.is_some())
     }
 
+    /// *…, sobald ich mehr weiß.*: the last word of a subordinate clause is its
+    /// finite verb, even where a noun shares its letters (*Weiß*).
+    fn ends_a_subordinate_clause_as_verb(
+        &self,
+        tokens: &[&Token],
+        index: usize,
+        document: &Document,
+    ) -> bool {
+        const SUBORDINATORS: &[&str] = &[
+            "sobald", "wenn", "weil", "dass", "ob", "als", "bevor", "nachdem", "obwohl", "falls",
+            "damit", "während", "bis", "seit", "seitdem", "solange", "sodass", "indem",
+        ];
+        let ends_clause = tokens
+            .get(index + 1)
+            .is_none_or(|next| matches!(next.kind, TokenKind::Punctuation(_)));
+        let is_verb =
+            self.dictionary
+                .get_word_metadata(document.get_span_content(&tokens[index].span))
+                .is_some_and(|m| m.verb.is_some())
+                || crate::grammar::subjects::irregular_finite_verb_lemma(
+                    &noun_phrase::lowercase_of(tokens[index], document),
+                )
+                .is_some();
+        if !ends_clause || !is_verb {
+            return false;
+        }
+        tokens[..index]
+            .iter()
+            .rev()
+            .take_while(|t| !matches!(t.kind, TokenKind::Punctuation(_)))
+            .any(|t| SUBORDINATORS.contains(&noun_phrase::lowercase_of(t, document).as_str()))
+    }
+
     /// *photoautotroph*, *hochkomplex*: a compound reached only by taking it
     /// apart, whose last part is an adjective of the dictionary and no noun.
     fn is_adjective_compound(&self, lower: &str) -> bool {
@@ -1200,6 +1233,7 @@ impl<T: Dictionary> Linter for GermanNounCapitalization<T> {
                             || self.is_verb_form(&noun_phrase::lowercase_of(token, document))
                             || self
                                 .is_adjective_compound(&noun_phrase::lowercase_of(token, document))
+                            || self.ends_a_subordinate_clause_as_verb(&tokens, i, document)
                             || Self::follows_clause_initial_ihr(&tokens, i, document)
                             || Self::is_clause_initial_imperative(&tokens, i, document)
                             || Self::is_not_a_noun_here(&tokens, i, document)
@@ -1483,6 +1517,21 @@ mod tests {
             !flagged.iter().any(|w| w == "km" || w == "drei"),
             "units and number words should not be flagged, got {flagged:?}"
         );
+    }
+
+    #[test]
+    fn the_verb_at_the_end_of_a_subordinate_clause_is_no_noun() {
+        for text in [
+            "Ich melde mich, sobald ich mehr weiß.",
+            "Ich sage Bescheid, wenn ich mehr weiß.",
+            "Sobald ich mehr weiß, melde ich mich.",
+        ] {
+            assert!(
+                flagged_words(text).is_empty(),
+                "{text}: {:?}",
+                flagged_words(text)
+            );
+        }
     }
 
     #[test]

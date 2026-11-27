@@ -61,6 +61,53 @@ impl<T: Dictionary> GermanSplitCompound<T> {
         }
     }
 
+    /// *ein Riesen Erfolg* → *Riesenerfolg*: behind a singular article *Riesen* is not
+    /// the plural of *Riese* but the intensifying first part of a compound, and so are
+    /// *Mords* and *Bomben*.
+    fn intensifier(tokens: &[&Token], at: usize, document: &Document) -> Option<Lint> {
+        const INTENSIFIERS: &[&str] = &["Riesen", "Mords", "Bomben"];
+        const ARTICLES: &[&str] = &[
+            "ein", "eine", "einen", "einem", "einer", "eines", "kein", "keine", "keinen", "keinem",
+            "keiner",
+        ];
+        let (first, second) = (tokens[at], *tokens.get(at + 1)?);
+        let first_text = document.get_span_content_str(&first.span);
+        let source = document.get_source();
+        if !INTENSIFIERS.contains(&first_text.as_str())
+            || !Self::noun(second)
+            || first.span.end + 1 != second.span.start
+            || !source[second.span.start].is_uppercase()
+            || second.span.len() < 3
+        {
+            return None;
+        }
+        let article = tokens.get(at.checked_sub(1)?)?;
+        let article_text = document
+            .get_span_content(&article.span)
+            .iter()
+            .flat_map(|c| c.to_lowercase())
+            .collect::<String>();
+        if !ARTICLES.contains(&article_text.as_str()) {
+            return None;
+        }
+        let second_text = document.get_span_content_str(&second.span);
+        let mut rest = second_text.chars();
+        let joined: String = first_text
+            .chars()
+            .chain(rest.next().into_iter().flat_map(char::to_lowercase))
+            .chain(rest)
+            .collect();
+        Some(Lint {
+            span: harper_core::Span::new(first.span.start, second.span.end),
+            lint_kind: LintKind::Spelling,
+            suggestions: vec![Suggestion::ReplaceWith(joined.chars().collect())],
+            message: format!(
+                "»{first_text}« verstärkt das Nomen und wird mit ihm zusammengeschrieben: »{joined}«."
+            ),
+            priority: 31,
+        })
+    }
+
     fn noun(token: &Token) -> bool {
         matches!(&token.kind, TokenKind::Word(Some(meta)) if meta.is_noun() && !meta.is_proper_noun())
     }
@@ -93,6 +140,10 @@ impl<T: Dictionary> Linter for GermanSplitCompound<T> {
 
             for (at, pair) in tokens.windows(2).enumerate() {
                 let (first, second) = (pair[0], pair[1]);
+                if let Some(lint) = Self::intensifier(&tokens, at, document) {
+                    lints.push(lint);
+                    continue;
+                }
                 // A number, a quantity or another noun in front means the first noun is a plural
                 // or an object of its own: *2 Jahre Zeit*, *Millionen Menschen Strom*.
                 if at > 0 && {
@@ -223,6 +274,24 @@ mod tests {
         GermanSplitCompound::new(base_german_dictionary())
             .lint(&document)
             .len()
+    }
+
+    #[test]
+    fn an_intensifier_is_joined_to_its_noun() {
+        for text in [
+            "Das war ein Riesen Erfolg für uns.",
+            "Wir hatten einen Mords Spaß im Urlaub.",
+            "Das ist eine Bomben Stimmung hier.",
+        ] {
+            assert_eq!(count(text), 1, "{text}");
+        }
+        for text in [
+            "Die Riesen Europas waren groß.",
+            "Das war ein Riesenerfolg für uns.",
+            "In der Sage kämpfen Riesen Seite an Seite.",
+        ] {
+            assert_eq!(count(text), 0, "{text}");
+        }
     }
 
     #[test]

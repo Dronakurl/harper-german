@@ -32,7 +32,26 @@ const PREPOSITION_PARTICLES: &[&str] = &["ab", "an", "auf", "aus", "ein", "mit",
 /// First parts of separable verbs that are nouns or adjectives elsewhere: *teil nehmen*,
 /// *statt finden*, *fertig gestellt*, *auseinander setzen*. Taken before an infinitive or a
 /// participle that closes the clause, when the dictionary lists the joined verb.
-const WORD_PARTICLES: &[&str] = &["teil", "statt", "fertig", "auseinander"];
+const WORD_PARTICLES: &[&str] = &["teil", "statt", "fertig", "auseinander", "durch"];
+
+/// First parts that are written apart with most verbs (*zusammen essen*, *kaputt
+/// machen*), joined only with these: *zusammenfassen*, *kaputtgehen*.
+const JOINED_ONLY: &[(&str, &[&str])] = &[
+    (
+        "zusammen",
+        &[
+            "fassen",
+            "gefasst",
+            "brechen",
+            "gebrochen",
+            "zucken",
+            "gezuckt",
+            "stoßen",
+            "gestoßen",
+        ],
+    ),
+    ("kaputt", &["gehen", "gegangen"]),
+];
 
 /// Reports a separable particle written apart from the verb right behind it:
 /// *zurück gebracht* -> *zurückgebracht*, *weg werfen* -> *wegwerfen*.
@@ -188,6 +207,13 @@ impl Linter for GermanSplitParticle {
                 let next = tokens.get(index + 3).copied();
                 let fits = if PREPOSITION_PARTICLES.contains(&particle_text.as_str()) {
                     Self::closing_participle_joins(&particle_text, verb, next, document)
+                } else if let Some((_, verbs)) = JOINED_ONLY
+                    .iter()
+                    .find(|(first, _)| *first == particle_text)
+                {
+                    let verb_text = document.get_span_content_str(&verb.span);
+                    verbs.contains(&verb_text.as_str())
+                        && Self::closing_verb_joins(&particle_text, verb, next, document, true)
                 } else if WORD_PARTICLES.contains(&particle_text.as_str()) {
                     Self::closing_verb_joins(&particle_text, verb, next, document, true)
                 } else {
@@ -303,6 +329,9 @@ mod tests {
                 "Ereignisse, die bis 1942 zurück reichten, vergaß er.",
                 "zurück reichten",
             ),
+            ("Wir müssen das noch mal durch gehen.", "durch gehen"),
+            ("Kannst du das bitte zusammen fassen?", "zusammen fassen"),
+            ("Das Auto ist kaputt gegangen.", "kaputt gegangen"),
         ] {
             assert_eq!(flagged(text), vec![span.to_string()], "in {text:?}");
         }
@@ -315,6 +344,10 @@ mod tests {
             "Er bringt die Schuhe zurück.",
             "Er gab die Schuhe zurück, gebracht hatte sie seine Frau.",
             "Wir haben zusammen gearbeitet.",
+            "Wir wollen zusammen essen.",
+            "Er hat das Spielzeug kaputt gemacht.",
+            "Wir gehen durch den Park.",
+            "Das Licht kommt durch.",
             "Der Weg gefiel uns.",
             "Er kam zurück und schaute sich um.",
             "Sie ist weg.",

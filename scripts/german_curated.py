@@ -277,7 +277,7 @@ Neuseeland Rhodos Rügen Sylt Teneriffa Texas Thailand Tokio Tokyo Tunesien Used
 BRANDS = """
 Adidas Aldi Amazon Android Apple Covid Discord Duden Ebay Edeka Facebook Google Ikea Instagram Lego Lidl
 Microsoft Netflix Nike Nintendo PayPal PlayStation Playstation Puma Rewe Samsung Snapchat Spotify Teams TikTok
-Twitch WhatsApp Wikipedia Windows Xbox YouTube Zalando Zoom eBay iPad iPhone
+Twitch WhatsApp Wikipedia Windows Xbox YouTube Zalando Zoom eBay iPad iPhone Excel
 """.split()
 
 PLURALIA_TANTUM = """
@@ -645,6 +645,7 @@ Frühgeschichte F -
 Port M Ports
 Subdomain F Subdomains
 Recruiting N -
+Staging N -
 Pazifik M -
 Epigenetik F -
 Linux N -

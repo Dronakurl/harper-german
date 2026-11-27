@@ -237,6 +237,21 @@ impl GermanSubordinateWordOrder {
         if !subject.agrees_with(&irregular_finite_verb(&verb)?) {
             return None;
         }
+        // *Wenn du willst können wir gehen*: a second finite verb right behind the
+        // first opens the main clause. The fix is the comma, not the word order.
+        let next = tokens[words[2]];
+        if verb != lemma
+            && starts_lowercase(next, document)
+            && irregular_finite_verb_lemma(&lowercase_of(next, document)).is_some()
+        {
+            return Some(Lint {
+                span: tokens[words[1]].span,
+                lint_kind: LintKind::Punctuation,
+                suggestions: vec![Suggestion::InsertAfter(vec![','])],
+                message: "Hier endet der Nebensatz; davor fehlt das Komma zum Hauptsatz.".into(),
+                priority: 31,
+            });
+        }
         // *haben*, *können* are the infinitive as well, and a finite verb at
         // the end makes them that: *dass sie haben will*. With a noun or an
         // adjective at the end, the form is the finite plural: *obwohl wir
@@ -367,6 +382,8 @@ mod tests {
         for text in [
             "Wenn du Zeit hast ruf mich an.",
             "Wenn du Zeit hast komm doch vorbei.",
+            "Wenn du willst können wir morgen ins Kino gehen.",
+            "Falls du magst kannst du mitkommen.",
         ] {
             assert_eq!(fixes(text), ["Insert “,”"], "{text}");
         }
