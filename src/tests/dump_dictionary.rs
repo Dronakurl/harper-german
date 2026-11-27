@@ -193,6 +193,7 @@ mod tests {
                             "span": {"char_start": lint.span.start, "char_end": lint.span.end},
                             "matched_text": document.get_span_content_str(&lint.span),
                             "suggestions": suggestions,
+                            "message": lint.message,
                         })
                     );
                 }
