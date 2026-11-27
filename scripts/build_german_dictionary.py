@@ -852,6 +852,9 @@ class Builder:
                 self.entries[lemma] |= {"K", "L"}
         for word in curated.CORE_ADVERBS:
             self.add(word, {"r"})
+        for word in curated.NOT_COMPOUND_ELEMENTS:
+            if word in self.entries:
+                self.entries[word] |= {"!"}
         for word in curated.CORE_ADJECTIVES:
             self.add(word, {"J", "q", "r", "O", "Q", "R", "S", "T", "U", "W"})
         for word in curated.GEOGRAPHIC_ADJECTIVES + curated.UNGRADED_ADJECTIVES:
@@ -1013,6 +1016,10 @@ class Builder:
                 continue  # a stem nobody builds a compound on is no compound element, only a way to say *Bettrieb*
             if len(stem) >= 3 and stem not in known and sane(stem):
                 self.entries[stem] = {"*"}
+                self.stats["stem"] += 1
+        for confix in curated.CONFIXES:
+            if confix not in known:
+                self.entries[confix] = {"*"}
                 self.stats["stem"] += 1
 
     def mark_lowercase_twins(self):

@@ -80,6 +80,23 @@ fn frequency_band(word: &[char]) -> u8 {
     }
 }
 
+/// *wir's*, *ihr's*, *sie's*, *er's*, *du's*: the clitic *es* behind a
+/// personal pronoun (*Machen wir's so*).
+fn is_cliticized_pronoun(word: &[char]) -> bool {
+    let [host @ .., '\'' | '’', 's'] = word else {
+        return false;
+    };
+    ["wir", "ihr", "sie", "er", "du", "man"]
+        .iter()
+        .any(|pronoun| {
+            host.len() == pronoun.len()
+                && host
+                    .iter()
+                    .zip(pronoun.chars())
+                    .all(|(c, p)| c.to_lowercase().eq(std::iter::once(p)))
+        })
+}
+
 /// The conjunctions and pronouns that take the clitic *'s* (*wenn's*, *wie's*) besides verbs.
 const CLITIC_HOSTS: &[&str] = &[
     "wie", "wenn", "ob", "so", "da", "was", "als", "weil", "dass",
@@ -285,6 +302,41 @@ impl<T: Dictionary> GermanSpellCheck<T> {
     /// *war's*, *sag's*, *wenn's*? Only these hosts take the clitic; an
     /// English-style genitive (*Peter's*) is not accepted.
     fn is_cliticized_es(&self, word: &[char]) -> bool {
+        self.is_cliticized_article(word)
+            || is_cliticized_pronoun(word)
+            || self.is_cliticized_es_on_host(word)
+    }
+
+    /// *so'n Ding*, *ist'n Problem*, *war'n schöner Tag*, *so'ne Sache*,
+    /// *was machst'n du*: *ein*, *eine*, *einen* or *denn* cut down to *'n*,
+    /// *'ne* or *'nen* behind a verb or a small word that takes *'s* as well.
+    fn is_cliticized_article(&self, word: &[char]) -> bool {
+        let Some(apostrophe) = word.iter().rposition(|c| matches!(c, '\'' | '’')) else {
+            return false;
+        };
+        let (host, clitic) = word.split_at(apostrophe);
+        if host.is_empty() || !matches!(&clitic[1..], ['n'] | ['n', 'e'] | ['n', 'e', 'n']) {
+            return false;
+        }
+        self.takes_a_clitic(host)
+    }
+
+    /// Does `host` take a clitic: a verb or one of [`CLITIC_HOSTS`]?
+    fn takes_a_clitic(&self, host: &[char]) -> bool {
+        let lower: String = host.iter().flat_map(|c| c.to_lowercase()).collect();
+        CLITIC_HOSTS.contains(&lower.as_str())
+            || self
+                .dictionary
+                .get_word_metadata(host)
+                .is_some_and(|metadata| metadata.is_verb())
+            // The finite form (*geht*) or the imperative (*sag*) of a verb
+            // whose form the dictionary carries no reading for.
+            || GermanRelativeClauseComma::infinitive_is_a_verb(&lower)
+            || GermanRelativeClauseComma::infinitive_is_a_verb(&format!("{lower}t"))
+    }
+
+    /// *geht's*, *gibt's*, *wenn's*: *es* behind a verb or a conjunction.
+    fn is_cliticized_es_on_host(&self, word: &[char]) -> bool {
         // The impersonal ones the Duden lists without the apostrophe, and that
         // no second person shares: *gehts*, *gibts*, *stimmts*.
         const WITHOUT_APOSTROPHE: &[&str] = &[
@@ -304,19 +356,7 @@ impl<T: Dictionary> GermanSpellCheck<T> {
         if !matches!(apostrophe, '\'' | '’') {
             return false;
         }
-        if host.is_empty() {
-            return false;
-        }
-        let lower: String = host.iter().flat_map(|c| c.to_lowercase()).collect();
-        CLITIC_HOSTS.contains(&lower.as_str())
-            || self
-                .dictionary
-                .get_word_metadata(host)
-                .is_some_and(|metadata| metadata.is_verb())
-            // The finite form (*geht*) or the imperative (*sag*) of a verb
-            // whose form the dictionary carries no reading for.
-            || GermanRelativeClauseComma::infinitive_is_a_verb(&lower)
-            || GermanRelativeClauseComma::infinitive_is_a_verb(&format!("{lower}t"))
+        !host.is_empty() && self.takes_a_clitic(host)
     }
 
     /// *Erzählens*, *Wanderns*: a capitalized infinitive with the genitive *-s*.
@@ -336,6 +376,71 @@ impl<T: Dictionary> GermanSpellCheck<T> {
             .get_word_metadata(&infinitive)
             .is_some_and(|metadata| metadata.is_verb())
             && matches!(infinitive[infinitive.len() - 2], 'e' | 'l' | 'r')
+    }
+
+    /// *Steuerbarkeit*, *Kardinalität*, *Portabilität*, *Veranlagung*: a
+    /// feminine noun derived from an adjective or a verb of the word list, in
+    /// the singular or the plural (*-en*). Only the productive patterns:
+    /// *-keit* behind *-bar*, *-lich*, *-ig*, *-sam*; *-ität* behind *-al*,
+    /// *-iv*, *-il*, *-ar* or for *-bel* (*portabel*); *-ung* behind a verb stem;
+    /// *-sche* behind a name.
+    fn is_derived_noun(&self, word: &[char]) -> bool {
+        let [first, ..] = word else {
+            return false;
+        };
+        if !first.is_uppercase() {
+            return false;
+        }
+        let lower: String = word.iter().flat_map(|c| c.to_lowercase()).collect();
+        let singular = lower
+            .strip_suffix("en")
+            .filter(|s| s.ends_with("keit") || s.ends_with("ität") || s.ends_with("ung"))
+            .unwrap_or(&lower);
+        let is = |base: &str, verb: bool| {
+            self.dictionary
+                .get_word_metadata_str(base)
+                .is_some_and(|metadata| {
+                    if verb {
+                        metadata.is_verb()
+                    } else {
+                        metadata.is_adjective()
+                    }
+                })
+        };
+        if let Some(stem) = singular.strip_suffix("keit") {
+            return ["bar", "lich", "ig", "sam"]
+                .iter()
+                .any(|end| stem.ends_with(end))
+                && stem.len() > 5
+                && is(stem, false);
+        }
+        if let Some(stem) = singular.strip_suffix("ität") {
+            if let Some(head) = stem.strip_suffix("bil") {
+                return head.len() > 2 && is(&format!("{head}bel"), false);
+            }
+            return ["al", "iv", "il", "ar"]
+                .iter()
+                .any(|end| stem.ends_with(end))
+                && stem.len() > 4
+                && is(stem, false);
+        }
+        // *das Newtonsche Gesetz*, *die Bohrschen Postulate*: an adjective in
+        // *-sch* from a name, written with the capital of the name.
+        if let Some(name) = ["sche", "schen", "scher", "sches", "schem"]
+            .iter()
+            .find_map(|ending| word.strip_suffix(&ending.chars().collect::<Vec<_>>()[..]))
+        {
+            return name.len() >= 4
+                && self
+                    .dictionary
+                    .get_word_metadata(name)
+                    .is_some_and(|metadata| metadata.is_noun());
+        }
+        if let Some(stem) = singular.strip_suffix("ung") {
+            return stem.len() > 3
+                && (is(&format!("{stem}en"), true) || is(&format!("{stem}n"), true));
+        }
+        false
     }
 
     pub fn new(dictionary: T) -> Self {
@@ -1359,6 +1464,11 @@ impl<T: Dictionary> Linter for GermanSpellCheck<T> {
                         continue;
                     }
 
+                    // *Steuerbarkeit*, *Kardinalität*: derived from a word of the list.
+                    if self.is_derived_noun(word_chars) {
+                        continue;
+                    }
+
                     // *Planungs- und Bauphase*: the first half of a suspended compound is a begin form.
                     if document.get_full_content().get(word.span.end) == Some(&'-')
                         && crate::spell::compound_checker::is_listed_begin_form(word_chars)
@@ -2018,6 +2128,45 @@ mod tests {
     }
 
     #[test]
+    fn derived_nouns_confixes_and_common_words_are_known() {
+        for text in [
+            "Die Steuerbarkeit ist wichtig.",
+            "Die Erklärbarkeit der Modelle fehlt.",
+            "Die Kardinalität der Menge ist drei.",
+            "Die Intentionalität ist ein Begriff der Philosophie.",
+            "Die Portabilität des Codes ist gut.",
+            "Die Veranlagung ist erblich.",
+            "Die Elektronegativität steigt.",
+            "Das Photosystem fängt Licht ein.",
+            "Das Newtonsche Gesetz gilt.",
+            "Die Bohrschen Postulate sind bekannt.",
+            "Die Mendelschen Regeln sind alt.",
+            "Der Pazifik ist groß.",
+            "Die Epigenetik ist ein junges Fach.",
+            "Der Algorithmus ist polynomiell.",
+            "Unter Linux öffnet man eine Shell.",
+            "Bitte ändere den Port auf 8080.",
+            "Wir richten eine Subdomain ein.",
+            "Das Recruiting läuft gut.",
+            "Jo, passt schon.",
+            "Joa, kann man machen.",
+        ] {
+            assert!(
+                spelling_reports(text).is_empty(),
+                "{text}: {:?}",
+                spelling_reports(text)
+            );
+        }
+        for (text, word) in [
+            ("Das ist Intentionalitzt.", "Intentionalitzt"),
+            ("Die Steuerbarkeiz ist wichtig.", "Steuerbarkeiz"),
+            ("Die Kardinalitat ist drei.", "Kardinalitat"),
+        ] {
+            assert_eq!(spelling_reports(text), [word], "{text}");
+        }
+    }
+
+    #[test]
     fn a_cliticized_es_is_accepted_on_a_verb() {
         for text in [
             "Wie geht's dir?",
@@ -2026,6 +2175,15 @@ mod tests {
             "Sag's ihm!",
             "Wenn's regnet, bleiben wir.",
             "Das tue ich nicht.",
+            "Machen wir's so.",
+            "Machen wir’s so.",
+            "Habt ihr's gesehen?",
+            "Kommen sie's holen?",
+            "Das ist so'n Ding.",
+            "Das ist so'ne Sache.",
+            "Was machst'n du da?",
+            "Wo ist'n der Schlüssel?",
+            "Es war'n schöner Tag.",
         ] {
             assert!(
                 spelling_reports(text).is_empty(),

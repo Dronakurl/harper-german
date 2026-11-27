@@ -125,6 +125,14 @@ impl GermanVerbCluster {
                 }
                 TokenKind::Number(_) => current.push(at),
                 TokenKind::Punctuation(Punctuation::Hyphen | Punctuation::Apostrophe) => {}
+                // *kann nicht verkauft, sondern nur vererbt werden*: a comma
+                // before a coordinator, with an auxiliary further on that both
+                // participles share.
+                TokenKind::Punctuation(Punctuation::Comma)
+                    if Self::shares_a_later_auxiliary(&tokens[at + 1..], document) =>
+                {
+                    current = Vec::new();
+                }
                 TokenKind::Punctuation(
                     Punctuation::Period
                     | Punctuation::Comma
@@ -139,6 +147,34 @@ impl GermanVerbCluster {
         }
         clauses.push(current);
         clauses
+    }
+
+    /// Does the rest of the sentence begin with a coordinator and end its
+    /// next clause with *werden*, *sein* or *haben*?
+    fn shares_a_later_auxiliary(rest: &[&Token], document: &Document) -> bool {
+        let mut words = rest.iter().take_while(|token| {
+            !matches!(
+                token.kind,
+                TokenKind::Punctuation(
+                    Punctuation::Period
+                        | Punctuation::Comma
+                        | Punctuation::Semicolon
+                        | Punctuation::Question
+                        | Punctuation::Bang
+                )
+            )
+        });
+        let starts_with_coordinator = words.next().is_some_and(|token| {
+            matches!(token.kind, TokenKind::Word(_))
+                && COORDINATORS.contains(&lowercase_of(token, document).as_str())
+        });
+        starts_with_coordinator
+            && words.last().is_some_and(|token| {
+                matches!(
+                    lowercase_of(token, document).as_str(),
+                    "werden" | "worden" | "sein" | "haben"
+                )
+            })
     }
 
     fn check(&self, clause: &[usize], tokens: &[&Token], document: &Document) -> Option<Lint> {
@@ -304,6 +340,22 @@ mod tests {
             .flat_map(|lint| lint.suggestions)
             .map(|s| s.to_string())
             .collect()
+    }
+
+    #[test]
+    fn participles_sharing_a_later_auxiliary_are_quiet() {
+        for text in [
+            "Der Boden kann nicht verkauft, sondern nur vererbt werden.",
+            "Das Gebäude muss saniert, aber nicht abgerissen werden.",
+            "Die Regel darf geändert, aber nicht aufgehoben werden.",
+            "Die Daten können gelesen, aber nicht verändert werden.",
+        ] {
+            assert!(flagged(text).is_empty(), "{text}: {:?}", flagged(text));
+        }
+        assert_eq!(
+            flagged("Ich kann das nicht gemacht, aber ich versuche es."),
+            ["gemacht"]
+        );
     }
 
     #[test]

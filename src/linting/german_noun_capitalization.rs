@@ -659,6 +659,29 @@ impl<T: Dictionary> GermanNounCapitalization<T> {
                 .is_some_and(|m| m.adjective.is_some() || m.adverb.is_some())
     }
 
+    /// *photoautotroph*, *hochkomplex*: a compound reached only by taking it
+    /// apart, whose last part is an adjective of the dictionary and no noun.
+    fn is_adjective_compound(&self, lower: &str) -> bool {
+        let chars: Vec<char> = lower.chars().collect();
+        if chars.len() < 9 || self.dictionary.get_word_metadata_exact(&chars).is_some() {
+            return false;
+        }
+        (3..chars.len() - 5).any(|cut| {
+            let tail = &chars[cut..];
+            let capital: Vec<char> = tail[0]
+                .to_uppercase()
+                .chain(tail[1..].iter().copied())
+                .collect();
+            self.dictionary
+                .get_word_metadata_exact(tail)
+                .is_some_and(|m| m.adjective.is_some() && m.noun.is_none())
+                && self
+                    .dictionary
+                    .get_word_metadata_exact(&capital)
+                    .is_none_or(|m| m.noun.is_none())
+        })
+    }
+
     /// *übersteigt*: a finite verb form in *-t* whose infinitive is in the dictionary, though the
     /// form itself is reached only by taking it apart (*Über* + *steigt*).
     fn is_verb_form(&self, lower: &str) -> bool {
@@ -1175,6 +1198,8 @@ impl<T: Dictionary> Linter for GermanNounCapitalization<T> {
                             || Self::is_coordinated_with_small_word(&tokens, i, document)
                             || self.is_graded_adverb(&tokens, i, document)
                             || self.is_verb_form(&noun_phrase::lowercase_of(token, document))
+                            || self
+                                .is_adjective_compound(&noun_phrase::lowercase_of(token, document))
                             || Self::follows_clause_initial_ihr(&tokens, i, document)
                             || Self::is_clause_initial_imperative(&tokens, i, document)
                             || Self::is_not_a_noun_here(&tokens, i, document)
@@ -1457,6 +1482,25 @@ mod tests {
         assert!(
             !flagged.iter().any(|w| w == "km" || w == "drei"),
             "units and number words should not be flagged, got {flagged:?}"
+        );
+    }
+
+    #[test]
+    fn adjective_compounds_are_not_nouns() {
+        for text in [
+            "Die Bakterien sind photoautotroph.",
+            "Sie sind nur photoheterotroph und nicht photoautotroph.",
+        ] {
+            assert!(
+                flagged_words(text).is_empty(),
+                "{text}: {:?}",
+                flagged_words(text)
+            );
+        }
+        // *Mittel* is a noun as well: the compound stays one.
+        assert_eq!(
+            flagged_words("Das ist ein heilmittel gegen alles."),
+            ["heilmittel"]
         );
     }
 

@@ -8,7 +8,7 @@ use harper_core::{
     spell::Dictionary,
 };
 
-use crate::grammar::token_text::starts_uppercase;
+use crate::grammar::token_text::{is_abbreviated, starts_uppercase};
 use crate::{
     grammar::determiners::{DeterminerReading, adjective_ending_after, determiner_readings},
     grammar::noun_gender::NounGender,
@@ -232,6 +232,10 @@ impl GermanAdjectiveForm {
         }
         let adjective = words.get(adjective_at)?;
         let noun = words.get(adjective_at + 1)?;
+        // *die sog. Digitalisierung*: an abbreviation takes no ending.
+        if is_abbreviated(adjective, document) {
+            return None;
+        }
         if !matches!(adjective.kind, TokenKind::Word(_))
             || !matches!(noun.kind, TokenKind::Word(_))
             || starts_uppercase(adjective, document)
@@ -467,6 +471,9 @@ impl GermanAdjectiveForm {
             return None;
         }
         let adjective = words.get(at + 1)?;
+        if is_abbreviated(adjective, document) {
+            return None;
+        }
         let noun = words.get(at + 2)?;
         if !matches!(adjective.kind, TokenKind::Word(_))
             || !matches!(noun.kind, TokenKind::Word(_))
@@ -529,6 +536,9 @@ impl GermanAdjectiveForm {
             return None;
         }
         let adjective = words.get(at + 1)?;
+        if is_abbreviated(adjective, document) {
+            return None;
+        }
         let noun = words.get(at + 2)?;
         if !matches!(adjective.kind, TokenKind::Word(_))
             || !matches!(noun.kind, TokenKind::Word(_))
@@ -766,6 +776,9 @@ impl GermanAdjectiveForm {
             return None;
         }
         let adjective = words.get(at + 1)?;
+        if is_abbreviated(adjective, document) {
+            return None;
+        }
         let noun_token = words.get(at + 2)?;
         if !matches!(adjective.kind, TokenKind::Word(_))
             || !matches!(noun_token.kind, TokenKind::Word(_))
@@ -1093,6 +1106,19 @@ mod tests {
         }
         assert!(reported("Wir haben viele neue Ideen.").is_empty());
         assert!(reported("Alle neuen Mitarbeiter kommen.").is_empty());
+    }
+
+    #[test]
+    fn an_abbreviation_between_article_and_noun_is_quiet() {
+        for text in [
+            "Wir sprechen über die sog. Digitalisierung.",
+            "Das Gesetz gilt für die sog. Halbkantone.",
+            "Er besuchte das ehem. Kloster.",
+            "Wir nutzen die sog. Cloud mit sog. Diensten.",
+            "Alle sog. Experten waren da.",
+        ] {
+            assert!(reported(text).is_empty(), "{text}: {:?}", reported(text));
+        }
     }
 
     #[test]

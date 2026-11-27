@@ -22118,6 +22118,7 @@ Aspisviper/~~EFNh
 Asquith/~~!8H
 ASRock/~~!8H
 Ass/~~07NXZh
+astro/~~*
 aß/~~Vt
 Assab/~~!8H
 assai/~~r
@@ -87579,6 +87580,7 @@ Elektrizität/~~FNYh
 Elektrizitäts/~~FN
 Elektrizitätsleiter/~~EHMNh
 Elektrizitätsversorgung/~~FNYh
+elektro/~~*
 Elektro-Scooter/~~EHMNh
 Elektro-Tretroller/~~EHMNh
 Elektroakustik/~~AFNh
@@ -95089,6 +95091,7 @@ Epidiaskop/~~HNXZh
 Epidiaskope/~~&
 Epidiaskopen/~~N
 Epigenese/~~EFNh
+Epigenetik/~~AFNh
 epigenetisch/~~JOQRSTqr
 epigonal/~~JOQRSTqr
 Epigone/~~EMNh
@@ -123889,6 +123892,7 @@ Genüssling/~~HMNXh
 Genüsslinge/~~&
 Genüsslingen/~~N
 genützt/~~OQRSTVg
+geo/~~*
 Geoantiklinale/~~FNh
 Geobasisinformation/~~FNYh
 geobensteht/~~OQRSTVg
@@ -162589,6 +162593,7 @@ hydriertes/~~J
 hydriertest/~~Vt
 hydriertet/~~Vt
 Hydrierung/~~FNYh
+hydro/~~*
 Hydrobiologe/~~EMNh
 Hydrobiologie/~~AFNh
 Hydrochinon/~~HNXZh
@@ -169753,7 +169758,7 @@ Itzige/~~&
 Itzigen/~~N
 itzo/~~r
 Itzstedt/~~!8H
-itzt/~~r
+itzt/~~!r
 itzund/~~r
 iure/~~3
 Ivan/~~HN
@@ -170787,10 +170792,12 @@ Jizzax/~~!8H
 Jičín/~~!8H
 Jiří/~~!8H
 Jiǔzhàigōu/~~!8H
+jo/~~r
 Jo-Jo/~~NZbh
 Jo-Jo-Effekt/~~HMNXh
 Jo-Jo-Effekte/~~&
 Jo-Jo-Effekten/~~N
+joa/~~r
 Joachim/~~AHMN
 Joachimsthal/~~!8H
 Joakim/~~!8H
@@ -175152,6 +175159,7 @@ Kasumigaura/~~!8H
 Kasus/~~MNh
 Katabasis/~~AFNh
 katabatisch/~~JOQRSTqr
+katabol/~~JOQRSTUWqr
 Katabolie/~~AFNh
 Katachrese/~~EFNh
 Katachresis/~~FNh
@@ -195701,6 +195709,7 @@ Linthal/~~!8H
 Linthe/~~!8H
 Lintig/~~!8H
 Linus/~~HN
+Linux/~~AHNh
 Linyi/~~!8H
 Linz/~~AHNZ
 Linz'/~~NZ
@@ -200398,6 +200407,7 @@ Makohose/~~EFNh
 Makowski/~~!8H
 Makran/~~!8H
 Makrele/~~EFNh
+makro/~~*
 Makroanalyse/~~EFNh
 Makroaufnahme/~~EFNh
 Makrobefehl/~~0HMNXh
@@ -205871,6 +205881,7 @@ Mikołów/~~!8H
 Mikrat/~~0HNXZh
 Mikrate/~~&
 Mikraten/~~N
+mikro/~~*
 Mikro-Warenkorb/~~MNh
 Mikroabenteuer/~~EHNZh
 Mikroaggression/~~FNYh
@@ -215656,6 +215667,7 @@ nannten/~~V
 nanntest/~~V
 nanntet/~~V
 Nanny/~~FNbh
+nano/~~*
 Nanoanalytik/~~AFNh
 Nanofarad/~~HNZh
 Nanogramm/~~HNXZh
@@ -217844,6 +217856,7 @@ Neurin/~~AHNZh
 Neurit/~~MNYh
 Neuritis/~~AFNh
 neuritisch/~~JOQRSTqr
+neuro/~~*
 Neuroanatomie/~~AFNh
 Neurobiologe/~~EMNh
 Neurobiologie/~~AFNh
@@ -227808,6 +227821,7 @@ Payroll/~~FNbh
 Paysandú/~~!8H
 Paytm/~~!8H
 Paywall/~~FNbh
+Pazifik/~~AHMNh
 Pazifikflotte/~~EFNh
 Pazifikinseln/~~!8H
 pazifisch/~~JOQRSTqr
@@ -230775,6 +230789,7 @@ phosphorsauer/~~JOQRSTqr
 Phosphorwasserstoff/~~0HMNXh
 Phosphorwasserstoffe/~~&
 Phosphorwasserstoffen/~~N
+photo/~~*
 Photobiologie/~~AFNh
 Photobiophysik/~~AFNh
 Photochemie/~~AFNh
@@ -233741,6 +233756,7 @@ Polyneuropathie/~~EFNh
 Polynom/~~HNXZh
 Polynome/~~&
 Polynomen/~~N
+polynomiell/~~JOQRSTUWqr
 polynomisch/~~JOQRSTqr
 polynukleär/~~JOQRSTqr
 Polyopie/~~EFNh
@@ -234096,6 +234112,7 @@ Porsgrunn/~~!8H
 Porst/~~0HMNXh
 Porste/~~&
 Porsten/~~N
+Port/~~HMNbh
 Port-au-Prince/~~!8H
 Port-Gentil/~~!8H
 Port-Valais/~~!8H
@@ -243219,6 +243236,7 @@ Reconquête/~~!8H
 Reconvilier/~~!8H
 Recorder/~~EHMNh
 Recruiter/~~EHMNh
+Recruiting/~~AHNh
 recte/~~r
 Recto/~~NZh
 recycelbar/~~JOQRSTqr
@@ -267713,6 +267731,7 @@ Shelby/~~!8H
 Shelbyville/~~!8H
 Sheldon/~~!8H
 Shelesnogorsk/~~!8H
+Shell/~~FNbh
 Shelley/~~!8H
 Shelton/~~!8H
 Shen/~~!8H
@@ -280638,6 +280657,7 @@ subatomar/~~JOQRSTqr
 Subbotnik/~~HMNbh
 Subdiakon/~~AHMNh
 Subdivision/~~FNYh
+Subdomain/~~FNbh
 Subdominante/~~EFNh
 Subduktion/~~FNYh
 subdural/~~JOQRSTqr
@@ -286848,6 +286868,7 @@ Thermidor/~~HMNbh
 Thermik/~~AFNh
 thermisch/~~JOQRSTqr
 Thermistor/~~HMNYh
+thermo/~~*
 Thermoanalyse/~~EFNh
 Thermobehandlung/~~FNYh
 Thermobehälter/~~EHMNh

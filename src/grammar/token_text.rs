@@ -31,3 +31,10 @@ pub(crate) fn starts_uppercase(token: &Token, document: &Document) -> bool {
 pub(crate) fn is_capitalized(word: &str) -> bool {
     word.chars().next().is_some_and(char::is_uppercase)
 }
+
+/// Is the token an abbreviation with its full stop (*sog.*, *ehem.*)? The
+/// period may belong to the token or follow it directly.
+pub(crate) fn is_abbreviated(token: &Token, document: &Document) -> bool {
+    document.get_span_content(&token.span).last() == Some(&'.')
+        || document.get_source().get(token.span.end) == Some(&'.')
+}

@@ -642,6 +642,13 @@ Vorzeit F Vorzeiten
 Spätzeit F Spätzeiten
 Endzeit F Endzeiten
 Frühgeschichte F -
+Port M Ports
+Subdomain F Subdomains
+Recruiting N -
+Pazifik M -
+Epigenetik F -
+Linux N -
+Shell F Shells
 """.strip().splitlines()
 
 CORE_ADVERBS = """
@@ -651,11 +658,22 @@ infrage
 nochmal
 ehesten
 ok
+jo joa
+""".split()
+
+# Rare words that only ever turn up as the tail of a typo: *Intentional|itzt* for *Intentionalität*.
+NOT_COMPOUND_ELEMENTS = {"itzt"}
+
+# Learned combining forms that open compounds without being words (*Elektro|negativität*, *Photo|system*).
+CONFIXES = """
+elektro photo thermo mikro makro neuro hydro geo psycho nano astro
 """.split()
 
 CORE_ADJECTIVES = """
 gierig
 open
+polynomiell
+katabol
 """.split()
 
 # Words whose lower-case spelling is the verb and never the noun that shares the letters (ist / Ist).
